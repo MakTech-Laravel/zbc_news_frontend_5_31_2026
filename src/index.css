@@ -1,0 +1,389 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap");
+@import "tailwindcss";
+@font-face {
+  font-family: 'GeneralSans-Semibold';
+  src: url('/public/fonts/GeneralSans-Semibold.woff2') format('woff2'),
+       url('/public/fonts/GeneralSans-Semibold.woff') format('woff'),
+       url('/public/fonts/GeneralSans-Semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+
+/*
+ * ZBC News – design tokens (Figma: tungsol News website) 
+ * https://www.figma.com/design/VCdNAKSKeTbMVHAvtr3GJW/tungsol-News-website--Copy-
+ */
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-500: var(--primary-500);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Figma brand palette */
+  --color-zbc-blue: var(--zbc-blue);
+  --color-zbc-red: var(--zbc-red);
+  --color-zbc-breaking: var(--zbc-breaking);
+  --color-zbc-breaking-dark: var(--zbc-breaking-dark);
+  --color-zbc-footer: var(--zbc-footer);
+  --color-zbc-gray-50: var(--zbc-gray-50);
+  --color-zbc-gray-100: var(--zbc-gray-100);
+  --color-zbc-gray-200: var(--zbc-gray-200);
+  --color-zbc-gray-400: var(--zbc-gray-400);
+  --color-zbc-gray-500: var(--zbc-gray-500);
+  --color-zbc-gray-700: var(--zbc-gray-700);
+  --color-zbc-gray-900: var(--zbc-gray-900);
+  --color-zbc-gray-1000: var(--zbc-gray-1000);
+
+  /* Legacy aliases (auth / dashboard – map to Figma tokens) */
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-red: var(--brand-red);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-heading: var(--ink-heading);
+  --color-surface-soft: var(--surface-soft);
+  --color-ice: var(--ice);
+  --color-border-light: var(--border-light);
+  --color-border-gray: var(--border-gray);
+  --color-footer-bar: var(--footer-bar);
+  --color-footer-muted: var(--footer-muted);
+  --color-auth-bg: var(--auth-bg);
+  --color-avatar-a: var(--avatar-a);
+  --color-text-secondary: var(--text-secondary);
+
+  /* Admin dashboard (Figma node 217:2371) */
+  --color-admin-sidebar: var(--admin-sidebar);
+  --color-admin-sidebar-border: var(--admin-sidebar-border);
+  --color-admin-nav-muted: var(--admin-nav-muted);
+  --color-admin-nav-active-border: var(--admin-nav-active-border);
+  --color-admin-surface: var(--admin-surface);
+  --color-admin-heading: var(--admin-heading);
+  --color-admin-label: var(--admin-label);
+  --color-admin-trend-up: var(--admin-trend-up);
+  --color-admin-trend-down: var(--admin-trend-down);
+  --color-admin-trend-muted: var(--admin-trend-muted);
+  --color-admin-notification: var(--admin-notification);
+  --color-admin-input-border: var(--admin-input-border);
+  --color-admin-chart-blue: var(--admin-chart-blue);
+  --color-admin-chart-purple: var(--admin-chart-purple);
+  --color-admin-chart-green: var(--admin-chart-green);
+  --color-admin-metric-blue-bg: var(--admin-metric-blue-bg);
+  --color-admin-metric-green-bg: var(--admin-metric-green-bg);
+  --color-admin-metric-purple-bg: var(--admin-metric-purple-bg);
+  --color-admin-metric-orange-bg: var(--admin-metric-orange-bg);
+  --color-admin-metric-yellow-bg: var(--admin-metric-yellow-bg);
+  --color-admin-metric-indigo-bg: var(--admin-metric-indigo-bg);
+  --color-admin-metric-red-bg: var(--admin-metric-red-bg);
+  --color-admin-badge-published-bg: var(--admin-badge-published-bg);
+  --color-admin-badge-published-text: var(--admin-badge-published-text);
+  --color-admin-badge-draft-bg: var(--admin-badge-draft-bg);
+  --color-admin-badge-draft-text: var(--admin-badge-draft-text);
+  --color-admin-badge-politics-bg: var(--admin-badge-politics-bg);
+  --color-admin-badge-politics-text: var(--admin-badge-politics-text);
+  --color-admin-badge-tech-bg: var(--admin-badge-tech-bg);
+  --color-admin-badge-tech-text: var(--admin-badge-tech-text);
+  --color-admin-badge-sports-bg: var(--admin-badge-sports-bg);
+  --color-admin-badge-sports-text: var(--admin-badge-sports-text);
+  --color-admin-badge-scheduled-bg: var(--admin-badge-scheduled-bg);
+  --color-admin-badge-scheduled-text: var(--admin-badge-scheduled-text);
+  --color-admin-badge-pending-bg: var(--admin-badge-pending-bg);
+  --color-admin-badge-pending-text: var(--admin-badge-pending-text);
+  --color-admin-badge-archived-bg: var(--admin-badge-archived-bg);
+  --color-admin-badge-archived-text: var(--admin-badge-archived-text);
+  --color-admin-table-header-bg: var(--admin-table-header-bg);
+  --color-admin-list-divider: var(--admin-list-divider);
+  --color-admin-rank-bg: var(--admin-rank-bg);
+  --color-user-long-read: var(--user-long-read);
+
+  --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-plus-jakarta-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-plus-jakarta-sans);
+  --font-general-sans: "GeneralSans-Semibold", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-plus-jakarta-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-general-sans: "GeneralSans-Semibold", ui-sans-serif, system-ui, sans-serif;
+    /* Figma core */
+    --zbc-blue: #155DFC;
+    --zbc-blue-500: #2B7FFF;
+    --zbc-red: #dc2626;
+    --zbc-breaking: #e10600;
+    --zbc-breaking-dark: #b80500;
+    --zbc-footer: #0b1120;
+    --zbc-white: #ffffff;
+    --zbc-gray-50: #f9fafb;
+    --zbc-gray-100: #f3f4f6;
+    --zbc-gray-200: #e5e7eb;
+    --zbc-gray-400: #9ca3af;
+    --zbc-gray-500: #6b7280;
+    --zbc-gray-700: #374151;
+    --zbc-gray-900: #111827;
+    --zbc-gray-1000: #101828;
+
+    /* shadcn → Figma */
+    --background: var(--zbc-white);
+    --foreground: var(--zbc-gray-900);
+    --card: var(--zbc-white);
+    --card-foreground: var(--zbc-gray-900);
+    --popover: var(--zbc-white);
+    --popover-foreground: var(--zbc-gray-900);
+    --primary: var(--zbc-blue);
+    --primary-500: var(--zbc-blue-500);
+    --primary-foreground: var(--zbc-white);
+    --secondary: var(--zbc-gray-100);
+    --secondary-foreground: var(--zbc-gray-900);
+    --muted: var(--zbc-gray-100);
+    --muted-foreground: var(--zbc-gray-500);
+    --accent: #eff6ff;
+    --accent-foreground: var(--zbc-blue);
+    --destructive: var(--zbc-red);
+    --destructive-foreground: var(--zbc-white);
+    --success: #16a34a;
+    --success-foreground: var(--zbc-white);
+    --border: var(--zbc-gray-200);
+    --input: var(--zbc-gray-50);
+    --ring: var(--zbc-blue);
+    --radius: 0.5rem;
+
+    /* Legacy aliases → same Figma values */
+    --brand: var(--zbc-blue);
+    --brand-deep: #1e40af;
+    --brand-soft: #eff6ff;
+    --brand-red: var(--zbc-red);
+    --ink: var(--zbc-gray-900);
+    --ink-muted: var(--zbc-gray-500);
+    --ink-heading: var(--zbc-gray-900);
+    --surface-soft: var(--zbc-gray-50);
+    --ice: var(--zbc-white);
+    --border-light: #f1f2f4;
+    --border-gray: var(--zbc-gray-200);
+    --footer-bar: var(--zbc-gray-100);
+    --footer-muted: var(--zbc-gray-500);
+    --auth-bg: var(--zbc-gray-50);
+    --avatar-a: var(--zbc-blue);
+    --text-secondary: var(--zbc-gray-500);
+
+    /* Admin dashboard */
+    --admin-sidebar: #0f172a;
+    --admin-sidebar-border: #364153;
+    --admin-nav-muted: #99a1af;
+    --admin-nav-active-border: #51a2ff;
+    --admin-surface: #f9fafb;
+    --admin-heading: #101828;
+    --admin-label: #4a5565;
+    --admin-trend-up: #00a63e;
+    --admin-trend-down: #e7000b;
+    --admin-trend-muted: #6a7282;
+    --admin-notification: #fb2c36;
+    --admin-input-border: #d1d5dc;
+    --admin-chart-blue: #3b82f6;
+    --admin-chart-purple: #8b5cf6;
+    --admin-chart-green: #10b981;
+    --admin-metric-blue-bg: #dbeafe;
+    --admin-metric-green-bg: #dcfce7;
+    --admin-metric-purple-bg: #f3e8ff;
+    --admin-metric-orange-bg: #ffedd4;
+    --admin-metric-yellow-bg: #fef9c2;
+    --admin-metric-indigo-bg: #e0e7ff;
+    --admin-metric-red-bg: #ffe2e2;
+    --admin-badge-published-bg: #dcfce7;
+    --admin-badge-published-text: #008236;
+    --admin-badge-draft-bg: #fef9c2;
+    --admin-badge-draft-text: #a65f00;
+    --admin-badge-politics-bg: #ffe2e2;
+    --admin-badge-politics-text: #c10007;
+    --admin-badge-tech-bg: #dbeafe;
+    --admin-badge-tech-text: #1447e6;
+    --admin-badge-sports-bg: #dcfce7;
+    --admin-badge-sports-text: #008236;
+    --admin-badge-scheduled-bg: #dbeafe;
+    --admin-badge-scheduled-text: #1447e6;
+    --admin-badge-pending-bg: #f3e8ff;
+    --admin-badge-pending-text: #7e22ce;
+    --admin-badge-archived-bg: #f3f4f6;
+    --admin-badge-archived-text: #4b5563;
+    --admin-table-header-bg: #f9fafb;
+    --admin-list-divider: #f3f4f6;
+    --admin-rank-bg: #f3f4f6;
+    --user-long-read: #FE9A00;
+    --user-banner-welcome-gradient: linear-gradient(
+      90deg,
+      #e8e8ea 0%,
+      #ffffff 30%,
+      #c7c7cd 60%,
+      #e8e8ea 100%
+    );
+    --user-banner-membership-gradient: linear-gradient(
+      90deg,
+      #e8e8ea 0%,
+      #d4d4d9 28%,
+      #a3a3ab 52%,
+      #c8c8ce 78%,
+      #e5e5ea 100%
+    );
+  }
+
+  .dark {
+    --background: var(--zbc-gray-900);
+    --foreground: var(--zbc-gray-50);
+    --card: #1f2937;
+    --card-foreground: var(--zbc-gray-50);
+    --popover: #1f2937;
+    --popover-foreground: var(--zbc-gray-50);
+    --primary: var(--zbc-blue);
+    --primary-500: var(--zbc-blue-500);
+    --primary-foreground: var(--zbc-white);
+    --secondary: #1f2937;
+    --secondary-foreground: var(--zbc-gray-50);
+    --muted: #1f2937;
+    --muted-foreground: var(--zbc-gray-400);
+    --accent: #1e3a5f;
+    --accent-foreground: #93c5fd;
+    --destructive: #f87171;
+    --destructive-foreground: var(--zbc-gray-900);
+    --border: #374151;
+    --input: #1f2937;
+    --ring: #3b82f6;
+
+    --brand: #3b82f6;
+    --brand-deep: #2563eb;
+    --brand-soft: #1e3a5f;
+    --brand-red: #f87171;
+    --ink: var(--zbc-gray-50);
+    --ink-muted: var(--zbc-gray-400);
+    --ink-heading: var(--zbc-gray-50);
+    --surface-soft: #111827;
+    --ice: #1f2937;
+    --border-light: #1f2937;
+    --border-gray: #374151;
+    --footer-bar: var(--zbc-footer);
+    --footer-muted: var(--zbc-gray-400);
+    --auth-bg: #111827;
+    --avatar-a: #60a5fa;
+    --text-secondary: var(--zbc-gray-400);
+
+    --admin-sidebar: #0f172a;
+    --admin-sidebar-border: #364153;
+    --admin-nav-muted: #99a1af;
+    --admin-nav-active-border: #51a2ff;
+    --admin-surface: #111827;
+    --admin-heading: var(--zbc-gray-50);
+    --admin-label: var(--zbc-gray-400);
+    --admin-trend-up: #4ade80;
+    --admin-trend-down: #f87171;
+    --admin-trend-muted: var(--zbc-gray-500);
+    --admin-notification: #fb2c36;
+    --admin-input-border: #374151;
+    --admin-chart-blue: #60a5fa;
+    --admin-chart-purple: #a78bfa;
+    --admin-chart-green: #34d399;
+    --admin-metric-blue-bg: #1e3a5f;
+    --admin-metric-green-bg: #14532d;
+    --admin-metric-purple-bg: #3b0764;
+    --admin-metric-orange-bg: #431407;
+    --admin-metric-yellow-bg: #422006;
+    --admin-metric-indigo-bg: #312e81;
+    --admin-metric-red-bg: #450a0a;
+    --admin-badge-published-bg: #14532d;
+    --admin-badge-published-text: #86efac;
+    --admin-badge-draft-bg: #422006;
+    --admin-badge-draft-text: #fcd34d;
+    --admin-badge-politics-bg: #450a0a;
+    --admin-badge-politics-text: #fca5a5;
+    --admin-badge-tech-bg: #1e3a5f;
+    --admin-badge-tech-text: #93c5fd;
+    --admin-badge-sports-bg: #14532d;
+    --admin-badge-sports-text: #86efac;
+    --admin-badge-scheduled-bg: #1e3a5f;
+    --admin-badge-scheduled-text: #93c5fd;
+    --admin-badge-pending-bg: #3b0764;
+    --admin-badge-pending-text: #e9d5ff;
+    --admin-badge-archived-bg: #374151;
+    --admin-badge-archived-text: #d1d5db;
+    --admin-table-header-bg: #111827;
+    --admin-list-divider: #1f2937;
+    --admin-rank-bg: #1f2937;
+  }
+
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    margin: 0;
+  }
+}
+
+@keyframes user-portal-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility user-portal-fade-in {
+  animation: user-portal-fade-in 0.22s ease-out;
+}
+
+@utility admin-portal-fade-in {
+  animation: user-portal-fade-in 0.22s ease-out;
+}
+
+@utility bg-user-banner-welcome {
+  background: var(--user-banner-welcome-gradient);
+}
+
+@utility bg-user-banner-membership {
+  background: var(--user-banner-membership-gradient);
+}
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes news-ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
