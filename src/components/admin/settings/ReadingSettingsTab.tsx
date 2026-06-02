@@ -38,12 +38,12 @@ export function ReadingSettingsTab({ settings }: ReadingSettingsTabProps) {
             checked={form.requireRegistrationToComment}
             onCheckedChange={(v) => setField("requireRegistrationToComment", v)}
           />
-          <SettingsCheckbox
+          {/* <SettingsCheckbox
             id="auto-approve-comments"
             label="Auto-approve comments from known users"
             checked={form.autoApproveKnownUsers}
             onCheckedChange={(v) => setField("autoApproveKnownUsers", v)}
-          />
+          /> */}
         </div>
       </AdminFormField>
 

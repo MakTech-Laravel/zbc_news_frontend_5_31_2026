@@ -217,7 +217,7 @@ export function UserProfileForm() {
         </div>
       </UserDashboardCard> */}
 
-      <UserDashboardCard>
+      {/* <UserDashboardCard>
         <SettingsCardHeader
           title="Topic Preferences"
           subtitle="Choose topics you're interested in"
@@ -246,7 +246,7 @@ export function UserProfileForm() {
             ))}
           </div>
         </div>
-      </UserDashboardCard>
+      </UserDashboardCard> */}
 
       <UserDashboardCard>
         <div id="notification-preferences" className="scroll-mt-6" />

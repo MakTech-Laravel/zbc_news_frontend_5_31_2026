@@ -26,14 +26,14 @@ export function WritingSettingsTab({ settings }: WritingSettingsTabProps) {
         />
       </AdminFormField>
 
-      <AdminFormField label="Default Post Format" htmlFor="default-post-format">
+      {/* <AdminFormField label="Default Post Format" htmlFor="default-post-format">
         <AdminFormSelect
           id="default-post-format"
           value={form.defaultPostFormat}
           onChange={(v) => setField("defaultPostFormat", v)}
           options={POST_FORMAT_OPTIONS}
         />
-      </AdminFormField>
+      </AdminFormField> */}
 
       <div className="flex flex-col gap-3">
         <SettingsCheckbox
@@ -48,12 +48,12 @@ export function WritingSettingsTab({ settings }: WritingSettingsTabProps) {
           checked={form.requireFeaturedImage}
           onCheckedChange={(v) => setField("requireFeaturedImage", v)}
         />
-        <SettingsCheckbox
+        {/* <SettingsCheckbox
           id="enable-ai-writing"
           label="Enable AI writing assistance"
           checked={form.enableAiWriting}
           onCheckedChange={(v) => setField("enableAiWriting", v)}
-        />
+        /> */}
       </div>
     </AdminPanel>
   );
