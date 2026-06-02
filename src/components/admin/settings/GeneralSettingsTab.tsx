@@ -83,14 +83,14 @@ export function GeneralSettingsTab({ settings }: GeneralSettingsTabProps) {
         />
       </AdminFormField>
 
-      <AdminFormField label="Language" htmlFor="site-language">
+      {/* <AdminFormField label="Language" htmlFor="site-language">
         <AdminFormSelect
           id="site-language"
           value={form.language}
           onChange={(v) => setField("language", v)}
           options={LANGUAGE_OPTIONS}
         />
-      </AdminFormField>
+      </AdminFormField> */}
     </AdminPanel>
   );
 }

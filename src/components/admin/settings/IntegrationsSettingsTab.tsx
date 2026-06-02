@@ -34,7 +34,7 @@ export function IntegrationsSettingsTab({ settings }: IntegrationsSettingsTabPro
         />
       </AdminFormField>
 
-      <AdminFormField label="Mailchimp API Key" htmlFor="mailchimp-api">
+      {/* <AdminFormField label="Mailchimp API Key" htmlFor="mailchimp-api">
         <input
           id="mailchimp-api"
           type="password"
@@ -44,9 +44,9 @@ export function IntegrationsSettingsTab({ settings }: IntegrationsSettingsTabPro
           className={settingsInputClassName}
           autoComplete="off"
         />
-      </AdminFormField>
+      </AdminFormField> */}
 
-      <AdminFormField label="Disqus Shortname" htmlFor="disqus-shortname">
+      {/* <AdminFormField label="Disqus Shortname" htmlFor="disqus-shortname">
         <input
           id="disqus-shortname"
           type="text"
@@ -55,9 +55,9 @@ export function IntegrationsSettingsTab({ settings }: IntegrationsSettingsTabPro
           placeholder="Shortname"
           className={settingsInputClassName}
         />
-      </AdminFormField>
+      </AdminFormField> */}
 
-      <AdminFormField
+      {/* <AdminFormField
         label="Slack Webhook URL"
         htmlFor="slack-webhook"
         hint="Get notifications for new articles and comments"
@@ -70,7 +70,7 @@ export function IntegrationsSettingsTab({ settings }: IntegrationsSettingsTabPro
           placeholder="https://hooks.slack.com/services/..."
           className={settingsInputClassName}
         />
-      </AdminFormField>
+      </AdminFormField> */}
     </AdminPanel>
   );
 }

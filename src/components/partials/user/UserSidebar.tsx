@@ -31,7 +31,7 @@ const MAIN_NAV: NavItem[] = [
   { label: "Saved Articles", to: "/user/saved-articles", Icon: Bookmark },
   { label: "Profile", to: "/user/profile", Icon: User },
   { label: "Notifications", to: "/user/notifications", Icon: Bell },
-  { label: "Membership", to: "/user/membership", Icon: CreditCard },
+  // { label: "Membership", to: "/user/membership", Icon: CreditCard },
   { label: "Reading Analytics", to: "/user/reading-analytics", Icon: BarChart3 },
 ];
 

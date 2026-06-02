@@ -19,10 +19,10 @@ export default function UserSettings() {
             <label className="text-sm font-medium text-admin-heading">Display name</label>
             <Input defaultValue="John Doe" className="h-9 max-w-md" />
           </div>
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <label className="text-sm font-medium text-admin-heading">Language</label>
             <Input defaultValue="English" className="h-9 max-w-md" />
-          </div>
+          </div> */}
         </div>
       </UserDashboardCard>
 
