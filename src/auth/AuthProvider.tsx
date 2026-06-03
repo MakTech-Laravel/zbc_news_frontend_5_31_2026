@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => env.authStrategy === 'http_only_cookie',
   )
   const [isUserLoading, setIsUserLoading] = React.useState(() => {
-    return env.authStrategy === 'bearer_memory' && Boolean(initialToken) && !Boolean(initialUser)
+    return env.authStrategy === 'bearer_memory' && Boolean(initialToken)
   })
 
   const setUser = React.useCallback((nextUser: AuthUser | null) => {
@@ -44,9 +44,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserState(nextUser)
   }, [])
 
+  const resetAuthState = React.useCallback(() => {
+    clearAccessToken()
+    setAccessTokenState(null)
+    setUser(null)
+    setIsUserLoading(false)
+  }, [setUser])
+
   const refreshSession = React.useCallback(async (): Promise<AuthUser | null> => {
     const prev = userRef.current ?? getStoredAuthUser()
-    const shouldBlock = env.authStrategy === 'http_only_cookie' || !prev
+    const shouldBlock =
+      env.authStrategy === 'http_only_cookie' ||
+      (env.authStrategy === 'bearer_memory' && Boolean(getAccessToken()))
     if (shouldBlock) {
       setIsUserLoading(true)
     }
@@ -65,13 +74,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u)
         return u
       }
+      // Profile route may not exist (404). Keep user from login response or storage.
+      if (prev) return prev
+      if (env.authStrategy === 'bearer_memory' && getAccessToken()) {
+        resetAuthState()
+      }
       return null
     } finally {
       if (shouldBlock) {
         setIsUserLoading(false)
       }
     }
-  }, [setUser])
+  }, [setUser, resetAuthState])
 
   React.useEffect(() => {
     if (env.authStrategy !== 'http_only_cookie') {
@@ -111,19 +125,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    const profileDisabled =
+      env.authMePath === 'none' || env.authMePath === 'false'
+    if (profileDisabled && getStoredAuthUser()) {
+      setIsUserLoading(false)
+      return
+    }
+
     void refreshSession()
   }, [refreshSession])
 
   const setToken = React.useCallback((token: string) => {
     setAccessToken(token)
     setAccessTokenState(token)
-  }, [])
-
-  const resetAuthState = React.useCallback(() => {
-    clearAccessToken()
-    setAccessTokenState(null)
-    setUser(null)
-    setIsUserLoading(false)
   }, [])
 
   const can = React.useCallback(
@@ -171,11 +185,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Session may already be invalid; still clear client state
     } finally {
-      if (typeof window !== 'undefined' && window.location.pathname !== '/') {
-        window.location.assign('/')
+      if (typeof window === 'undefined') return
+      const path = window.location.pathname
+      if (path !== '/login' && !path.startsWith('/login/')) {
+        window.location.assign('/login')
       }
     }
-  }, [user])
+  }, [user, resetAuthState])
 
   const value = React.useMemo<AuthContextValue>(
     () => ({

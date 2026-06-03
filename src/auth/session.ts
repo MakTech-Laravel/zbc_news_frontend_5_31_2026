@@ -3,9 +3,10 @@ import { extractUserFromAuthPayload } from '@/api/laravelResponse'
 import { env } from '@/config/env'
 import { type AuthUser } from '@/auth/types'
 
-/** GET current user — Laravel Passport Bearer or cookie session. */
+/** GET current user — optional profile probe after reload (skipped on login when user is in login JSON). */
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
-  // Order matters: this API has no `GET /me`; `/auth/profile` and `/admin/me` are the real probes.
+  if (env.authMePath === 'none' || env.authMePath === 'false') return null
+
   const primary = ['/auth/profile', '/admin/me'] as const
   const custom =
     env.authMePath &&

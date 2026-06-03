@@ -1,7 +1,9 @@
+import * as React from "react";
 import {
   CreditCard,
   FileText,
   LayoutDashboard,
+  LogOut,
   Settings,
   Users,
 } from "lucide-react";
@@ -64,10 +66,20 @@ type AdminSidebarProps = {
 };
 
 export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [loggingOut, setLoggingOut] = React.useState(false);
   const displayName = user?.name ?? user?.email ?? "Admin";
   const initials = getInitials(displayName);
   const avatarUrl = resolveAvatarUrl(user);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-admin-sidebar text-white">
@@ -116,16 +128,18 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
         ))}
       </nav>
 
-      {/* Footer user info */}
+      {/* Footer: user + logout */}
       <div
         className={cn(
           "mt-auto shrink-0 border-t border-admin-sidebar-border py-4 transition-all duration-300",
-          collapsed ? "px-0 flex justify-center" : "px-4",
+          collapsed ? "flex flex-col items-center gap-3 px-2" : "space-y-3 px-4",
         )}
       >
         {collapsed ? (
-          /* collapsed: শুধু avatar */
-          <span className="relative inline-flex size-10 shrink-0 overflow-hidden rounded-full bg-zbc-blue">
+          <span
+            className="relative inline-flex size-10 shrink-0 overflow-hidden rounded-full bg-zbc-blue"
+            title={displayName}
+          >
             {avatarUrl ? (
               <HeaderAvatar
                 src={avatarUrl}
@@ -139,7 +153,6 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
             )}
           </span>
         ) : (
-          /* expanded: full user info */
           <div className="flex items-center gap-3">
             <span className="relative inline-flex size-10 shrink-0 overflow-hidden rounded-full bg-zbc-blue">
               {avatarUrl ? (
@@ -160,6 +173,23 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
             </div>
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={loggingOut}
+          title="Sign out"
+          className={cn(
+            "flex items-center rounded-lg text-admin-nav-muted transition-colors",
+            "hover:bg-white/10 hover:text-white disabled:opacity-50",
+            collapsed ? "size-10 justify-center" : "h-10 w-full gap-3 px-3",
+          )}
+        >
+          <LogOut className="size-5 shrink-0" aria-hidden />
+          {!collapsed ? (
+            <span className="text-sm font-medium">{loggingOut ? "Signing out…" : "Sign out"}</span>
+          ) : null}
+        </button>
       </div>
     </aside>
   );

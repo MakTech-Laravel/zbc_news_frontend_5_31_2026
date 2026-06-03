@@ -1,13 +1,17 @@
 import { Navigate, useLocation } from 'react-router-dom'
 
 import { rolePolicy } from '@/auth/rolePolicy'
-import { getUserRoles, hasAnyRole } from '@/auth/roles'
+import { getUserRoles, hasAnyRole, isAdminPanelUser } from '@/auth/roles'
 import { useAuth } from '@/auth/useAuth'
 import { env } from '@/config/env'
 
-function pickDashboardForUserRoles(roles: string[]): string {
-  if (roles.includes('admin')) {
-    return rolePolicy.admin?.dashboard ?? '/admin'
+function pickDashboardForUserRoles(user: ReturnType<typeof useAuth>['user']): string {
+  if (isAdminPanelUser(user)) {
+    return rolePolicy.admin?.dashboard ?? '/admin/dashboard'
+  }
+  const roles = getUserRoles(user)
+  if (roles.includes('user')) {
+    return rolePolicy.user?.dashboard ?? '/user/dashboard'
   }
   for (const r of roles) {
     const dash = rolePolicy[r]?.dashboard
@@ -54,8 +58,7 @@ export function GuestGate({
     new URLSearchParams(location.search).get('purpose') === 'register'
   if (isRegisterOtpPage) return children
 
-  const roles = getUserRoles(user)
-  const recommended = redirectTo ?? pickDashboardForUserRoles(roles)
+  const recommended = redirectTo ?? pickDashboardForUserRoles(user)
 
   if (env.loginMode === 'single') {
     return <Navigate to={recommended} replace />

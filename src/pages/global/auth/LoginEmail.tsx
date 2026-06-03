@@ -64,9 +64,7 @@ export default function LoginEmail() {
         return;
       }
 
-      navigate(resolveDashboardPath(loggedInUser, role), {
-        replace: true,
-      });
+      navigate(resolveDashboardPath(loggedInUser), { replace: true });
     } catch (err) {
       const errors = getAuthFieldErrors(err);
       setFieldErrors(errors);

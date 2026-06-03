@@ -40,23 +40,12 @@ function SettingsCardHeader({ title, subtitle, icon, compact }: SettingsCardHead
   );
 }
 
-type TopicToggleProps = {
+type NotificationToggleProps = {
   id: string;
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 };
-
-function TopicToggleRow({ id, label, checked, onChange }: TopicToggleProps) {
-  return (
-    <div className="flex h-[46px] items-center justify-between rounded-lg border border-border bg-card px-3">
-      <span className="text-sm font-medium text-admin-heading">{label}</span>
-      <UserSettingSwitch id={id} checked={checked} onCheckedChange={onChange} aria-label={label} />
-    </div>
-  );
-}
-
-type NotificationToggleProps = TopicToggleProps;
 
 function NotificationToggleRow({ id, label, checked, onChange }: NotificationToggleProps) {
   return (
@@ -66,17 +55,6 @@ function NotificationToggleRow({ id, label, checked, onChange }: NotificationTog
     </div>
   );
 }
-
-const TOPIC_OPTIONS = [
-  { id: "technology", label: "Technology", defaultOn: true },
-  { id: "science", label: "Science", defaultOn: true },
-  { id: "politics", label: "Politics", defaultOn: false },
-  { id: "culture", label: "Culture", defaultOn: true },
-  { id: "business", label: "Business", defaultOn: true },
-  { id: "health", label: "Health", defaultOn: false },
-  { id: "sports", label: "Sports", defaultOn: false },
-  { id: "environment", label: "Environment", defaultOn: true },
-] as const;
 
 const NOTIFICATION_OPTIONS = [
   { id: "breaking", label: "Breaking News Alerts", defaultOn: true },
@@ -100,11 +78,7 @@ export function UserProfileForm() {
   const email = user?.email ?? "john.doe@example.com";
   const initials = getInitials(displayName);
 
-  const [topics, setTopic] = useToggleState(TOPIC_OPTIONS);
   const [notifications, setNotification] = useToggleState(NOTIFICATION_OPTIONS);
-
-  const leftTopics = TOPIC_OPTIONS.slice(0, 4);
-  const rightTopics = TOPIC_OPTIONS.slice(4);
 
   return (
     <div className="space-y-6">

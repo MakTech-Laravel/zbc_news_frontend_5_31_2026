@@ -2,10 +2,7 @@ import { AdminFormField } from "@/components/admin/forms/AdminFormField";
 import { AdminFormSelect } from "@/components/admin/forms/AdminFormSelect";
 import { SettingsCheckbox } from "@/components/admin/settings/SettingsCheckbox";
 import type { UseAdminSettingsReturn } from "@/components/admin/settings/useAdminSettings";
-import {
-  CATEGORY_OPTIONS,
-  POST_FORMAT_OPTIONS,
-} from "@/components/admin/settings/types";
+import { CATEGORY_OPTIONS } from "@/components/admin/settings/types";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 
 type WritingSettingsTabProps = {

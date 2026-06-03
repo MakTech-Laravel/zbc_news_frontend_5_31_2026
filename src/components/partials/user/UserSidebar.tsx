@@ -1,11 +1,12 @@
+import * as React from "react";
 import {
   BarChart3,
   Bell,
   Bookmark,
   BookOpen,
-  CreditCard,
   Globe,
   LayoutDashboard,
+  LogOut,
   Newspaper,
   Settings,
   TrendingUp,
@@ -105,10 +106,20 @@ type UserSidebarProps = {
 };
 
 export function UserSidebar({ collapsed = false, onNavigate }: UserSidebarProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [loggingOut, setLoggingOut] = React.useState(false);
   const displayName = user?.name ?? user?.email ?? "John Doe";
   const initials = getInitials(displayName);
   const avatarUrl = resolveAvatarUrl(user);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-admin-sidebar text-white">
@@ -212,8 +223,13 @@ export function UserSidebar({ collapsed = false, onNavigate }: UserSidebarProps)
         </div>
       </nav>
 
-      {/* Settings footer */}
-      <div className="shrink-0 border-t border-admin-sidebar-border p-3">
+      {/* Settings + logout */}
+      <div
+        className={cn(
+          "shrink-0 border-t border-admin-sidebar-border p-3",
+          collapsed ? "flex flex-col items-center gap-2" : "space-y-1",
+        )}
+      >
         <NavLink
           to="/user/settings"
           onClick={onNavigate}
@@ -231,6 +247,21 @@ export function UserSidebar({ collapsed = false, onNavigate }: UserSidebarProps)
           <Settings className="size-5 shrink-0 stroke-[1.5]" aria-hidden />
           {!collapsed && "Settings"}
         </NavLink>
+
+        <button
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={loggingOut}
+          title="Sign out"
+          className={cn(
+            "flex h-10 w-full items-center rounded-lg text-base transition-colors",
+            "text-admin-nav-muted hover:bg-admin-sidebar-border/40 hover:text-white disabled:opacity-50",
+            collapsed ? "justify-center px-0" : "gap-3 px-3",
+          )}
+        >
+          <LogOut className="size-5 shrink-0 stroke-[1.5]" aria-hidden />
+          {!collapsed && (loggingOut ? "Signing out…" : "Sign out")}
+        </button>
       </div>
     </aside>
   );
