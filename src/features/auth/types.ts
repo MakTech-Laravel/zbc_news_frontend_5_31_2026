@@ -6,11 +6,6 @@ export type LoginPayload = {
   role: AuthRole
 }
 
-export type AdminLoginPayload = {
-  email: string
-  password: string
-}
-
 export type RegisterPayload = {
   first_name: string
   last_name: string

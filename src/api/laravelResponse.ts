@@ -18,7 +18,7 @@ function permissionNamesFromRaw(raw: unknown): string[] {
 
 /** Map AdminResource / admin login payload into AuthUser with route role `admin` + Spatie fields. */
 export function normalizeAdminAuthUser(raw: Record<string, unknown>): AuthUser {
-  const spatieRoles = Array.isArray(raw.roles) ? permissionNamesFromRaw(raw.roles) : []
+  const spatieRoles = spatieRoleNamesFromRaw(raw.roles)
   const perms = permissionNamesFromRaw(raw.permissions)
   const { roles: _dropRoles, permissions: _dropPerms, ...rest } = raw
   const routeRoles = Array.from(new Set(['admin', ...spatieRoles]))
@@ -26,7 +26,11 @@ export function normalizeAdminAuthUser(raw: Record<string, unknown>): AuthUser {
     raw.is_super_admin === true ||
     raw.is_super_admin === 1 ||
     raw.is_super_admin === '1' ||
-    raw.is_super_admin === 'true'
+    raw.is_super_admin === 'true' ||
+    spatieRoles.some((r) => {
+      const n = normalizeSpatieRoleName(r)
+      return n === 'super-admin' || n === 'superadmin'
+    })
   return {
     ...(rest as unknown as AuthUser),
     role: 'admin',
@@ -37,22 +41,64 @@ export function normalizeAdminAuthUser(raw: Record<string, unknown>): AuthUser {
   }
 }
 
+/** Map login/profile user payloads with Spatie role objects into route-friendly AuthUser. */
+export function normalizeAuthUser(raw: Record<string, unknown>): AuthUser {
+  if (isAdminResourceShape(raw)) return normalizeAdminAuthUser(raw)
+
+  const spatieRoles = spatieRoleNamesFromRaw(raw.roles)
+  const spatieNormalized = spatieRoles.map(normalizeSpatieRoleName)
+  const perms = permissionNamesFromRaw(raw.permissions)
+  const routeRole =
+    typeof raw.role === 'string' && raw.role
+      ? normalizeSpatieRoleName(raw.role)
+      : spatieNormalized.includes('vendor')
+        ? 'vendor'
+        : spatieNormalized.includes('user')
+          ? 'user'
+          : 'user'
+  const { roles: _dropRoles, permissions: _dropPerms, ...rest } = raw
+
+  return {
+    ...(rest as unknown as AuthUser),
+    role: routeRole,
+    roles: Array.from(new Set([routeRole, ...spatieRoles])),
+    permissions: perms.length ? perms : undefined,
+  }
+}
+
+function normalizeSpatieRoleName(name: string): string {
+  return name.trim().toLowerCase().replace(/_/g, '-')
+}
+
+function spatieRoleNamesFromRaw(raw: unknown): string[] {
+  return permissionNamesFromRaw(raw)
+}
+
 function rolesLookLikeSpatieAdmin(raw: unknown): boolean {
-  if (!Array.isArray(raw)) return false
-  return raw.some((x) => {
-    const s = String(x)
-    return s === 'admin' || s === 'super-admin' || s.endsWith('-admin')
+  return spatieRoleNamesFromRaw(raw).some((name) => {
+    const n = normalizeSpatieRoleName(name)
+    return (
+      n === 'admin' ||
+      n === 'super-admin' ||
+      n === 'superadmin' ||
+      n.endsWith('-admin')
+    )
   })
 }
 
 function isAdminResourceShape(o: Record<string, unknown>): boolean {
   if (typeof o.email !== 'string') return false
-  // UserResource (user/vendor) always includes `role` and never sends Spatie `permissions`.
-  const routeRole = o.role
+
+  const routeRole =
+    typeof o.role === 'string' ? normalizeSpatieRoleName(o.role) : ''
   if (routeRole === 'user' || routeRole === 'vendor') return false
+
+  const spatieNames = spatieRoleNamesFromRaw(o.roles).map(normalizeSpatieRoleName)
+  if (spatieNames.includes('user') || spatieNames.includes('vendor')) return false
+
   if (rolesLookLikeSpatieAdmin(o.roles)) return true
-  if (Array.isArray(o.permissions)) return true
   if (o.is_super_admin === true || o.is_super_admin === 1 || o.is_super_admin === '1') return true
+  if (Array.isArray(o.permissions) && o.permissions.length > 0) return true
   return false
 }
 
@@ -129,8 +175,7 @@ export function extractUserFromAuthPayload(body: unknown): AuthUser | null {
   if ('user' in o && o.user && typeof o.user === 'object') {
     const u = o.user as Record<string, unknown>
     if ('id' in u || 'email' in u) {
-      if (isAdminResourceShape(u)) return normalizeAdminAuthUser(u)
-      return u as unknown as AuthUser
+      return normalizeAuthUser(u)
     }
   }
 
@@ -142,9 +187,7 @@ export function extractUserFromAuthPayload(body: unknown): AuthUser | null {
 
   // Sometimes: { data: {...user fields...} }
   if ('id' in o || 'email' in o) {
-    if (isAdminResourceShape(o)) return normalizeAdminAuthUser(o)
-    if (rolesLookLikeSpatieAdmin(o.roles)) return normalizeAdminAuthUser(o)
-    return o as unknown as AuthUser
+    return normalizeAuthUser(o)
   }
   return null
 }

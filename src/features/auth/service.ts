@@ -5,12 +5,11 @@ import {
 } from '@/api/laravelResponse'
 import { request } from '@/api/request'
 import { type AuthContextValue } from '@/auth/context'
-import { rolePolicy } from '@/auth/rolePolicy'
-import { getUserRoles } from '@/auth/roles'
+import { isSpatieSuperAdmin } from '@/auth/adminSpatie'
+import { getUserRoles, isAdminPanelUser, isUserPanelUser } from '@/auth/roles'
 import { setAccessToken, setRefreshToken, setStoredAuthUser } from '@/auth/token'
 import { type AuthUser } from '@/auth/types'
 import {
-  type AdminLoginPayload,
   type AuthRole,
   type LoginPayload,
   type PasswordResetOtpPayload,
@@ -53,7 +52,15 @@ function logOtpFromResponse(data: unknown, context: string) {
 }
 
 function ensureRoleMatchesExpected(user: unknown, expectedRole: AuthRole) {
-  const roles = getUserRoles(extractUserFromAuthPayload(user))
+  const parsed =
+    (user && typeof user === 'object' && 'email' in (user as object)
+      ? (user as AuthUser)
+      : extractUserFromAuthPayload(user)) ?? null
+  if (!parsed) return
+
+  const roles = getUserRoles(parsed)
+  if (roles.includes('admin') || isSpatieSuperAdmin(parsed)) return
+
   if (!roles.includes(expectedRole)) {
     throw new Error(
       `This account is not registered as ${expectedRole}. Please choose the correct account type.`,
@@ -91,15 +98,18 @@ async function hydrateSessionFromLoginBody(
 
   if (loggedInUser) {
     handlers.setUser(loggedInUser)
+    // Login already returned user + roles; skip profile probe when backend has no GET /auth/profile.
+    return loggedInUser
   }
+
   const refreshedUser = await handlers.refreshSession()
-  // Prefer `/auth/profile` result so role stays correct; login JSON alone can be incomplete.
-  return refreshedUser ?? loggedInUser
+  return refreshedUser
 }
 
 export async function loginUserWithRole(payload: LoginPayload, handlers: AuthHandlers) {
   try {
     const res = await request.post<unknown>('/auth/login', payload)
+    
     const user = await hydrateSessionFromLoginBody(
       res.data,
       handlers,
@@ -112,26 +122,6 @@ export async function loginUserWithRole(payload: LoginPayload, handlers: AuthHan
     handlers.resetAuthState()
     throw error
   }
-}
-
-export async function loginAdmin(payload: AdminLoginPayload, handlers: AuthHandlers) {
-  const paths = ["/admin/login", "/auth/admin/login"];
-  let last: unknown = null;
-  for (const path of paths) {
-    try {
-      const res = await request.post<unknown>(path, payload);
-      return await hydrateSessionFromLoginBody(
-        res.data,
-        handlers,
-        "Unable to restore your admin session.",
-        "Admin login response is missing access token.",
-      );
-    } catch (e) {
-      last = e;
-    }
-  }
-  handlers.resetAuthState();
-  throw last;
 }
 
 export async function registerUser(payload: RegisterPayload) {
@@ -225,16 +215,18 @@ export async function verifyRegistrationOtp(
   return resolvedUser
 }
 
-export function resolveDashboardPath(user: unknown, selectedRole: AuthRole) {
-  const roles = getUserRoles(extractUserFromAuthPayload(user))
-  if (roles.includes('admin')) return '/admin'
+export function resolveDashboardPath(user: unknown) {
+  const authUser =
+    user && typeof user === 'object' && ('role' in user || 'roles' in user)
+      ? (user as AuthUser)
+      : extractUserFromAuthPayload(user)
+
+  if (!authUser) return '/user/dashboard'
+
+  if (isAdminPanelUser(authUser)) return '/admin/dashboard'
+  if (isUserPanelUser(authUser)) return '/user/dashboard'
+
+  const roles = getUserRoles(authUser)
   if (roles.includes('vendor')) return '/vendor/dashboard'
-  if (roles.includes('user')) return '/user/dashboard'
-
-  const dashboardFromPolicy = roles
-    .map((role) => rolePolicy[role]?.dashboard)
-    .find((value): value is string => Boolean(value))
-
-  if (dashboardFromPolicy) return dashboardFromPolicy
-  return selectedRole === 'vendor' ? '/vendor/dashboard' : '/user/dashboard'
+  return '/user/dashboard'
 }

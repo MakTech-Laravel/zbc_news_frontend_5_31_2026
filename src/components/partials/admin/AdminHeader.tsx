@@ -1,5 +1,7 @@
-import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import * as React from "react";
+import { Bell, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 
+import { useAuth } from "@/auth/useAuth";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +18,18 @@ export function AdminHeader({
   sidebarCollapsed,
   className,
 }: AdminHeaderProps) {
+  const { logout } = useAuth();
+  const [loggingOut, setLoggingOut] = React.useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <header
       className={cn(
@@ -70,14 +84,27 @@ export function AdminHeader({
         <Search className="size-5" aria-hidden />
       </button>
 
-      <button
-        type="button"
-        className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-admin-label hover:bg-muted"
-        aria-label="Notifications"
-      >
-        <Bell className="size-5" aria-hidden />
-        <span className="absolute right-2 top-1 size-2 rounded-full bg-admin-notification" />
-      </button>
+      <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-admin-label hover:bg-muted"
+          aria-label="Notifications"
+        >
+          <Bell className="size-5" aria-hidden />
+          <span className="absolute right-2 top-1 size-2 rounded-full bg-admin-notification" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={loggingOut}
+          className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-admin-label hover:bg-muted disabled:opacity-50 sm:px-3"
+          aria-label="Sign out"
+        >
+          <LogOut className="size-5 shrink-0" aria-hidden />
+          <span className="hidden sm:inline">{loggingOut ? "Signing out…" : "Sign out"}</span>
+        </button>
+      </div>
     </header>
   );
 }

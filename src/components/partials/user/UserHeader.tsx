@@ -1,6 +1,8 @@
-import { Bell, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import * as React from "react";
+import { Bell, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useAuth } from "@/auth/useAuth";
 import { Input } from "@/components/ui/input";
 import { useUserNotifications } from "@/hooks/useUserNotifications";
 import { cn } from "@/lib/utils";
@@ -18,7 +20,18 @@ export function UserHeader({
   sidebarCollapsed,
   className,
 }: UserHeaderProps) {
+  const { logout } = useAuth();
   const { unreadCount } = useUserNotifications();
+  const [loggingOut, setLoggingOut] = React.useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <header
@@ -72,22 +85,35 @@ export function UserHeader({
         <Search className="size-4" aria-hidden />
       </button>
 
-      <Link
-        to="/user/notifications"
-        className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-admin-label hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={
-          unreadCount > 0
-            ? `Notifications, ${unreadCount} unread`
-            : "Notifications"
-        }
-      >
-        <Bell className="size-4" aria-hidden />
-        {unreadCount > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-admin-notification px-1 text-[10px] font-semibold text-white">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        ) : null}
-      </Link>
+      <div className="flex shrink-0 items-center gap-1">
+        <Link
+          to="/user/notifications"
+          className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-admin-label hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={
+            unreadCount > 0
+              ? `Notifications, ${unreadCount} unread`
+              : "Notifications"
+          }
+        >
+          <Bell className="size-4" aria-hidden />
+          {unreadCount > 0 ? (
+            <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-admin-notification px-1 text-[10px] font-semibold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          ) : null}
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => void handleLogout()}
+          disabled={loggingOut}
+          className="inline-flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-admin-label hover:bg-muted disabled:opacity-50 sm:px-3"
+          aria-label="Sign out"
+        >
+          <LogOut className="size-4 shrink-0" aria-hidden />
+          <span className="hidden sm:inline">{loggingOut ? "Signing out…" : "Sign out"}</span>
+        </button>
+      </div>
     </header>
   );
 }

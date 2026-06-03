@@ -4,10 +4,7 @@ import { AdminFormField } from "@/components/admin/forms/AdminFormField";
 import { AdminFormSelect } from "@/components/admin/forms/AdminFormSelect";
 import { settingsInputClassName } from "@/components/admin/settings/settingsFormStyles";
 import type { UseAdminSettingsReturn } from "@/components/admin/settings/useAdminSettings";
-import {
-  LANGUAGE_OPTIONS,
-  TIMEZONE_OPTIONS,
-} from "@/components/admin/settings/types";
+import { TIMEZONE_OPTIONS } from "@/components/admin/settings/types";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { Button } from "@/components/ui/button";
 
