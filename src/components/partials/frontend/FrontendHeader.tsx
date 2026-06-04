@@ -11,12 +11,12 @@ import { request } from "@/api/request";
 
 type NavItem = { label: string; to: string };
 
-const STATIC_NAV: NavItem[] = [
-  { label: "Latest News", to: "/" },
-];
+// const STATIC_NAV: NavItem[] = [
+//   { label: "Latest News", to: "/" },
+// ];
 
 export function useMainNav() {
-  const [navItems, setNavItems] = useState<NavItem[]>(STATIC_NAV);
+  const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchNavItems = async () => {
@@ -32,7 +32,7 @@ export function useMainNav() {
           to: `/${cat.slug}`,
         }));
 
-      setNavItems([...STATIC_NAV, ...dynamic]);
+      setNavItems(dynamic);
     } catch (error) {
       console.error("Failed to fetch nav categories:", error);
     } finally {
