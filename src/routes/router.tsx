@@ -25,6 +25,7 @@ const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminArticles = lazy(() => import("@/pages/admin/AdminArticles"));
 const AdminArticlesCreate = lazy(() => import("@/pages/admin/AdminArticlesCreate"));
 const AdminUser = lazy(() => import("@/pages/admin/AdminUser"));
+const AdminCategories = lazy(() => import("@/pages/admin/AdminCategories"));
 const AdminMonetization = lazy(() => import("@/pages/admin/AdminMonetization"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazy(() => import("@/pages/admin/AdminSettingsSeoEdit"));
@@ -89,6 +90,10 @@ export const router = createBrowserRouter([
           {
             path: "articles/create",
             element: suspensePage(AdminArticlesCreate),
+          },
+          {
+            path: "categories",
+            element: suspensePage(AdminCategories),
           },
           {
             path: "users",

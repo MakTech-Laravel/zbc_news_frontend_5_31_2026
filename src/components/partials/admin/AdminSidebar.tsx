@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   CreditCard,
   FileText,
+  FolderTree,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -29,6 +30,7 @@ function navEnd(item: NavItem) {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/admin/dashboard", Icon: LayoutDashboard, end: true },
   { label: "Articles", to: "/admin/articles", Icon: FileText },
+  { label: "Categories", to: "/admin/categories", Icon: FolderTree },
   { label: "Users", to: "/admin/users", Icon: Users },
   { label: "Monetization", to: "/admin/monetization", Icon: CreditCard },
   { label: "Settings", to: "/admin/settings", Icon: Settings, end: false },
@@ -85,7 +87,7 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
     <aside className="flex h-full w-full flex-col overflow-hidden bg-admin-sidebar text-white">
       {/* Logo */}
       <div className={cn("shrink-0 py-2 transition-all duration-300", collapsed ? "px-0 flex justify-center" : "px-6")}>
-        {/* collapsed হলে শুধু icon/short logo, না হলে full logo */}
+        {/* collapsed icon/short logo, full logo */}
         {collapsed ? (
           <div className="size-9 rounded-md bg-zbc-blue flex items-center justify-center text-xs font-bold">
             ZB

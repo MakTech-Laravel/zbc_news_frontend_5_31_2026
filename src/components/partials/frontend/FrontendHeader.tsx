@@ -1,47 +1,51 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import {
-  BarChart3,
-  Bell,
-  Clock,
-  LogIn,
-  LogOut,
-  Menu,
-  Radio,
-  Search,
-  Settings,
-  Star,
-  TrendingUp,
-  User,
-  X,
-  Zap,
-} from "lucide-react";
+import { BarChart3, Bell, Clock, LogIn, LogOut, Menu, Radio, Search, Settings, Star, TrendingUp, User, X, Zap } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { request } from "@/api/request";
 
 type NavItem = { label: string; to: string };
 
-const MAIN_NAV: NavItem[] = [
-  { label: "Latest News", to: "/" },
-  { label: "Politics", to: "/politics" },
-  { label: "Business", to: "/business" },
-  { label: "Sports", to: "/sports" },
-  { label: "Entertainment", to: "/entertainment" },
-  { label: "Technology", to: "/technology" },
-  { label: "World News", to: "/world" },
-  { label: "Video/Media", to: "/video" },
-];
+// const STATIC_NAV: NavItem[] = [
+//   { label: "Latest News", to: "/" },
+// ];
+
+export function useMainNav() {
+  const [navItems, setNavItems] = useState<NavItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchNavItems = async () => {
+    try {
+      setLoading(true);
+      const response = await request.get("/categories");
+      const categories = response.data.data;
+
+      const dynamic: NavItem[] = categories
+        .filter((cat: any) => cat.status === "active")
+        .map((cat: any) => ({
+          label: cat.title,
+          to: `/${cat.slug}`,
+        }));
+
+      setNavItems(dynamic);
+    } catch (error) {
+      console.error("Failed to fetch nav categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNavItems();
+  }, []);
+
+  return { navItems, loading };
+}
 
 const SUB_NAV = [
   { label: "Trending", to: "/", icon: TrendingUp },
@@ -263,9 +267,10 @@ function LiveDateTime() {
 }
 
 function MainNavLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const { navItems } = useMainNav();
   return (
     <>
-      {MAIN_NAV.map((item) => (
+      {navItems.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -291,7 +296,7 @@ function MainNavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function MainNavBar() {
   return (
     <nav
-      className="border-t border-border"
+      className="hidden md:block border-t border-border"
       aria-label="Main navigation"
     >
       <div
@@ -338,6 +343,7 @@ function SubNavBar() {
 
 function MobileMenu() {
   const [open, setOpen] = useState(false);
+  const { navItems } = useMainNav();
   const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
 
@@ -358,32 +364,42 @@ function MobileMenu() {
 
   return (
     <div className="md:hidden">
+
+    {!open && (
       <Button
         type="button"
         variant="ghost"
-      className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted relative z-[80]"
-        aria-label={open ? "Close menu" : "Open menu"}
-        aria-expanded={open}
-        onClick={() => setOpen((prev) => !prev)}
+        className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted"
+        aria-label="Open menu"
+        onClick={() => setOpen(true)}
       >
-        {open ? <X className="size-5 relative z-50!important" /> : <Menu className="size-5 relative z-50!important" />}
+        <Menu className="size-5" />
       </Button>
+    )}
 
       {open ? (
         <>
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="fixed inset-0 z-[60] bg-zbc-gray-900/40 backdrop-blur-[1px]"
-            onClick={close}
-          />
-          <div className="fixed inset-x-0 top-[var(--header-mobile-offset,9rem)] z-[70] max-h-[calc(100dvh-var(--header-mobile-offset,9rem))] overflow-y-auto border-t border-border bg-background shadow-lg">
+        <div className="fixed top-0 inset-x-0 z-[70] overflow-y-auto border-t border-border bg-background shadow-lg">
+          {/* Close button — right side */}
+          <div className="flex justify-end p-4 pb-0">
+        <Button
+          type="button"
+          variant="ghost"
+          className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted"
+          aria-label="Close menu"
+          onClick={close}
+        >
+          <X className="size-5" />
+        </Button>
+      </div>
+
             <div className="space-y-4 p-4">
               {/* <SearchField /> */}
               {/* <NotificationButton className="block md:hidden" /> */}
+              
 
               <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
-                {MAIN_NAV.map((item) => {
+                {navItems.map((item) => {
                   const isActive =
                     location.pathname === item.to ||
                     (item.to === "/" && location.pathname === "/");
