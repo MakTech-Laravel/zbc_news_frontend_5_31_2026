@@ -1,49 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import {
-  BarChart3,
-  Bell,
-  Clock,
-  LogIn,
-  LogOut,
-  Menu,
-  Radio,
-  Search,
-  Settings,
-  Star,
-  TrendingUp,
-  User,
-  X,
-  Zap,
-} from "lucide-react";
+import { BarChart3, Bell, Clock, LogIn, LogOut, Menu, Radio, Search, Settings, Star, TrendingUp, User, X, Zap } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
-
-// type NavItem = { label: string; to: string };
-
-// const MAIN_NAV: NavItem[] = [
-//   { label: "Latest News", to: "/" },
-//   { label: "Politics", to: "/politics" },
-//   { label: "Business", to: "/business" },
-//   { label: "Sports", to: "/sports" },
-//   { label: "Entertainment", to: "/entertainment" },
-//   { label: "Technology", to: "/technology" },
-//   { label: "World News", to: "/world" },
-//   { label: "Video/Media", to: "/video" },
-// ];
-
 
 type NavItem = { label: string; to: string };
 
@@ -332,7 +296,7 @@ function MainNavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function MainNavBar() {
   return (
     <nav
-      className="border-t border-border"
+      className="hidden md:block border-t border-border"
       aria-label="Main navigation"
     >
       <div
