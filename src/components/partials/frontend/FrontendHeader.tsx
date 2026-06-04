@@ -364,26 +364,35 @@ function MobileMenu() {
 
   return (
     <div className="md:hidden">
+
+    {!open && (
       <Button
         type="button"
         variant="ghost"
-      className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted relative z-[80]"
-        aria-label={open ? "Close menu" : "Open menu"}
-        aria-expanded={open}
-        onClick={() => setOpen((prev) => !prev)}
+        className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted"
+        aria-label="Open menu"
+        onClick={() => setOpen(true)}
       >
-        {open ? <X className="size-5 relative z-50!important" /> : <Menu className="size-5 relative z-50!important" />}
+        <Menu className="size-5" />
       </Button>
+    )}
 
       {open ? (
         <>
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="fixed inset-0 z-[60] bg-zbc-gray-900/40 backdrop-blur-[1px]"
-            onClick={close}
-          />
-          <div className="fixed inset-x-0 top-[var(--header-mobile-offset,9rem)] z-[70] max-h-[calc(100dvh-var(--header-mobile-offset,9rem))] overflow-y-auto border-t border-border bg-background shadow-lg">
+        <div className="fixed top-0 inset-x-0 z-[70] overflow-y-auto border-t border-border bg-background shadow-lg">
+          {/* Close button — right side */}
+          <div className="flex justify-end p-4 pb-0">
+        <Button
+          type="button"
+          variant="ghost"
+          className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted"
+          aria-label="Close menu"
+          onClick={close}
+        >
+          <X className="size-5" />
+        </Button>
+      </div>
+
             <div className="space-y-4 p-4">
               {/* <SearchField /> */}
               {/* <NotificationButton className="block md:hidden" /> */}
