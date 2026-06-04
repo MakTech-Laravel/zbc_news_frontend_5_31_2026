@@ -6,12 +6,13 @@ export type AdminCategoryStatus = "active" | "inactive";
 
 export type AdminCategoryRow = {
   id: string;
-  name: string;
+  title: string;
   slug: string;
   description?: string;
   status: AdminCategoryStatus;
   articleCount: number;
-  createdAt: string;
+  created_at: string;
+  updated_at: string;
 };
 
 type Options = {

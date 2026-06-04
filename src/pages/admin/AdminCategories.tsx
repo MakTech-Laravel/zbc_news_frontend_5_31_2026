@@ -1,4 +1,8 @@
 import * as React from "react";
+import { useForm, Controller } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 
 import {
   useCategoriesDataTable,
@@ -19,25 +23,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/select";
-import { CATEGORY_STATUS_FILTER_OPTIONS } from "@/data/admin/mockCategories";
 import {
-  createCategoryId,
-  deleteAdminCategory,
-  loadAdminCategories,
-  slugifyCategoryName,
-  upsertAdminCategory,
-} from "@/data/admin/categoryStore";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/select";
+import { CATEGORY_STATUS_FILTER_OPTIONS } from "@/data/admin/mockCategories";
+import { slugifyCategoryName } from "@/data/admin/categoryStore";
+import InputError from "@/components/input-error";
+import { request } from "@/api/request";
 import { cn } from "@/lib/utils";
+import toast from "react-hot-toast";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10;
 
 const ADMIN_CATEGORY_TABLE_COLUMNS: DataTableColumn<AdminCategoryRow>[] = [
   {
-    id: "name",
+    id: "title",
     header: "Category",
     type: "stack",
-    primary: (row) => row.name,
+    primary: (row) => row.title,
     secondary: (row) => `/${row.slug}`,
     className: "min-w-[160px]",
   },
@@ -53,97 +62,182 @@ const ADMIN_CATEGORY_TABLE_COLUMNS: DataTableColumn<AdminCategoryRow>[] = [
     className: "whitespace-nowrap",
   },
   {
-    id: "createdAt",
+    id: "created_at",
     header: "Created",
     hideOnMobile: true,
     type: "text",
-    accessor: (row) => row.createdAt,
+    accessor: (row) =>
+      new Date(row.created_at).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
     className: "whitespace-nowrap text-admin-trend-muted",
   },
 ];
 
-type CategoryFormState = {
-  name: string;
-  slug: string;
-  status: AdminCategoryStatus;
-};
+// ─── Zod Schema ───────────────────────────────────────────────────────────────
 
-const EMPTY_CATEGORY_FORM: CategoryFormState = {
-  name: "",
-  slug: "",
-  status: "active",
-};
+const categoryFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  slug: z.string().min(1, "Slug is required"),
+  status: z.enum(["active", "inactive"]),
+});
+
+type CategoryFormValues = z.infer<typeof categoryFormSchema>;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function matchesSearch(category: AdminCategoryRow, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   return (
-    category.name.toLowerCase().includes(q) ||
+    category.title.toLowerCase().includes(q) ||
     category.slug.toLowerCase().includes(q) ||
     (category.description?.toLowerCase().includes(q) ?? false)
   );
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function AdminCategories() {
-  const [categories, setCategories] = React.useState<AdminCategoryRow[]>(() =>
-    loadAdminCategories(),
-  );
+  // ── State ──────────────────────────────────────────────────────────────────
+
+  const [categories, setCategories] = React.useState<AdminCategoryRow[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [page, setPage] = React.useState(1);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [editingCategoryId, setEditingCategoryId] = React.useState<string | null>(null);
-  const [formData, setFormData] = React.useState(EMPTY_CATEGORY_FORM);
-  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = React.useState<
+    string | null
+  >(null);
   const [slugTouched, setSlugTouched] = React.useState(false);
 
   const isEditing = editingCategoryId !== null;
 
-  const refreshCategories = React.useCallback(() => {
-    setCategories(loadAdminCategories());
-  }, []);
+  // ── React Hook Form ────────────────────────────────────────────────────────
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<CategoryFormValues>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      status: "active",
+    },
+  });
+
+  // Name change slug auto-generate
+  const nameValue = watch("title");
+  React.useEffect(() => {
+    if (!slugTouched) {
+      setValue("slug", slugifyCategoryName(nameValue ?? ""));
+    }
+  }, [nameValue, slugTouched, setValue]);
+
+  // ── API: GET — all categories load ──────────────────────────────────────
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await request.get("/categories");
+      setCategories(response.data.data);
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+      toast.error("Failed to load categories");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   React.useEffect(() => {
-    const onFocus = () => refreshCategories();
+    fetchCategories();
+  }, []);
+
+  // Tab focus event refresh
+  React.useEffect(() => {
+    const onFocus = () => fetchCategories();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [refreshCategories]);
+  }, []);
+
+  // ── API: POST / PUT — Form submit ──────────────────────────────────────────
+
+  const onSubmit = async (data: CategoryFormValues) => {
+    try {
+      if (isEditing) {
+        // PUT — category updat e
+        await request.post(`/categories/update/${editingCategoryId}`, data);
+        toast.success("Category updated successfully");
+      } else {
+        // POST — new category create
+        await request.post("/categories/store", data);
+        toast.success("Category created successfully");
+      }
+      await fetchCategories();
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Failed to save category:", error);
+      toast.error("Failed to save category");
+      console.log("DATA:", (error as any).response?.data);
+    }
+  };
+
+  // ── API: DELETE — category delete ──────────────────────────────────────
+
+  const deleteCategory = async (category: AdminCategoryRow) => {
+    try {
+      setIsDeleting(true);
+      await request.delete(`/categories/delete/${category.slug}`);
+      toast.success("Category deleted successfully");
+      await fetchCategories();
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+      toast.error("Failed to delete category");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ── Modal helpers ──────────────────────────────────────────────────────────
 
   const openCreateModal = () => {
     setEditingCategoryId(null);
-    setDeleteError(null);
     setSlugTouched(false);
-    setFormData({ ...EMPTY_CATEGORY_FORM });
+    reset({ title: "", slug: "", status: "active" });
     setIsModalOpen(true);
   };
 
   const openEditModal = (category: AdminCategoryRow) => {
-    setEditingCategoryId(category.id);
-    setDeleteError(null);
+    setEditingCategoryId(category.slug);
     setSlugTouched(true);
-    setFormData({
-      name: category.name,
+    reset({
+      title: category.title,
       slug: category.slug,
       status: category.status,
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (category: AdminCategoryRow) => {
-    const result = deleteAdminCategory(category.id);
-    if (!result.ok) {
-      setDeleteError(result.reason);
-      return;
-    }
-    setDeleteError(null);
-    refreshCategories();
-  };
+  // ── Filtering & Pagination ─────────────────────────────────────────────────
 
   const filtered = React.useMemo(() => {
     return categories.filter((category) => {
       if (!matchesSearch(category, search)) return false;
-      if (statusFilter !== "all" && category.status !== statusFilter) return false;
+      if (statusFilter !== "all" && category.status !== statusFilter)
+        return false;
       return true;
     });
   }, [categories, search, statusFilter]);
@@ -155,7 +249,12 @@ export default function AdminCategories() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paged = filtered.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  // ── Table ──────────────────────────────────────────────────────────────────
 
   const table = useCategoriesDataTable({
     data: paged,
@@ -163,24 +262,10 @@ export default function AdminCategories() {
     selectedIds,
     onSelectionChange: setSelectedIds,
     onEdit: openEditModal,
-    onDelete: handleDelete,
+    onDelete: deleteCategory,
   });
 
-  const handleSave = () => {
-    const name = formData.name.trim();
-    const slug = (formData.slug.trim() || slugifyCategoryName(name)).toLowerCase();
-    if (!name || !slug) return;
-
-    upsertAdminCategory({
-      id: editingCategoryId ?? createCategoryId(),
-      name,
-      slug,
-      status: formData.status,
-    });
-
-    refreshCategories();
-    setIsModalOpen(false);
-  };
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -190,15 +275,6 @@ export default function AdminCategories() {
         actionLabel="New Category"
         onAction={openCreateModal}
       />
-
-      {deleteError ? (
-        <p
-          role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-        >
-          {deleteError}
-        </p>
-      ) : null}
 
       <AdminPanel>
         <AdminFilterBar
@@ -219,7 +295,13 @@ export default function AdminCategories() {
       </AdminPanel>
 
       <AdminPanel padding="none" className="overflow-hidden">
-        <DataTable {...table} />
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : (
+          <DataTable {...table} />
+        )}
       </AdminPanel>
 
       <AdminPagination
@@ -230,13 +312,8 @@ export default function AdminCategories() {
         onPageChange={setPage}
       />
 
-      <Dialog
-        open={isModalOpen}
-        onOpenChange={(open) => {
-          setIsModalOpen(open);
-          if (!open) setDeleteError(null);
-        }}
-      >
+      {/* Create / Edit Modal */}
+      <Dialog open={isModalOpen} onOpenChange={(open) => setIsModalOpen(open)}>
         <DialogContent
           className={cn(
             "flex max-h-[min(90dvh,100%)] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden",
@@ -249,94 +326,96 @@ export default function AdminCategories() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-1">
-            <div className="grid grid-cols-1 gap-4 sm:gap-5">
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="category-name"
-                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
-                  >
-                    Name
-                  </label>
-                  <Input
-                    id="category-name"
-                    type="text"
-                    placeholder="Category name"
-                    value={formData.name}
-                    onChange={(e) => {
-                      const name = e.target.value;
-                      setFormData((prev) => ({
-                        ...prev,
-                        name,
-                        slug: slugTouched ? prev.slug : slugifyCategoryName(name),
-                      }));
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="category-slug"
-                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
-                  >
-                    Slug
-                  </label>
-                  <Input
-                    id="category-slug"
-                    type="text"
-                    placeholder="category-slug"
-                    value={formData.slug}
-                    onChange={(e) => {
-                      setSlugTouched(true);
-                      setFormData({ ...formData, slug: e.target.value });
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
-                    Status
-                  </label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        status: value as AdminCategoryStatus,
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-full sm:w-auto"
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    className="h-10 w-full sm:w-auto"
-                    disabled={!formData.name.trim()}
-                    onClick={handleSave}
-                  >
-                    {isEditing ? "Save" : "Create"}
-                  </Button>
-                </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1">
+            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+              {/* Name */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="category-name"
+                  className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                >
+                  Name
+                </label>
+                <Input
+                  id="category-name"
+                  placeholder="Category name"
+                  {...register("title")}
+                />
+                <InputError message={errors.title?.message} />
               </div>
-            </div>
+
+              {/* Slug */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="category-slug"
+                  className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                >
+                  Slug
+                </label>
+                <Input
+                  id="category-slug"
+                  placeholder="category-slug"
+                  {...register("slug", {
+                    onChange: () => setSlugTouched(true),
+                  })}
+                />
+                <InputError message={errors.slug?.message} />
+              </div>
+
+              {/* Status */}
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
+                  Status
+                </label>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) =>
+                        field.onChange(value as AdminCategoryStatus)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <InputError message={errors.status?.message} />
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 w-full sm:w-auto"
+                  onClick={() => setIsModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-10 w-full sm:w-auto"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? isEditing
+                      ? "Saving…"
+                      : "Creating…"
+                    : isEditing
+                      ? "Save"
+                      : "Create"}
+                </Button>
+              </div>
+            </form>
           </div>
         </DialogContent>
       </Dialog>

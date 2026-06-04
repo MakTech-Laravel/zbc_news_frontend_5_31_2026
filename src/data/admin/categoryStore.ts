@@ -47,7 +47,7 @@ function countArticlesByCategoryName(name: string) {
 function withArticleCounts(categories: AdminCategoryRow[]): AdminCategoryRow[] {
   return categories.map((cat) => ({
     ...cat,
-    articleCount: countArticlesByCategoryName(cat.name),
+    articleCount: countArticlesByCategoryName(cat.title),
   }));
 }
 
@@ -63,7 +63,7 @@ export function loadAdminCategories(): AdminCategoryRow[] {
   }
 
   return withArticleCounts(
-    Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    Array.from(merged.values()).sort((a, b) => a.title.localeCompare(b.title)),
   );
 }
 
@@ -86,9 +86,9 @@ export function upsertAdminCategory(
   const category: AdminCategoryRow = {
     ...payload,
     articleCount: payload.articleCount ?? existing?.articleCount ?? 0,
-    createdAt:
+    created_at:
       payload.createdAt ??
-      existing?.createdAt ??
+      existing?.created_at ??
       new Date().toLocaleDateString("en-US", {
         month: "numeric",
         day: "numeric",
@@ -113,7 +113,7 @@ export function deleteAdminCategory(id: string): { ok: true } | { ok: false; rea
   if (category.articleCount > 0) {
     return {
       ok: false,
-      reason: `Cannot delete "${category.name}" while ${category.articleCount} article(s) use it.`,
+      reason: `Cannot delete "${category.title}" while ${category.articleCount} article(s) use it.`,
     };
   }
 
@@ -131,14 +131,14 @@ export function deleteAdminCategory(id: string): { ok: true } | { ok: false; rea
 export function getActiveCategoryNames(): string[] {
   return loadAdminCategories()
     .filter((c) => c.status === "active")
-    .map((c) => c.name);
+    .map((c) => c.title);
 }
 
 export function getArticleCategoryFilterOptions() {
   const active = loadAdminCategories().filter((c) => c.status === "active");
   return [
     { value: "all", label: "All Categories" },
-    ...active.map((c) => ({ value: c.name, label: c.name })),
+    ...active.map((c) => ({ value: c.title, label: c.title })),
   ];
 }
 
@@ -146,6 +146,6 @@ export function getArticleEditorCategoryOptions() {
   const active = loadAdminCategories().filter((c) => c.status === "active");
   return [
     { value: "", label: "Select Category" },
-    ...active.map((c) => ({ value: c.name, label: c.name })),
+    ...active.map((c) => ({ value: c.title, label: c.title })),
   ];
 }
