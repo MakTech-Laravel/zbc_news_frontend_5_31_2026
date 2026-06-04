@@ -29,19 +29,59 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { request } from "@/api/request";
+
+// type NavItem = { label: string; to: string };
+
+// const MAIN_NAV: NavItem[] = [
+//   { label: "Latest News", to: "/" },
+//   { label: "Politics", to: "/politics" },
+//   { label: "Business", to: "/business" },
+//   { label: "Sports", to: "/sports" },
+//   { label: "Entertainment", to: "/entertainment" },
+//   { label: "Technology", to: "/technology" },
+//   { label: "World News", to: "/world" },
+//   { label: "Video/Media", to: "/video" },
+// ];
+
 
 type NavItem = { label: string; to: string };
 
-const MAIN_NAV: NavItem[] = [
+const STATIC_NAV: NavItem[] = [
   { label: "Latest News", to: "/" },
-  { label: "Politics", to: "/politics" },
-  { label: "Business", to: "/business" },
-  { label: "Sports", to: "/sports" },
-  { label: "Entertainment", to: "/entertainment" },
-  { label: "Technology", to: "/technology" },
-  { label: "World News", to: "/world" },
-  { label: "Video/Media", to: "/video" },
 ];
+
+export function useMainNav() {
+  const [navItems, setNavItems] = useState<NavItem[]>(STATIC_NAV);
+  const [loading, setLoading] = useState(false);
+
+  const fetchNavItems = async () => {
+    try {
+      setLoading(true);
+      const response = await request.get("/categories");
+      const categories = response.data.data;
+
+      const dynamic: NavItem[] = categories
+        .filter((cat: any) => cat.status === "active")
+        .map((cat: any) => ({
+          label: cat.title,
+          to: `/${cat.slug}`,
+        }));
+
+      setNavItems([...STATIC_NAV, ...dynamic]);
+    } catch (error) {
+      console.error("Failed to fetch nav categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNavItems();
+  }, []);
+
+  return { navItems, loading };
+}
 
 const SUB_NAV = [
   { label: "Trending", to: "/", icon: TrendingUp },
@@ -263,9 +303,10 @@ function LiveDateTime() {
 }
 
 function MainNavLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const { navItems } = useMainNav();
   return (
     <>
-      {MAIN_NAV.map((item) => (
+      {navItems.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -338,6 +379,7 @@ function SubNavBar() {
 
 function MobileMenu() {
   const [open, setOpen] = useState(false);
+  const { navItems } = useMainNav();
   const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
 
@@ -381,9 +423,10 @@ function MobileMenu() {
             <div className="space-y-4 p-4">
               {/* <SearchField /> */}
               {/* <NotificationButton className="block md:hidden" /> */}
+              
 
               <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
-                {MAIN_NAV.map((item) => {
+                {navItems.map((item) => {
                   const isActive =
                     location.pathname === item.to ||
                     (item.to === "/" && location.pathname === "/");
