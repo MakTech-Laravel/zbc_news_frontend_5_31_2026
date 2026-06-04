@@ -105,7 +105,7 @@ export default function AdminCategories() {
 
   const [categories, setCategories] = React.useState<AdminCategoryRow[]>([]);
   const [loading, setLoading] = React.useState(false);
-  const [isDeleting, setIsDeleting] = React.useState(false);
+  // const [isDeleting, setIsDeleting] = React.useState(false);
 
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
@@ -199,7 +199,7 @@ export default function AdminCategories() {
 
   const deleteCategory = async (category: AdminCategoryRow) => {
     try {
-      setIsDeleting(true);
+      // setIsDeleting(true);
       await request.delete(`/categories/delete/${category.slug}`);
       toast.success("Category deleted successfully");
       await fetchCategories();
@@ -207,7 +207,7 @@ export default function AdminCategories() {
       console.error("Failed to delete category:", error);
       toast.error("Failed to delete category");
     } finally {
-      setIsDeleting(false);
+      // setIsDeleting(false);
     }
   };
 
