@@ -65,13 +65,12 @@ const ADMIN_CATEGORY_TABLE_COLUMNS: DataTableColumn<AdminCategoryRow>[] = [
     id: "created_at",
     header: "Created",
     hideOnMobile: true,
-    type: "text",
-    accessor: (row) =>
-      new Date(row.created_at).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
+    type: "custom",
+    render: (row) => (
+      <span className="text-sm text-admin-trend-muted">
+        {formatCreatedAt(row.created_at)}
+      </span>
+    ),
     className: "whitespace-nowrap text-admin-trend-muted",
   },
 ];
@@ -96,6 +95,17 @@ function matchesSearch(category: AdminCategoryRow, query: string) {
     category.slug.toLowerCase().includes(q) ||
     (category.description?.toLowerCase().includes(q) ?? false)
   );
+}
+
+function formatCreatedAt(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -154,6 +164,7 @@ export default function AdminCategories() {
       setLoading(true);
       const response = await request.get("/categories");
       setCategories(response.data.data);
+      console.log("CATEGORIES:", response.data.data);
     } catch (error) {
       console.error("Failed to fetch categories:", error);
       toast.error("Failed to load categories");

@@ -32,7 +32,7 @@ export function useCategoriesDataTable({
 }: Options): DataTableProps<AdminCategoryRow> {
   return {
     data,
-    getRowId: (row) => row.id,
+    getRowId: (row) => String(row.id),
     columns,
     emptyMessage: "No categories found.",
     minWidth: 720,
