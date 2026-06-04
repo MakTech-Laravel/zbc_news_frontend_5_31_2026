@@ -15,9 +15,10 @@ type AdminFilterBarProps = {
   statusValue: string;
   onStatusChange: (value: string) => void;
   statusOptions: AdminFilterOption[];
-  categoryValue: string;
-  onCategoryChange: (value: string) => void;
-  categoryOptions: AdminFilterOption[];
+  categoryValue?: string;
+  onCategoryChange?: (value: string) => void;
+  categoryOptions?: AdminFilterOption[];
+  showCategoryFilter?: boolean;
   className?: string;
 };
 
@@ -67,6 +68,7 @@ export function AdminFilterBar({
   categoryValue,
   onCategoryChange,
   categoryOptions,
+  showCategoryFilter = true,
   className,
 }: AdminFilterBarProps) {
   return (
@@ -97,12 +99,14 @@ export function AdminFilterBar({
           options={statusOptions}
           aria-label="Filter by status"
         />
-        <AdminFilterSelect
-          value={categoryValue}
-          onChange={onCategoryChange}
-          options={categoryOptions}
-          aria-label="Filter by category"
-        />
+        {showCategoryFilter && categoryValue != null && onCategoryChange && categoryOptions ? (
+          <AdminFilterSelect
+            value={categoryValue}
+            onChange={onCategoryChange}
+            options={categoryOptions}
+            aria-label="Filter by category"
+          />
+        ) : null}
       </div>
     </div>
   );

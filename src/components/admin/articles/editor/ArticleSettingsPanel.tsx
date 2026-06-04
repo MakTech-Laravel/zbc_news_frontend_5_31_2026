@@ -1,9 +1,7 @@
 import { Plus, X } from "lucide-react";
 
-import {
-  ARTICLE_EDITOR_AUTHORS,
-  ARTICLE_EDITOR_CATEGORIES,
-} from "@/components/admin/articles/editor/types";
+import { ARTICLE_EDITOR_AUTHORS } from "@/components/admin/articles/editor/types";
+import { getArticleEditorCategoryOptions } from "@/data/admin/categoryStore";
 import type { UseArticleWorkflowReturn } from "@/components/admin/articles/editor/useArticleWorkflow";
 import { ARTICLE_STATUS_LABELS, ARTICLE_WORKFLOW_STATUSES } from "@/data/admin/articleWorkflow";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
@@ -87,7 +85,7 @@ export function ArticleSettingsPanel({
             id="article-category"
             value={form.category}
             onChange={(v) => setField("category", v)}
-            options={ARTICLE_EDITOR_CATEGORIES}
+            options={getArticleEditorCategoryOptions()}
           />
         </AdminFormField>
 
