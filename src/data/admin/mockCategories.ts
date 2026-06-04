@@ -1,0 +1,82 @@
+import type { AdminCategoryRow } from "@/components/admin/categories/useCategoriesDataTable";
+
+export const MOCK_ADMIN_CATEGORIES: AdminCategoryRow[] = [
+  {
+    id: "cat-politics",
+    name: "Politics",
+    slug: "politics",
+    description: "Political news and government coverage",
+    status: "active",
+    articleCount: 0,
+    createdAt: "1/10/2024",
+  },
+  {
+    id: "cat-technology",
+    name: "Technology",
+    slug: "technology",
+    description: "Tech industry and innovation",
+    status: "active",
+    articleCount: 0,
+    createdAt: "1/10/2024",
+  },
+  {
+    id: "cat-sports",
+    name: "Sports",
+    slug: "sports",
+    description: "Sports news and events",
+    status: "active",
+    articleCount: 0,
+    createdAt: "2/1/2024",
+  },
+  {
+    id: "cat-health",
+    name: "Health",
+    slug: "health",
+    description: "Health and wellness",
+    status: "active",
+    articleCount: 0,
+    createdAt: "2/15/2024",
+  },
+  {
+    id: "cat-business",
+    name: "Business",
+    slug: "business",
+    description: "Markets, finance, and business",
+    status: "active",
+    articleCount: 0,
+    createdAt: "3/1/2024",
+  },
+  {
+    id: "cat-entertainment",
+    name: "Entertainment",
+    slug: "entertainment",
+    description: "Culture, film, and entertainment",
+    status: "active",
+    articleCount: 0,
+    createdAt: "3/20/2024",
+  },
+  {
+    id: "cat-world",
+    name: "World",
+    slug: "world",
+    description: "International and world news",
+    status: "active",
+    articleCount: 0,
+    createdAt: "4/5/2024",
+  },
+  {
+    id: "cat-lifestyle",
+    name: "Lifestyle",
+    slug: "lifestyle",
+    description: "Lifestyle and culture features",
+    status: "inactive",
+    articleCount: 0,
+    createdAt: "5/1/2024",
+  },
+];
+
+export const CATEGORY_STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All Status" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+] as const;

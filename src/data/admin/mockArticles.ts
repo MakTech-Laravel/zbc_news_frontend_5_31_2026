@@ -110,6 +110,7 @@ export const ARTICLE_STATUS_FILTER_OPTIONS = [
   { value: "archived", label: "Archived" },
 ] as const;
 
+/** @deprecated Use getArticleCategoryFilterOptions from categoryStore */
 export const ARTICLE_CATEGORY_FILTER_OPTIONS = [
   { value: "all", label: "All Categories" },
   { value: "Politics", label: "Politics" },

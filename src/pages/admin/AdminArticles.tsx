@@ -8,11 +8,8 @@ import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { DataTable } from "@/components/ui/data-table";
 import { loadAdminArticles } from "@/data/admin/articleDummyStore";
-import {
-  ARTICLE_CATEGORY_FILTER_OPTIONS,
-  ARTICLE_STATUS_FILTER_OPTIONS,
-  type AdminArticle,
-} from "@/data/admin/mockArticles";
+import { getArticleCategoryFilterOptions } from "@/data/admin/categoryStore";
+import { ARTICLE_STATUS_FILTER_OPTIONS, type AdminArticle } from "@/data/admin/mockArticles";
 
 const PAGE_SIZE = 10;
 
@@ -35,12 +32,19 @@ export default function AdminArticles() {
   const [categoryFilter, setCategoryFilter] = React.useState("all");
   const [page, setPage] = React.useState(1);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [categoryOptions, setCategoryOptions] = React.useState(() =>
+    getArticleCategoryFilterOptions(),
+  );
+
+  const refresh = React.useCallback(() => {
+    setArticles(loadAdminArticles());
+    setCategoryOptions(getArticleCategoryFilterOptions());
+  }, []);
 
   React.useEffect(() => {
-    const refresh = () => setArticles(loadAdminArticles());
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
-  }, []);
+  }, [refresh]);
 
   const draftCount = React.useMemo(
     () => articles.filter((a) => a.status === "draft" || a.hasUnsavedDraft).length,
@@ -109,7 +113,7 @@ export default function AdminArticles() {
             setCategoryFilter(v);
             setPage(1);
           }}
-          categoryOptions={[...ARTICLE_CATEGORY_FILTER_OPTIONS]}
+          categoryOptions={categoryOptions}
         />
       </AdminPanel>
 

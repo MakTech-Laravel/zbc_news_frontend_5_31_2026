@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   CreditCard,
   FileText,
+  FolderTree,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -29,6 +30,7 @@ function navEnd(item: NavItem) {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/admin/dashboard", Icon: LayoutDashboard, end: true },
   { label: "Articles", to: "/admin/articles", Icon: FileText },
+  { label: "Categories", to: "/admin/categories", Icon: FolderTree },
   { label: "Users", to: "/admin/users", Icon: Users },
   { label: "Monetization", to: "/admin/monetization", Icon: CreditCard },
   { label: "Settings", to: "/admin/settings", Icon: Settings, end: false },
