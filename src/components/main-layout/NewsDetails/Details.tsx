@@ -1,9 +1,15 @@
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { Calendar, Clock, MessageCircle } from "lucide-react";
 
 import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
-import { newsDetailArticle } from "@/data/dummy/newsDetails";
+import NotFound from "@/pages/global/NotFound";
+import { cn } from "@/lib/utils";
+import {
+  fetchArticleBySlug,
+  type ArticleDetail,
+} from "@/services/frontend/articles";
 import { AdUnit } from "../shared/AdUnit";
 
 type SocialIconProps = { className?: string };
@@ -53,45 +59,71 @@ const SHARE_LINKS = [
   },
 ] as const;
 
+const articleBodyClassName = cn(
+  "article-detail-body space-y-4",
+  "font-inter text-base leading-[1.75] text-zbc-gray-700 sm:text-[17px]",
+  "[&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-zbc-gray-1000",
+  "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-zbc-gray-1000",
+  "[&_p]:leading-[1.75] [&_strong]:font-semibold [&_em]:italic",
+  "[&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6",
+  "[&_a]:text-primary [&_a]:underline",
+  "[&_img]:my-4 [&_img]:max-h-[420px] [&_img]:w-full [&_img]:rounded-lg [&_img]:object-cover",
+);
 
-export default function Details() {
-  const article = newsDetailArticle;
+function DetailsSkeleton() {
+  return (
+    <article className="bg-background text-foreground">
+      <div className="mx-auto w-full max-w-4xl animate-pulse space-y-6 px-0 sm:px-2">
+        <div className="h-6 w-24 rounded bg-muted" />
+        <div className="h-10 w-full rounded bg-muted" />
+        <div className="h-6 w-3/4 rounded bg-muted" />
+        <div className="aspect-[16/9] w-full rounded-lg bg-muted" />
+        <div className="space-y-3">
+          <div className="h-4 w-full rounded bg-muted" />
+          <div className="h-4 w-full rounded bg-muted" />
+          <div className="h-4 w-2/3 rounded bg-muted" />
+        </div>
+      </div>
+    </article>
+  );
+}
 
+function ArticleContent({ article }: { article: ArticleDetail }) {
   return (
     <article className="bg-background text-foreground">
       <div className="mx-auto w-full max-w-4xl px-0 sm:px-2">
-        {/* Article header */}
         <header className="space-y-4 pb-6 sm:space-y-5 sm:pb-8">
           <CategoryTag label={article.category} className="bg-primary/10 text-primary" />
 
-          <h2 className="font-inter text-2xl font-bold leading-[1.2] tracking-tight text-zbc-gray-1000 sm:text-3xl sm:leading-[1.15] lg:text-4xl lg:leading-[1.12]">
+          <h1 className="font-inter text-2xl font-bold leading-[1.2] tracking-tight text-zbc-gray-1000 sm:text-3xl sm:leading-[1.15] lg:text-4xl lg:leading-[1.12]">
             {article.title}
-          </h2>
+          </h1>
 
-          <p className="font-inter text-base font-normal leading-7 text-zbc-gray-700 sm:text-lg sm:leading-8">
-            {article.subtitle}
-          </p>
+          {article.subtitle ? (
+            <p className="font-inter text-base font-normal leading-7 text-zbc-gray-700 sm:text-lg sm:leading-8">
+              {article.subtitle}
+            </p>
+          ) : null}
 
           <div className="flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary font-inter text-sm font-bold text-primary-foreground">
-                {article.author.initials}
+                {article.authorInitials}
               </span>
               <span className="min-w-0">
                 <span className="block font-inter text-sm font-bold text-zbc-gray-1000">
-                  {article.author.name}
-                </span>
-                <span className="block font-inter text-xs text-zbc-gray-500">
-                  {article.author.role}
+                  {article.authorName}
                 </span>
               </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-inter text-sm text-zbc-gray-500">
-              <span className="inline-flex items-center gap-1.5">
-                <Calendar className="size-4 shrink-0 text-zbc-gray-400" aria-hidden />
-                <time dateTime="2026-05-06">{article.publishedAt}</time>
-              </span>
+              {article.publishedAt ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="size-4 shrink-0 text-zbc-gray-400" aria-hidden />
+                  <time dateTime={article.publishedAtIso}>{article.publishedAt}</time>
+                </span>
+              ) : null}
               <span className="inline-flex items-center gap-1.5">
                 <Clock className="size-4 shrink-0 text-zbc-gray-400" aria-hidden />
                 {article.readTime}
@@ -100,47 +132,61 @@ export default function Details() {
           </div>
         </header>
 
-        {/* Hero image */}
-        <figure className="overflow-hidden rounded-lg border border-border bg-muted shadow-sm">
-          <div className="relative aspect-[16/9] min-h-[200px] w-full sm:min-h-[280px] lg:min-h-[360px]">
-            <ArticleImage
-              src={article.imageUrl}
-              alt={article.imageAlt}
-              width={1200}
-              height={675}
-              className="absolute inset-0 h-full w-full object-cover"
-              loading="eager"
-              fetchPriority="high"
-            />
-            <div
-              className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900/90 via-zbc-gray-900/35 to-transparent"
-              aria-hidden
-            />
-            <figcaption className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-3 sm:p-6 lg:p-8">
-              <CategoryTag label={article.category} />
-              <p className="font-inter text-xl font-bold leading-tight text-primary-foreground sm:text-2xl lg:text-3xl">
-                {article.title}
-              </p>
-              <p className="line-clamp-2 max-w-3xl font-inter text-sm leading-6 text-white/90 sm:text-base">
-                {article.subtitle}
-              </p>
-            </figcaption>
-          </div>
-        </figure>
+        {article.imageUrl ? (
+          <figure className="overflow-hidden rounded-lg border border-border bg-muted shadow-sm">
+            <div className="relative aspect-[16/9] min-h-[200px] w-full sm:min-h-[280px] lg:min-h-[360px]">
+              <ArticleImage
+                src={article.imageUrl}
+                alt={article.title}
+                width={1200}
+                height={675}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="eager"
+                fetchPriority="high"
+              />
+              <div
+                className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900/90 via-zbc-gray-900/35 to-transparent"
+                aria-hidden
+              />
+              <figcaption className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-3 sm:p-6 lg:p-8">
+                <CategoryTag label={article.category} />
+                <p className="font-inter text-xl font-bold leading-tight text-primary-foreground sm:text-2xl lg:text-3xl">
+                  {article.title}
+                </p>
+                {article.subtitle ? (
+                  <p className="line-clamp-2 max-w-3xl font-inter text-sm leading-6 text-white/90 sm:text-base">
+                    {article.subtitle}
+                  </p>
+                ) : null}
+              </figcaption>
+            </div>
+          </figure>
+        ) : null}
 
-        {/* Body */}
-        <div className="space-y-5 py-8 sm:space-y-6 sm:py-10">
-          {article.body.map((paragraph) => (
-            <p
-              key={paragraph.slice(0, 48)}
-              className="font-inter text-base leading-[1.75] text-zbc-gray-700 sm:text-[17px]"
-            >
-              {paragraph}
-            </p>
-          ))}
+        <div className="py-8 sm:py-10">
+          <div
+            className={articleBodyClassName}
+            dangerouslySetInnerHTML={{
+              __html:
+                article.articleDescription.trim() ||
+                "<p>No content available for this article.</p>",
+            }}
+          />
         </div>
 
-        {/* Share */}
+        {article.tags.length > 0 ? (
+          <div className="flex flex-wrap gap-2 border-t border-border pt-6">
+            {article.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-zbc-gray-700"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
         <section
           className="border-t border-border py-8 sm:py-5"
           aria-labelledby="share-article-heading"
@@ -167,24 +213,22 @@ export default function Details() {
           </div>
         </section>
 
-        {/* Related */}
         <section className="border-t border-border pt-8 sm:pt-10" aria-labelledby="related-heading">
           <h2
             id="related-heading"
-            className="font-inter text-xl font-bold text-zbc-gray-1000 sm:text-2xl text-center"
+            className="text-center font-inter text-xl font-bold text-zbc-gray-1000 sm:text-2xl"
           >
             Related Articles
           </h2>
           <div className="border-b border-border pb-8" />
         </section>
 
-        {/* Comments */}
         <section className="pt-3 sm:pt-5" aria-labelledby="comments-heading">
           <h2
             id="comments-heading"
-            className="font-inter text-xl font-bold text-zbc-gray-1000 sm:text-2xl text-center"
+            className="text-center font-inter text-xl font-bold text-zbc-gray-1000 sm:text-2xl"
           >
-            Comments ({article.commentCount.toLocaleString()})
+            Comments
           </h2>
           <div className="mt-5 flex flex-col gap-4 rounded-lg border border-border bg-zbc-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5 sm:py-4">
             <div className="flex min-w-0 items-center gap-3">
@@ -202,12 +246,63 @@ export default function Details() {
           </div>
         </section>
 
-        {/* Ads */}
-        <div className="space-y-6 pb-4 sm:space-y-3 sm:pb-3 mt-3 sm:mt-5">
-            <AdUnit variant="banner" />
-            <AdUnit variant="banner" />
+        <div className="mt-3 space-y-6 pb-4 sm:mt-5 sm:space-y-3 sm:pb-3">
+          <AdUnit variant="banner" />
+          <AdUnit variant="banner" />
         </div>
       </div>
     </article>
   );
+}
+
+export default function Details() {
+  const { articleSlug } = useParams<{ articleSlug: string }>();
+  const [article, setArticle] = useState<ArticleDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (!articleSlug) {
+      setLoading(false);
+      setNotFound(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    fetchArticleBySlug(decodeURIComponent(articleSlug))
+      .then((data) => {
+        if (cancelled) return;
+        if (!data) {
+          setNotFound(true);
+          return;
+        }
+        setArticle(data);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch article:", error);
+        if (!cancelled) {
+          setNotFound(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [articleSlug]);
+
+  if (loading) {
+    return <DetailsSkeleton />;
+  }
+
+  if (notFound || !article) {
+    return <NotFound />;
+  }
+
+  return <ArticleContent article={article} />;
 }
