@@ -84,7 +84,7 @@ export const router = createBrowserRouter([
             element: suspensePage(AdminArticles),
           },
           {
-            path: "articles/edit/:articleId",
+            path: "articles/edit/:articleSlug",
             element: suspensePage(AdminArticlesEdit),
           },
           {

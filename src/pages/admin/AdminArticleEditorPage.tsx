@@ -14,7 +14,7 @@ import {
   SEO_TITLE_MAX_LENGTH,
   stripHtml,
 } from "@/components/admin/articles/articleEditorUtils";
-import { ARTICLE_EDITOR_AUTHORS } from "@/components/admin/articles/editor/types";
+// import { ARTICLE_EDITOR_AUTHORS } from "@/components/admin/articles/editor/types";
 import { ArticleEditorTopBar } from "@/components/admin/articles/editor/ArticleEditorTopBar";
 import { ArticlePreviewDialog } from "@/components/admin/articles/editor/ArticlePreviewDialog";
 import { UnsavedChangesDialog } from "@/components/admin/articles/editor/UnsavedChangesDialog";
@@ -77,17 +77,17 @@ const articleFormSchema = z.object({
     ),
   slug: z.string().min(1, "Slug is required"),
   scheduled_at: z.string(),
-  author_id: z.string().min(1, "Author is required"),
+  // author_id: z.string().min(1, "Author is required"),
 });
 
 type ArticleFormValues = z.infer<typeof articleFormSchema>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getAuthorName(authorId: string) {
-  const match = ARTICLE_EDITOR_AUTHORS.find((author) => author.value === authorId);
-  return match?.label ?? "Unknown author";
-}
+// function getAuthorName(authorId: string) {
+//   const match = ARTICLE_EDITOR_AUTHORS.find((author) => author.value === authorId);
+//   return match?.label ?? "Unknown author";
+// }
 
 function parseTags(raw: unknown): string[] {
   if (Array.isArray(raw)) {
@@ -132,20 +132,20 @@ function resolveCategoryId(raw: Record<string, unknown>): string {
   return "";
 }
 
-function resolveAuthorId(raw: Record<string, unknown>): string {
-  if (typeof raw.author_id === "string" || typeof raw.author_id === "number") {
-    return String(raw.author_id);
-  }
-  if (raw.author && typeof raw.author === "object") {
-    const author = raw.author as Record<string, unknown>;
-    if (author.id != null) return String(author.id);
-  }
-  if (raw.user && typeof raw.user === "object") {
-    const user = raw.user as Record<string, unknown>;
-    if (user.id != null) return String(user.id);
-  }
-  return "";
-}
+// function resolveAuthorId(raw: Record<string, unknown>): string {
+//   if (typeof raw.author_id === "string" || typeof raw.author_id === "number") {
+//     return String(raw.author_id);
+//   }
+//   if (raw.author && typeof raw.author === "object") {
+//     const author = raw.author as Record<string, unknown>;
+//     if (author.id != null) return String(author.id);
+//   }
+//   if (raw.user && typeof raw.user === "object") {
+//     const user = raw.user as Record<string, unknown>;
+//     if (user.id != null) return String(user.id);
+//   }
+//   return "";
+// }
 
 function normalizeArticleStatus(value: unknown): ArticleStatus {
   const status = typeof value === "string" ? value : "";
@@ -189,7 +189,7 @@ function mapArticleToFormValues(raw: unknown): ArticleFormValues {
     scheduled_at: toDatetimeLocalValue(
       record.scheduled_at ?? record.scheduledAt ?? record.publish_at,
     ),
-    author_id: resolveAuthorId(record),
+    // author_id: resolveAuthorId(record),
   };
 }
 
@@ -214,7 +214,7 @@ function buildArticlePayload(
     article_category_id: data.article_category_id,
     excerpt: data.excerpt,
     seo_title: data.seo_title,
-    author_id: data.author_id,
+    // author_id: data.author_id,
     tags: data.tags,
     ...(data.scheduled_at ? { scheduled_at: data.scheduled_at } : {}),
   };
@@ -243,8 +243,9 @@ const fieldLabelClassName =
 
 export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageProps) {
   const navigate = useNavigate();
-  const { articleId } = useParams<{ articleId: string }>();
+  const { articleSlug } = useParams<{ articleSlug: string }>();
   const isEdit = mode === "edit";
+  const articleSlugParam = articleSlug ? decodeURIComponent(articleSlug) : undefined;
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -284,7 +285,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       seo_title: "",
       slug: "",
       scheduled_at: "",
-      author_id: "",
+      // author_id: "",
     },
   });
 
@@ -318,11 +319,11 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   // ── API: GET — article load (edit) ───────────────────────────────────────
 
   const fetchArticle = async () => {
-    if (!isEdit || !articleId) return;
+    if (!isEdit || !articleSlugParam) return;
 
     try {
       setLoading(true);
-      const response = await request.get(`/articles/${articleId}`);
+      const response = await request.get(`/articles/show/${articleSlugParam}`);
       const article = response.data.data;
 
       if (!article) {
@@ -345,7 +346,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
   React.useEffect(() => {
     void fetchArticle();
-  }, [articleId, isEdit]);
+  }, [articleSlugParam, isEdit]);
 
   React.useEffect(() => {
     return () => {
@@ -380,15 +381,15 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         appendPayloadToFormData(formData, payload);
         formData.append("featured_image", featuredImageFile);
 
-        if (isEdit && articleId) {
-          await request.post(`/articles/update/${articleId}`, formData);
+        if (isEdit && articleSlugParam) {
+          await request.post(`/articles/update/${articleSlugParam}`, formData);
           toast.success("Article updated successfully");
         } else {
           await request.post("/articles/store", formData);
           toast.success("Article created successfully");
         }
-      } else if (isEdit && articleId) {
-        await request.post(`/articles/update/${articleId}`, payload);
+      } else if (isEdit && articleSlugParam) {
+        await request.post(`/articles/update/${articleSlugParam}`, payload);
         toast.success("Article updated successfully");
       } else {
         await request.post("/articles/store", payload);
@@ -469,7 +470,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isDirty]);
 
-  if (isEdit && !articleId) {
+  if (isEdit && !articleSlugParam) {
     return <Navigate to="/admin/articles" replace />;
   }
 
@@ -494,7 +495,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         ?.title ??
       "",
     tags: watchedValues.tags ?? [],
-    authorName: getAuthorName(watchedValues.author_id ?? ""),
+    // authorName: getAuthorName(watchedValues.author_id ?? ""),
     featuredImageUrl: featuredImagePreview,
     status: watchedStatus ?? "draft",
   };
@@ -693,7 +694,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                 <InputError message={errors.scheduled_at?.message} />
               </div>
 
-              <div className="space-y-1">
+              {/* <div className="space-y-1">
                 <label className={fieldLabelClassName}>Author</label>
                 <Controller
                   name="author_id"
@@ -716,7 +717,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                   )}
                 />
                 <InputError message={errors.author_id?.message} />
-              </div>
+              </div> */}
             </div>
           </AdminPanel>
         </div>

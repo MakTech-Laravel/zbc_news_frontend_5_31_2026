@@ -74,10 +74,12 @@ function mapApiArticle(raw: unknown): AdminArticle | null {
   const record = raw as Record<string, unknown>;
   const id = record.id;
   const title = record.title;
-  if (id == null || typeof title !== "string") return null;
+  const slug = typeof record.slug === "string" ? record.slug : "";
+  if (id == null || typeof title !== "string" || !slug) return null;
 
   return {
     id: String(id),
+    slug,
     title,
     author: resolveAuthorLabel(record),
     category: resolveCategoryLabel(record),

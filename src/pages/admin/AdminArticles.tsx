@@ -18,6 +18,7 @@ import {
   matchesArticleSearch,
   type AdminArticleApiCategory,
 } from "@/services/admin/articles";
+import { request } from "@/api/request";
 
 const PAGE_SIZE = 10;
 
@@ -92,12 +93,13 @@ export default function AdminArticles() {
     selectedIds,
     onSelectionChange: setSelectedIds,
     onEdit: (article) => {
-      navigate(`/admin/articles/edit/${article.id}`);
+      navigate(`/admin/articles/edit/${encodeURIComponent(article.slug)}`);
     },
     onDelete: () => {
       /* confirm delete */
     },
   });
+
 
   return (
     <div className="space-y-4 sm:space-y-6">

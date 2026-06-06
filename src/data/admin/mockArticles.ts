@@ -2,6 +2,7 @@ export type ArticleStatus = "published" | "draft" | "scheduled" | "pending_revie
 
 export type AdminArticle = {
   id: string;
+  slug: string;
   title: string;
   author: string;
   category: string;
@@ -17,6 +18,7 @@ export type AdminArticle = {
 export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   {
     id: "1",
+    slug: "global-climate-summit-reaches-historic-agreement",
     title: "Global Climate Summit Reaches Historic Agreement",
     author: "John Doe",
     category: "Politics",
@@ -27,6 +29,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   },
   {
     id: "2",
+    slug: "tech-giant-announces-breakthrough-in-ai-technology",
     title: "Tech Giant Announces Breakthrough in AI Technology",
     author: "Jane Smith",
     category: "Technology",
@@ -36,6 +39,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   },
   {
     id: "3",
+    slug: "major-sports-championship-final-results",
     title: "Major Sports Championship Final Results",
     author: "Mike Johnson",
     category: "Sports",
@@ -47,6 +51,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   },
   {
     id: "4",
+    slug: "new-study-reveals-health-benefits-of-mediterranean-diet",
     title: "New Study Reveals Health Benefits of Mediterranean Diet",
     author: "Sarah Williams",
     category: "Health",
@@ -56,6 +61,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   },
   {
     id: "5",
+    slug: "stock-market-hits-all-time-high",
     title: "Stock Market Hits All-Time High",
     author: "David Brown",
     category: "Business",
@@ -65,6 +71,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   },
   {
     id: "6",
+    slug: "the-future-of-ai-in-healthcare",
     title: "The Future of AI in Healthcare",
     author: "David Brown",
     category: "Business",
@@ -74,6 +81,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   },
   {
     id: "7",
+    slug: "the-future-of-ai-in-education",
     title: "The Future of AI in Education",
     author: "David Brown",
     category: "Business",
@@ -83,6 +91,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   },
   {
     id: "8",
+    slug: "the-future-of-ai-in-finance",
     title: "The Future of AI in Finance",
     author: "David Brown",
     category: "Business",
@@ -92,6 +101,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
   },
   {
     id: "9",
+    slug: "the-future-of-ai-in-energy",
     title: "The Future of AI in Energy",
     author: "David Brown",
     category: "Business",

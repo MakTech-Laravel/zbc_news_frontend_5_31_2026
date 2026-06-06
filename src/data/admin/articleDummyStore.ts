@@ -98,6 +98,7 @@ export function upsertAdminArticleFromEditor(
 
   const article: AdminArticle = {
     id,
+    slug: form.slug.trim() || existing?.slug || id,
     title: form.title.trim() || "Untitled article",
     author: authorLabel(form.authorId, existing?.author ?? "Unknown"),
     category: form.category || existing?.category || "Uncategorized",
