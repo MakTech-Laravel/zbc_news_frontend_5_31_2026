@@ -8,6 +8,7 @@ import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { DataTable } from "@/components/ui/data-table";
+import { request } from "@/api/request";
 import {
   ARTICLE_STATUS_FILTER_OPTIONS,
   type AdminArticle,
@@ -18,7 +19,6 @@ import {
   matchesArticleSearch,
   type AdminArticleApiCategory,
 } from "@/services/admin/articles";
-import { request } from "@/api/request";
 
 const PAGE_SIZE = 10;
 
@@ -88,6 +88,17 @@ export default function AdminArticles() {
 
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  const deleteArticle = async (article: AdminArticle) => {
+    try {
+      await request.delete(`/articles/delete/${article.slug}`);
+      toast.success("Article deleted successfully");
+      await fetchArticles();
+    } catch (error) {
+      console.error("Failed to delete article:", error);
+      toast.error("Failed to delete article");
+    }
+  };
+
   const table = useArticlesDataTable({
     data: paged,
     selectedIds,
@@ -95,9 +106,7 @@ export default function AdminArticles() {
     onEdit: (article) => {
       navigate(`/admin/articles/edit/${encodeURIComponent(article.slug)}`);
     },
-    onDelete: () => {
-      /* confirm delete */
-    },
+    onDelete: deleteArticle,
   });
 
 

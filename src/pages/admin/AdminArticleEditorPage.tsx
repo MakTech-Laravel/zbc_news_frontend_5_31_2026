@@ -374,6 +374,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         : submitStatusRef.current;
 
     const payload = buildArticlePayload(data, nextStatus);
+    console.log("PAYLOAD:", payload);
 
     try {
       if (featuredImageFile) {

@@ -108,7 +108,7 @@ export function ArticleEditorTopBar({
               <span className="hidden sm:inline">Save Draft</span>
             </Button>
 
-            <Button
+            {/* <Button
               type="button"
               variant="outline"
               onClick={onSubmitForReview}
@@ -116,7 +116,7 @@ export function ArticleEditorTopBar({
             >
               <Send className="size-4 shrink-0" aria-hidden />
               <span className="hidden sm:inline">Submit Review</span>
-            </Button>
+            </Button> */}
 
             <Button
               type="button"

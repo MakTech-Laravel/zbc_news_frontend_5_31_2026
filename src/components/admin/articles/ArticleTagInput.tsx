@@ -45,7 +45,7 @@ export function ArticleTagInput({
             }
           }}
           placeholder="Add a tag"
-          className={cn(inputClassName, "min-w-0 flex-1")}
+          className={cn(inputClassName, "min-w-0 flex-1 rounded-md border border-zbc-gray-200/50 bg-zbc-gray-200/50 px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zbc-blue-200/50 md:text-sm")}
         />
         <Button
           type="button"
