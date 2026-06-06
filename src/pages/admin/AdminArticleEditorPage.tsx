@@ -28,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/select";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   ARTICLE_STATUS_LABELS,
@@ -52,35 +51,50 @@ type CategoryRow = {
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
 
-const articleFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  article_description: z
-    .string()
-    .refine((value) => stripHtml(value).trim().length > 0, "Article description is required"),
-  status: z.enum([
-    "draft",
-    "pending_review",
-    "scheduled",
-    "published",
-    "archived",
-  ]),
-  article_category_id: z.string().min(1, "Category is required"),
-  tags: z.array(z.string()),
-  excerpt: z
-    .string()
-    .max(EXCERPT_MAX_LENGTH, `Excerpt must be ${EXCERPT_MAX_LENGTH} characters or less`),
-  seo_title: z
-    .string()
-    .max(
-      SEO_TITLE_MAX_LENGTH,
-      `SEO title must be ${SEO_TITLE_MAX_LENGTH} characters or less`,
-    ),
-  slug: z.string().min(1, "Slug is required"),
-  scheduled_at: z.string(),
-  // author_id: z.string().min(1, "Author is required"),
-});
+const ARTICLE_STATUS_VALUES = [
+  "draft",
+  "pending_review",
+  "scheduled",
+  "published",
+  "archived",
+] as const;
 
-type ArticleFormValues = z.infer<typeof articleFormSchema>;
+const articleFormSchema = z
+  .object({
+    title: z.string().min(1, "Title is required"),
+    article_description: z
+      .string()
+      .refine((value) => stripHtml(value).trim().length > 0, "Article description is required"),
+    status: z
+      .string()
+      .min(1, "Status is required")
+      .pipe(z.enum(ARTICLE_STATUS_VALUES)),
+    article_category_id: z.string().min(1, "Category is required"),
+    tags: z.array(z.string()),
+    excerpt: z
+      .string()
+      .max(EXCERPT_MAX_LENGTH, `Excerpt must be ${EXCERPT_MAX_LENGTH} characters or less`),
+    seo_title: z
+      .string()
+      .max(
+        SEO_TITLE_MAX_LENGTH,
+        `SEO title must be ${SEO_TITLE_MAX_LENGTH} characters or less`,
+      ),
+    slug: z.string().min(1, "Slug is required"),
+    scheduled_publishing: z.string(),
+    // author_id: z.string().min(1, "Author is required"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === "scheduled" && !data.scheduled_publishing.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Schedule date is required when status is scheduled",
+        path: ["scheduled_publishing"],
+      });
+    }
+  });
+
+type ArticleFormInputValues = z.input<typeof articleFormSchema>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -110,12 +124,35 @@ function parseTags(raw: unknown): string[] {
 }
 
 function toDatetimeLocalValue(value: unknown): string {
-  if (typeof value !== "string" || !value) return "";
-  const date = new Date(value);
+  if (typeof value !== "string" || !value.trim()) return "";
+
+  const apiMatch = value.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})(:\d{2})?$/);
+  if (apiMatch) {
+    return `${apiMatch[1]}T${apiMatch[2]}`;
+  }
+
+  const normalized = value.includes(" ") ? value.replace(" ", "T") : value;
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return "";
+
   const offset = date.getTimezoneOffset();
   const local = new Date(date.getTime() - offset * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function toApiDatetimeValue(value: string): string {
+  if (!value.trim()) return "";
+
+  const localMatch = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(:\d{2})?$/);
+  if (localMatch) {
+    const seconds = localMatch[3] ?? ":00";
+    return `${localMatch[1]} ${localMatch[2]}${seconds}`;
+  }
+
+  const apiMatch = value.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/);
+  if (apiMatch) return value;
+
+  return value;
 }
 
 function resolveCategoryId(raw: Record<string, unknown>): string {
@@ -161,7 +198,7 @@ function normalizeArticleStatus(value: unknown): ArticleStatus {
   return "draft";
 }
 
-function mapArticleToFormValues(raw: unknown): ArticleFormValues {
+function mapArticleToFormValues(raw: unknown): ArticleFormInputValues {
   const record =
     raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
 
@@ -186,8 +223,8 @@ function mapArticleToFormValues(raw: unknown): ArticleFormValues {
           ? record.seoTitle
           : "",
     slug: typeof record.slug === "string" ? record.slug : "",
-    scheduled_at: toDatetimeLocalValue(
-      record.scheduled_at ?? record.scheduledAt ?? record.publish_at,
+    scheduled_publishing: toDatetimeLocalValue(
+      record.scheduled_publishing ?? record.scheduledAt ?? record.publish_at,
     ),
     // author_id: resolveAuthorId(record),
   };
@@ -203,7 +240,7 @@ function resolveFeaturedImageUrl(raw: unknown): string | null {
 }
 
 function buildArticlePayload(
-  data: ArticleFormValues,
+  data: ArticleFormInputValues,
   status: ArticleStatus,
 ): Record<string, unknown> {
   return {
@@ -216,7 +253,9 @@ function buildArticlePayload(
     seo_title: data.seo_title,
     // author_id: data.author_id,
     tags: data.tags,
-    ...(data.scheduled_at ? { scheduled_at: data.scheduled_at } : {}),
+    ...(data.scheduled_publishing
+      ? { scheduled_publishing: toApiDatetimeValue(data.scheduled_publishing) }
+      : {}),
   };
 }
 
@@ -261,7 +300,8 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = React.useState(false);
   const pendingLeaveRef = React.useRef<(() => void) | null>(null);
-  const submitStatusRef = React.useRef<ArticleStatus>("draft");
+  const submitActionRef = React.useRef<"draft" | "publish" | "selected">("selected");
+  const skipUnsavedPromptRef = React.useRef(false);
 
   // ── React Hook Form ────────────────────────────────────────────────────────
 
@@ -271,20 +311,21 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     control,
     reset,
     setValue,
+    getValues,
     watch,
     formState: { errors, isDirty, isSubmitting },
-  } = useForm<ArticleFormValues>({
+  } = useForm<ArticleFormInputValues>({
     resolver: zodResolver(articleFormSchema),
     defaultValues: {
       title: "",
       article_description: "",
-      status: "draft",
+      status: "",
       article_category_id: "",
       tags: [],
       excerpt: "",
       seo_title: "",
       slug: "",
-      scheduled_at: "",
+      scheduled_publishing: "",
       // author_id: "",
     },
   });
@@ -335,6 +376,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       setSlugTouched(true);
       setFeaturedImagePreview(resolveFeaturedImageUrl(article));
       setFeaturedImageFile(null);
+      skipUnsavedPromptRef.current = false;
     } catch (error) {
       console.error("Failed to fetch article:", error);
       toast.error("Failed to load article");
@@ -367,14 +409,13 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
   // ── API: POST — form submit ────────────────────────────────────────────────
 
-  const onSubmit = async (data: ArticleFormValues) => {
+  const onSubmit = async (data: ArticleFormInputValues) => {
     const nextStatus =
-      submitStatusRef.current === "published"
-        ? resolveStatusAfterPublish(data.scheduled_at)
-        : submitStatusRef.current;
+      submitActionRef.current === "publish"
+        ? resolveStatusAfterPublish(data.scheduled_publishing)
+        : (data.status as ArticleStatus);
 
     const payload = buildArticlePayload(data, nextStatus);
-    console.log("PAYLOAD:", payload);
 
     try {
       if (featuredImageFile) {
@@ -398,7 +439,11 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       }
 
       setLastSavedAt(new Date().toISOString());
-      reset({ ...data, status: nextStatus });
+      reset({ ...data, status: nextStatus }, { keepDirty: false });
+      setFeaturedImageFile(null);
+      skipUnsavedPromptRef.current = true;
+      setShowLeaveDialog(false);
+      pendingLeaveRef.current = null;
       navigate("/admin/articles");
     } catch (error) {
       console.error("Failed to save article:", error);
@@ -407,9 +452,23 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     }
   };
 
-  const submitWithStatus = (status: ArticleStatus) => {
-    submitStatusRef.current = status;
+  const submitWithStatus = (status: ArticleStatus, action: "draft" | "publish") => {
+    submitActionRef.current = action;
     setValue("status", status);
+    void handleSubmit(onSubmit)();
+  };
+
+  const saveWithSelectedStatus = () => {
+    const status = getValues("status");
+    if (
+      !status ||
+      !ARTICLE_STATUS_VALUES.includes(status as (typeof ARTICLE_STATUS_VALUES)[number])
+    ) {
+      toast.error("Please select a workflow status");
+      return;
+    }
+
+    submitActionRef.current = "selected";
     void handleSubmit(onSubmit)();
   };
 
@@ -423,7 +482,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname,
+      !skipUnsavedPromptRef.current &&
+      isDirty &&
+      currentLocation.pathname !== nextLocation.pathname,
   );
 
   React.useEffect(() => {
@@ -433,7 +494,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   }, [blocker.state]);
 
   const requestLeave = (action: () => void) => {
-    if (!isDirty) {
+    if (!isDirty || skipUnsavedPromptRef.current) {
       action();
       return;
     }
@@ -496,25 +557,31 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         ?.title ??
       "",
     tags: watchedValues.tags ?? [],
-    // authorName: getAuthorName(watchedValues.author_id ?? ""),
+    authorName: "",
     featuredImageUrl: featuredImagePreview,
-    status: watchedStatus ?? "draft",
+    status: (watchedStatus || "draft") as ArticleStatus,
   };
+
+  const displayStatus: ArticleStatus | "" =
+    watchedStatus &&
+    ARTICLE_STATUS_VALUES.includes(watchedStatus as (typeof ARTICLE_STATUS_VALUES)[number])
+      ? (watchedStatus as ArticleStatus)
+      : "";
 
   return (
     <div className="-mx-4 flex flex-col overflow-x-hidden sm:-mx-6">
       <ArticleEditorTopBar
         wordCount={wordCount}
         charCount={charCount}
-        status={watchedStatus ?? "draft"}
+        status={displayStatus}
         lastSavedLabel={formatArticleLastSaved(lastSavedAt)}
         isDirty={isDirty}
         isAutoSaving={isSubmitting}
         onBack={() => requestLeave(() => navigate("/admin/articles"))}
         onPreview={() => setIsPreviewOpen(true)}
-        onSaveDraft={() => submitWithStatus("draft")}
-        onSubmitForReview={() => submitWithStatus("pending_review")}
-        onPublish={() => submitWithStatus("published")}
+        onSave={saveWithSelectedStatus}
+        onSaveDraft={() => submitWithStatus("draft", "draft")}
+        onPublish={() => submitWithStatus("published", "publish")}
       />
 
       <form
@@ -557,7 +624,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value}
+                      value={field.value || undefined}
                       onValueChange={(value) => field.onChange(value as ArticleStatus)}
                     >
                       <SelectTrigger>
@@ -576,7 +643,21 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                 <InputError message={errors.status?.message} />
               </div>
 
-              {watchedStatus !== "archived" ? (
+              {watchedStatus === "scheduled" ? (
+                <div className="space-y-1">
+                  <label htmlFor="article-schedule" className={fieldLabelClassName}>
+                    Schedule Publishing
+                  </label>
+                  <Input
+                    id="article-schedule"
+                    type="datetime-local"
+                    {...register("scheduled_publishing")}
+                  />
+                  <InputError message={errors.scheduled_publishing?.message} />
+                </div>
+              ) : null}
+
+              {/* {watchedStatus !== "archived" ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -586,7 +667,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                 >
                   Archive article
                 </Button>
-              ) : null}
+              ) : null} */}
 
               <div className="space-y-1">
                 <label className={fieldLabelClassName}>Featured Image</label>
@@ -683,17 +764,6 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                 <InputError message={errors.slug?.message} />
               </div>
 
-              <div className="space-y-1">
-                <label htmlFor="article-schedule" className={fieldLabelClassName}>
-                  Schedule Publishing
-                </label>
-                <Input
-                  id="article-schedule"
-                  type="datetime-local"
-                  {...register("scheduled_at")}
-                />
-                <InputError message={errors.scheduled_at?.message} />
-              </div>
 
               {/* <div className="space-y-1">
                 <label className={fieldLabelClassName}>Author</label>
