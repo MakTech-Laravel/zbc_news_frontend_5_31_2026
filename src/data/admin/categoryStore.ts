@@ -40,6 +40,31 @@ export function slugifyCategoryName(name: string) {
     .replace(/-+/g, "-");
 }
 
+type RawCategory = Partial<AdminCategoryRow> & {
+  id: string | number;
+  name?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+function normalizeCategory(raw: RawCategory): AdminCategoryRow {
+  const status = raw.status === "inactive" ? "inactive" : "active";
+  return {
+    id: String(raw.id),
+    title: raw.title ?? raw.name ?? "",
+    slug: raw.slug ?? "",
+    description: raw.description,
+    status,
+    articleCount: raw.articleCount ?? 0,
+    created_at: raw.created_at ?? raw.createdAt ?? "",
+    updated_at: raw.updated_at ?? raw.updatedAt ?? "",
+  };
+}
+
+function compareCategoryTitle(a: AdminCategoryRow, b: AdminCategoryRow) {
+  return (a.title || "").localeCompare(b.title || "");
+}
+
 function countArticlesByCategoryName(name: string) {
   return loadAdminArticles().filter((a) => a.category === name).length;
 }
@@ -59,11 +84,13 @@ export function loadAdminCategories(): AdminCategoryRow[] {
   );
 
   for (const [id, category] of Object.entries(overrides)) {
-    if (!deleted.has(id)) merged.set(id, category);
+    if (!deleted.has(id)) merged.set(id, normalizeCategory({ ...category, id }));
   }
 
   return withArticleCounts(
-    Array.from(merged.values()).sort((a, b) => a.title.localeCompare(b.title)),
+    Array.from(merged.values())
+      .map((category) => normalizeCategory(category))
+      .sort(compareCategoryTitle),
   );
 }
 
@@ -135,7 +162,9 @@ export function getActiveCategoryNames(): string[] {
 }
 
 export function getArticleCategoryFilterOptions() {
-  const active = loadAdminCategories().filter((c) => c.status === "active");
+  const active = loadAdminCategories().filter(
+    (c) => c.status === "active" && c.title,
+  );
   return [
     { value: "all", label: "All Categories" },
     ...active.map((c) => ({ value: c.title, label: c.title })),
@@ -143,7 +172,9 @@ export function getArticleCategoryFilterOptions() {
 }
 
 export function getArticleEditorCategoryOptions() {
-  const active = loadAdminCategories().filter((c) => c.status === "active");
+  const active = loadAdminCategories().filter(
+    (c) => c.status === "active" && c.title,
+  );
   return [
     { value: "", label: "Select Category" },
     ...active.map((c) => ({ value: c.title, label: c.title })),
