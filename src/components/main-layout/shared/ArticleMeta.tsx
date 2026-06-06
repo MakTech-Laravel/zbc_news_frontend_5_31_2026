@@ -21,15 +21,15 @@ export function ArticleMeta({
   hideViewsBelowSm = false,
 }: ArticleMetaProps) {
   return (
-    <p
+    <div
       className={cn(
+        "flex items-center gap-1 flex-wrap",
         light
           ? "font-sans text-[12px] leading-4 text-white/80 sm:text-[13px]"
           : "font-sans text-[12px] leading-4 text-muted-foreground",
         className,
       )}
     >
-      <div className="flex items-center gap-1">
       <span>{author}</span>
       <span aria-hidden> · </span>
       <span>{readTime}</span>
@@ -50,7 +50,6 @@ export function ArticleMeta({
           </span>
         </>
       ) : null}
-      </div>
-    </p>
+    </div>
   );
 }
