@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 export type ArticlePreviewData = {
   title: string;
-  content: string;
+  article_description: string;
   excerpt: string;
   category: string;
   tags: string[];
@@ -39,7 +39,10 @@ export function ArticlePreviewDialog({
   onOpenChange,
   preview,
 }: ArticlePreviewDialogProps) {
-  const displayTitle = preview.title.trim() || "Untitled article";
+  const displayTitle = (preview.title ?? "").trim() || "Untitled article";
+  const displayExcerpt = (preview.excerpt ?? "").trim();
+  const displayDescription = (preview.article_description ?? "").trim();
+  const displayTags = preview.tags ?? [];
   const publishedLabel = new Date().toLocaleDateString(undefined, {
     month: "long",
     day: "numeric",
@@ -92,7 +95,7 @@ export function ArticlePreviewDialog({
                   {displayTitle}
                 </h1>
 
-                {preview.excerpt.trim() ? (
+                {displayExcerpt ? (
                   <p className="text-base leading-relaxed text-zbc-gray-700 sm:text-lg">
                     {preview.excerpt}
                   </p>
@@ -122,15 +125,15 @@ export function ArticlePreviewDialog({
                 )}
                 dangerouslySetInnerHTML={{
                   __html:
-                    preview.content.trim() ||
+                    displayDescription ||
                     "<p class='text-zbc-gray-500'>No content yet. Add body copy in the editor.</p>",
                 }}
               />
 
-              {preview.tags.length > 0 ? (
+              {displayTags.length > 0 ? (
                 <footer className="flex flex-wrap items-center gap-2 border-t border-border pt-5">
                   <Tag className="size-4 text-zbc-gray-400" aria-hidden />
-                  {preview.tags.map((tag) => (
+                  {displayTags.map((tag) => (
                     <span
                       key={tag}
                       className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-admin-heading"

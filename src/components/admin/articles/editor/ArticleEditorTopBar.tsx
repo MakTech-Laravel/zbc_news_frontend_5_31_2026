@@ -44,7 +44,7 @@ export function ArticleEditorTopBar({
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 -mx-6 border-b border-admin-input-border bg-admin-surface px-4 py-3 sm:px-6",
+        "sticky top-0 z-10 border-b border-admin-input-border bg-admin-surface px-4 py-3 sm:px-6",
         className,
       )}
     >
