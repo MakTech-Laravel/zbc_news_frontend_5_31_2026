@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
 
-type NavItem = { label: string; to: string };
+type NavItem = { id: string; label: string; to: string };
 
 // const STATIC_NAV: NavItem[] = [
 //   { label: "Latest News", to: "/" },
@@ -28,8 +28,9 @@ export function useMainNav() {
       const dynamic: NavItem[] = categories
         .filter((cat: any) => cat.status === "active")
         .map((cat: any) => ({
+          id: String(cat.id),
           label: cat.title,
-          to: `/${cat.slug}`,
+          to: cat.slug ? `/${cat.slug}` : "/",
         }));
 
       setNavItems(dynamic);
@@ -272,7 +273,7 @@ function MainNavLinks({ onNavigate }: { onNavigate?: () => void }) {
     <>
       {navItems.map((item) => (
         <NavLink
-          key={item.to}
+          key={item.id}
           to={item.to}
           end={item.to === "/"}
           onClick={onNavigate}
@@ -326,7 +327,7 @@ function SubNavBar() {
         >
           {SUB_NAV.map(({ label, to, icon: Icon }) => (
             <Link
-              key={to}
+              key={label}
               to={to}
               className="inline-flex shrink-0 items-center gap-1.5 font-inter text-base font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -405,7 +406,7 @@ function MobileMenu() {
                     (item.to === "/" && location.pathname === "/");
                   return (
                     <Link
-                      key={item.to}
+                      key={item.id}
                       to={item.to}
                       onClick={close}
                       className={cn(
@@ -427,7 +428,7 @@ function MobileMenu() {
               >
                 {SUB_NAV.map(({ label, to, icon: Icon }) => (
                   <Link
-                    key={to}
+                    key={label}
                     to={to}
                     onClick={close}
                     className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground"

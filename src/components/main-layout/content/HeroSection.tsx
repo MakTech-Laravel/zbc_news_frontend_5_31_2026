@@ -1,25 +1,65 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import type { Article } from "@/data/dummy/types";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
+import { request } from "@/api/request";
 
 type HeroSectionProps = {
-  article: Article;
   className?: string;
 };
 
-export function HeroSection({ article, className }: HeroSectionProps) {
+export function HeroSection({ className }: HeroSectionProps) {
+  const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLatestArticle = async () => {
+      try {
+        const response = await request.get("/articles/latest");
+        const data = response.data.data;
+
+        setArticle({
+          id:          String(data.id),
+          slug:        data.slug,
+          title:       data.title,
+          excerpt:     data.excerpt ?? undefined,
+          imageUrl:    resolveMediaUrl(data.featured_image),
+          category:    data.category?.title ?? "News",
+          author:      data.user?.name ?? "ZBC News",
+          readTime:    data.read_time ?? "5 min read",
+          publishedAt: data.published_at ?? "",
+        });
+      } catch (error) {
+        console.error("Failed to fetch latest article:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLatestArticle();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="h-[320px] animate-pulse rounded-xs bg-muted" />
+    );
+  }
+
+  if (!article) return null;
+
   return (
     <section className={cn("relative", className)} aria-label="Featured story">
       <Link
-        to={`/news-details`}
+        to={article.slug ? `/news-details/${article.slug}` : "/news-details"}
         className="group block overflow-hidden rounded-xs border border-border bg-card shadow-sm"
       >
         <div className="relative aspect-[16/10] min-h-[220px] w-full sm:aspect-[2/1] sm:min-h-[260px] lg:min-h-[320px]">
           <ArticleImage
-            src={article.imageUrl}
+            src={article.imageUrl ?? ""}
             alt={article.title}
             width={1400}
             height={700}
@@ -35,7 +75,6 @@ export function HeroSection({ article, className }: HeroSectionProps) {
             <CategoryTag label={article.category} />
           </div>
           <div className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-2.5 sm:p-6 lg:space-y-3 lg:p-4">
-
             <h2 className="line-clamp-2 max-w-[95%] font-inter text-2xl font-bold leading-[1.15] text-primary-foreground sm:leading-tight lg:max-w-3xl lg:text-5xl">
               {article.title}
             </h2>
@@ -50,5 +89,3 @@ export function HeroSection({ article, className }: HeroSectionProps) {
     </section>
   );
 }
-
-

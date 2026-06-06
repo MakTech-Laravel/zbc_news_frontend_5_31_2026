@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 import { useArticlesDataTable } from "@/components/admin/articles/useArticlesDataTable";
 import { AdminFilterBar } from "@/components/admin/shared/AdminFilterBar";
@@ -7,44 +8,62 @@ import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { DataTable } from "@/components/ui/data-table";
-import { loadAdminArticles } from "@/data/admin/articleDummyStore";
-import { getArticleCategoryFilterOptions } from "@/data/admin/categoryStore";
-import { ARTICLE_STATUS_FILTER_OPTIONS, type AdminArticle } from "@/data/admin/mockArticles";
+import { request } from "@/api/request";
+import {
+  ARTICLE_STATUS_FILTER_OPTIONS,
+  type AdminArticle,
+} from "@/data/admin/mockArticles";
+import {
+  buildArticleCategoryFilterOptions,
+  fetchAdminArticles,
+  matchesArticleSearch,
+  type AdminArticleApiCategory,
+} from "@/services/admin/articles";
 
 const PAGE_SIZE = 10;
 
-function matchesSearch(article: AdminArticle, query: string) {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return (
-    article.title.toLowerCase().includes(q) ||
-    article.author.toLowerCase().includes(q)
-  );
-}
-
 export default function AdminArticles() {
   const navigate = useNavigate();
-  const [articles, setArticles] = React.useState<AdminArticle[]>(() =>
-    loadAdminArticles(),
-  );
+  const [articles, setArticles] = React.useState<AdminArticle[]>([]);
+  const [categories, setCategories] = React.useState<AdminArticleApiCategory[]>([]);
+  const [loading, setLoading] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [categoryFilter, setCategoryFilter] = React.useState("all");
   const [page, setPage] = React.useState(1);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [categoryOptions, setCategoryOptions] = React.useState(() =>
-    getArticleCategoryFilterOptions(),
-  );
 
-  const refresh = React.useCallback(() => {
-    setArticles(loadAdminArticles());
-    setCategoryOptions(getArticleCategoryFilterOptions());
+  const fetchArticles = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const { articles: nextArticles, categories: nextCategories } =
+        await fetchAdminArticles();
+      setArticles(nextArticles);
+      setCategories(nextCategories);
+    } catch (error) {
+      console.error("Failed to fetch articles:", error);
+      toast.error("Failed to load articles");
+      setArticles([]);
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   React.useEffect(() => {
-    window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
-  }, [refresh]);
+    void fetchArticles();
+  }, [fetchArticles]);
+
+  React.useEffect(() => {
+    const onFocus = () => void fetchArticles();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchArticles]);
+
+  const categoryOptions = React.useMemo(
+    () => buildArticleCategoryFilterOptions(categories, articles),
+    [categories, articles],
+  );
 
   const draftCount = React.useMemo(
     () => articles.filter((a) => a.status === "draft" || a.hasUnsavedDraft).length,
@@ -53,7 +72,7 @@ export default function AdminArticles() {
 
   const filtered = React.useMemo(() => {
     return articles.filter((article) => {
-      if (!matchesSearch(article, search)) return false;
+      if (!matchesArticleSearch(article, search)) return false;
       if (statusFilter !== "all" && article.status !== statusFilter) return false;
       if (categoryFilter !== "all" && article.category !== categoryFilter) return false;
       return true;
@@ -69,17 +88,27 @@ export default function AdminArticles() {
 
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  const deleteArticle = async (article: AdminArticle) => {
+    try {
+      await request.delete(`/articles/delete/${article.slug}`);
+      toast.success("Article deleted successfully");
+      await fetchArticles();
+    } catch (error) {
+      console.error("Failed to delete article:", error);
+      toast.error("Failed to delete article");
+    }
+  };
+
   const table = useArticlesDataTable({
     data: paged,
     selectedIds,
     onSelectionChange: setSelectedIds,
     onEdit: (article) => {
-      navigate(`/admin/articles/edit/${article.id}`);
+      navigate(`/admin/articles/edit/${encodeURIComponent(article.slug)}`);
     },
-    onDelete: () => {
-      /* confirm delete */
-    },
+    onDelete: deleteArticle,
   });
+
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -118,7 +147,13 @@ export default function AdminArticles() {
       </AdminPanel>
 
       <AdminPanel padding="none" className="overflow-hidden">
-        <DataTable {...table} />
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : (
+          <DataTable {...table} />
+        )}
       </AdminPanel>
 
       <AdminPagination

@@ -15,7 +15,7 @@ export function buildArticlePreviewData(
 ): ArticlePreviewData {
   return {
     title: form.title,
-    content: form.content,
+    article_description: form.content,
     excerpt: form.excerpt,
     category: form.category,
     tags: form.tags,

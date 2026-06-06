@@ -4,8 +4,8 @@ import type { RouteObject } from "react-router-dom";
 import { FrontendLayout } from "@/layouts/frontend/FrontendLayout";
 import { MainLayout } from "@/layouts/main/MainLayout";
 import { suspensePage } from "@/routes/routeUtils";
-import { Home } from "./dynamicImport";
-// import { Home, Test, Politics, Business, Entertainment, Technology, Sports, WorldNews, VideoMedia, NewsDetails } from "./dynamicImport";
+import { Home, NewsDetails } from "./dynamicImport";
+// import { Test, Politics, Business, Entertainment, Technology, Sports, WorldNews, VideoMedia } from "./dynamicImport";
 
 
 export const publicRoutes: RouteObject = {
@@ -15,16 +15,9 @@ export const publicRoutes: RouteObject = {
       element: <MainLayout />,
       children: [
         { path: "/", element: suspensePage(Home) },
+        { path: "/news-details/:articleSlug", element: suspensePage(NewsDetails) },
+        { path: "/news-details", element: suspensePage(NewsDetails) },
         { path: "/:slug", element: suspensePage(Home) },
-        // { path: "/politics", element: suspensePage(Politics) },
-        // { path: "/business", element: suspensePage(Business) },
-        // { path: "/sports", element: suspensePage(Sports) },
-        // { path: "/entertainment", element: suspensePage(Entertainment) },
-        // { path: "/technology", element: suspensePage(Technology) },
-        // { path: "/world", element: suspensePage(WorldNews) },
-        // { path: "/video", element: suspensePage(VideoMedia) },
-        // { path: "/news-details", element: suspensePage(NewsDetails) },
-        // { path: "/test", element: suspensePage(Test) },
       ],
     },
 

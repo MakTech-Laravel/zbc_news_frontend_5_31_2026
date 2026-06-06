@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, Loader2, Save, Send } from "lucide-react";
+import { ArrowLeft, Eye, Loader2, Save } from "lucide-react";
 
 import { AdminStatusBadge } from "@/components/admin/shared/AdminStatusBadge";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,14 @@ import type { ArticleStatus } from "@/data/admin/mockArticles";
 type ArticleEditorTopBarProps = {
   wordCount: number;
   charCount: number;
-  status: ArticleStatus;
+  status: ArticleStatus | "";
   lastSavedLabel: string;
   isDirty?: boolean;
   isAutoSaving?: boolean;
   onBack?: () => void;
   onPreview?: () => void;
+  onSave?: () => void;
   onSaveDraft?: () => void;
-  onSubmitForReview?: () => void;
   onPublish?: () => void;
   className?: string;
 };
@@ -36,15 +36,15 @@ export function ArticleEditorTopBar({
   isAutoSaving = false,
   onBack,
   onPreview,
+  onSave,
   onSaveDraft,
-  onSubmitForReview,
   onPublish,
   className,
 }: ArticleEditorTopBarProps) {
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 -mx-6 border-b border-admin-input-border bg-admin-surface px-4 py-3 sm:px-6",
+        "sticky top-0 z-10 border-b border-admin-input-border bg-admin-surface px-4 py-3 sm:px-6",
         className,
       )}
     >
@@ -61,9 +61,15 @@ export function ArticleEditorTopBar({
             </button>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <AdminStatusBadge variant={statusToBadgeVariant(status)}>
-                  {ARTICLE_STATUS_LABELS[status]}
-                </AdminStatusBadge>
+                {status ? (
+                  <AdminStatusBadge variant={statusToBadgeVariant(status)}>
+                    {ARTICLE_STATUS_LABELS[status]}
+                  </AdminStatusBadge>
+                ) : (
+                  <span className="inline-flex h-6 items-center rounded bg-muted px-2 text-xs text-admin-label">
+                    No status
+                  </span>
+                )}
                 {isDirty ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                     <span className="size-1.5 rounded-full bg-amber-500" aria-hidden />
@@ -111,11 +117,11 @@ export function ArticleEditorTopBar({
             <Button
               type="button"
               variant="outline"
-              onClick={onSubmitForReview}
+              onClick={onSave}
               className="h-9 gap-2 rounded-[10px] border-admin-input-border px-3 text-sm font-medium text-admin-heading sm:h-10 sm:px-4"
             >
-              <Send className="size-4 shrink-0" aria-hidden />
-              <span className="hidden sm:inline">Submit Review</span>
+              <Save className="size-4 shrink-0" aria-hidden />
+              <span className="hidden sm:inline">Save</span>
             </Button>
 
             <Button
