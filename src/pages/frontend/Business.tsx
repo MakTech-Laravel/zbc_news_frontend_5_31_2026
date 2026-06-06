@@ -3,7 +3,6 @@ import { FeaturedSection } from "@/components/main-layout/content/FeaturedSectio
 import { HeroSection } from "@/components/main-layout/content/HeroSection";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
 import { latestStories } from "@/data/dummy/home";
-import { heroArticle } from "@/data/dummy/business";
 
 
 
@@ -11,7 +10,7 @@ import { heroArticle } from "@/data/dummy/business";
 export default function Business() {
   return (
     <article className="flex flex-col gap-5 sm:gap-7 lg:gap-8">
-      <HeroSection article={heroArticle} />
+      <HeroSection  />
       <AdUnit variant="banner" />
       <FeaturedSection />
       <AdUnit variant="banner" />
