@@ -190,11 +190,11 @@ export default function AdminCategories() {
     try {
       if (isEditing) {
         // PUT — category updat e
-        await request.post(`/categories/update/${editingCategoryId}`, data);
+        await request.post(`/admin/categories/update/${editingCategoryId}`, data);
         toast.success("Category updated successfully");
       } else {
         // POST — new category create
-        await request.post("/categories/store", data);
+        await request.post("/admin/categories/store", data);
         toast.success("Category created successfully");
       }
       await fetchCategories();
@@ -211,7 +211,7 @@ export default function AdminCategories() {
   const deleteCategory = async (category: AdminCategoryRow) => {
     try {
       // setIsDeleting(true);
-      await request.delete(`/categories/delete/${category.slug}`);
+      await request.delete(`/admin/categories/delete/${category.slug}`);
       toast.success("Category deleted successfully");
       await fetchCategories();
     } catch (error) {

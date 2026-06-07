@@ -364,7 +364,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
     try {
       setLoading(true);
-      const response = await request.get(`/articles/show/${articleSlugParam}`);
+      const response = await request.get(`/admin/articles/show/${articleSlugParam}`);
       const article = response.data.data;
 
       if (!article) {
@@ -424,17 +424,17 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         formData.append("featured_image", featuredImageFile);
 
         if (isEdit && articleSlugParam) {
-          await request.post(`/articles/update/${articleSlugParam}`, formData);
+          await request.post(`/admin/articles/update/${articleSlugParam}`, formData);
           toast.success("Article updated successfully");
         } else {
-          await request.post("/articles/store", formData);
+          await request.post("/admin/articles/store", formData);
           toast.success("Article created successfully");
         }
       } else if (isEdit && articleSlugParam) {
-        await request.post(`/articles/update/${articleSlugParam}`, payload);
+        await request.post(`/admin/articles/update/${articleSlugParam}`, payload);
         toast.success("Article updated successfully");
       } else {
-        await request.post("/articles/store", payload);
+        await request.post("/admin/articles/store", payload);
         toast.success("Article created successfully");
       }
 

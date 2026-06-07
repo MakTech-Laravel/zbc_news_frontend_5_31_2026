@@ -9,6 +9,9 @@ import { UserStatusBadge } from "@/components/user/shared/UserStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { request } from "@/api/request";
+import { useState } from "react";
+import toast from "react-hot-toast";
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -24,7 +27,12 @@ type SettingsCardHeaderProps = {
   compact?: boolean;
 };
 
-function SettingsCardHeader({ title, subtitle, icon, compact }: SettingsCardHeaderProps) {
+function SettingsCardHeader({
+  title,
+  subtitle,
+  icon,
+  compact,
+}: SettingsCardHeaderProps) {
   return (
     <div className={cn("px-6", compact ? "pt-4 pb-1" : "pt-6 pb-2")}>
       {icon ? (
@@ -33,9 +41,13 @@ function SettingsCardHeader({ title, subtitle, icon, compact }: SettingsCardHead
           <h2 className="text-base font-semibold leading-5">{title}</h2>
         </div>
       ) : (
-        <h2 className="text-base font-semibold leading-5 text-admin-heading">{title}</h2>
+        <h2 className="text-base font-semibold leading-5 text-admin-heading">
+          {title}
+        </h2>
       )}
-      {subtitle ? <p className="mt-1 text-base leading-6 text-admin-label">{subtitle}</p> : null}
+      {subtitle ? (
+        <p className="mt-1 text-base leading-6 text-admin-label">{subtitle}</p>
+      ) : null}
     </div>
   );
 }
@@ -47,30 +59,42 @@ type NotificationToggleProps = {
   onChange: (checked: boolean) => void;
 };
 
-function NotificationToggleRow({ id, label, checked, onChange }: NotificationToggleProps) {
+function NotificationToggleRow({
+  id,
+  label,
+  checked,
+  onChange,
+}: NotificationToggleProps) {
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <span className="text-sm font-medium text-admin-heading">{label}</span>
-      <UserSettingSwitch id={id} checked={checked} onCheckedChange={onChange} aria-label={label} />
+      <UserSettingSwitch
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
+        aria-label={label}
+      />
     </div>
   );
 }
 
 const NOTIFICATION_OPTIONS = [
-  { id: "breaking", label: "Breaking News Alerts", defaultOn: true },
-  { id: "newsletter", label: "Daily Newsletter", defaultOn: true },
-  { id: "recommendations", label: "Personalized Recommendations", defaultOn: true },
-  { id: "comments", label: "Comment Replies", defaultOn: false },
-  { id: "saved", label: "Saved Article Updates", defaultOn: false },
+  { id: "breaking_news", label: "Breaking News Alerts" },
+  { id: "daily_newsletter", label: "Daily Newsletter" },
+  { id: "personalized_recommendations", label: "Personalized Recommendations" },
+  { id: "comment_replies", label: "Comment Replies" },
+  { id: "saved_article_updates", label: "Saved Article Updates" },
 ] as const;
 
-function useToggleState<T extends readonly { id: string; defaultOn: boolean }[]>(options: T) {
-  const [state, setState] = React.useState(() =>
-    Object.fromEntries(options.map((o) => [o.id, o.defaultOn])) as Record<string, boolean>,
-  );
-  const set = (id: string, value: boolean) => setState((s) => ({ ...s, [id]: value }));
-  return [state, set] as const;
-}
+type NotificationPreferences = {
+  breaking_news: boolean;
+  daily_newsletter: boolean;
+  personalized_recommendations: boolean;
+  comment_replies: boolean;
+  saved_article_updates: boolean;
+};
+
+type NotifKey = keyof NotificationPreferences;
 
 export function UserProfileForm() {
   const { user } = useAuth();
@@ -78,7 +102,42 @@ export function UserProfileForm() {
   const email = user?.email ?? "john.doe@example.com";
   const initials = getInitials(displayName);
 
-  const [notifications, setNotification] = useToggleState(NOTIFICATION_OPTIONS);
+  const [notifications, setNotifications] =
+    React.useState<NotificationPreferences | null>(null);
+  const [notifLoading, setNotifLoading] = useState(true);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // GET
+  React.useEffect(() => {
+    const fetchPreferences = async () => {
+      try {
+        setNotifLoading(true);
+        const response = await request.get("/notification-preferences");
+        setNotifications(response.data.data);
+      } catch (error) {
+        console.error("Failed to fetch notification preferences:", error);
+      } finally {
+        setNotifLoading(false);
+      }
+    };
+    fetchPreferences();
+  }, []);
+
+  const handleToggle = (id: NotifKey, value: boolean) => {
+    const updated = { ...notifications!, [id]: value };
+    setNotifications(updated);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        await request.put("/notification-preferences/update", updated);
+        toast.success("Preferences updated successfully.");
+      } catch (error) {
+        console.error("Failed to update notification preferences:", error);
+        toast.error("Failed to update preferences. Please try again.");
+      }
+    }, 500);
+  };
 
   return (
     <div className="space-y-6">
@@ -135,7 +194,9 @@ export function UserProfileForm() {
                 <Input defaultValue="United States" className="h-9" />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <label className="text-sm font-medium text-admin-heading">Bio</label>
+                <label className="text-sm font-medium text-admin-heading">
+                  Bio
+                </label>
                 <textarea
                   className="min-h-[100px] w-full rounded-lg border border-admin-input-border bg-card px-3 py-2 text-sm text-admin-heading placeholder:text-admin-label/60"
                   placeholder="Tell us about yourself..."
@@ -144,7 +205,9 @@ export function UserProfileForm() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button variant="default" className="bg-zbc-gray-700 text-white">Save Changes</Button>
+              <Button variant="default" className="bg-zbc-gray-700 text-white">
+                Save Changes
+              </Button>
               <Button variant="outline">Cancel</Button>
             </div>
           </div>
@@ -230,15 +293,22 @@ export function UserProfileForm() {
           icon={<Bell className="size-5" aria-hidden />}
         />
         <div className="space-y-1 px-6 pb-6">
-          {NOTIFICATION_OPTIONS.map((item) => (
-            <NotificationToggleRow
-              key={item.id}
-              id={`notif-${item.id}`}
-              label={item.label}
-              checked={notifications[item.id]}
-              onChange={(v) => setNotification(item.id, v)}
-            />
-          ))}
+          {notifLoading || !notifications
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between py-2">
+                  <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+                  <div className="h-6 w-11 animate-pulse rounded-full bg-muted" />
+                </div>
+              ))
+            : NOTIFICATION_OPTIONS.map((item) => (
+                <NotificationToggleRow
+                  key={item.id}
+                  id={`notif-${item.id}`}
+                  label={item.label}
+                  checked={notifications[item.id]}
+                  onChange={(v) => handleToggle(item.id as NotifKey, v)}
+                />
+              ))}
         </div>
       </UserDashboardCard>
 
@@ -250,13 +320,19 @@ export function UserProfileForm() {
             className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-muted/80 px-4 py-4 transition-colors hover:bg-muted"
           >
             <div>
-              <p className="text-base font-semibold text-admin-heading">Membership Status</p>
-              <p className="mt-1 text-sm text-admin-label">Premium account active</p>
+              <p className="text-base font-semibold text-admin-heading">
+                Membership Status
+              </p>
+              <p className="mt-1 text-sm text-admin-label">
+                Premium account active
+              </p>
             </div>
             <UserStatusBadge label="Premium" variant="account" />
           </Link>
           <div className="rounded-lg bg-muted/80 px-4 py-4">
-            <p className="text-base font-semibold text-admin-heading">Member Since</p>
+            <p className="text-base font-semibold text-admin-heading">
+              Member Since
+            </p>
             <p className="mt-1 text-sm text-admin-label">January 2024</p>
           </div>
         </div>
