@@ -112,7 +112,7 @@ export function UserProfileForm() {
     const fetchPreferences = async () => {
       try {
         setNotifLoading(true);
-        const response = await request.get("/notification-preferences");
+        const response = await request.get("/admin/notification-preferences");
         setNotifications(response.data.data);
       } catch (error) {
         console.error("Failed to fetch notification preferences:", error);
@@ -130,7 +130,7 @@ export function UserProfileForm() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        await request.put("/notification-preferences/update", updated);
+        await request.put("/admin/notification-preferences/update", updated);
         toast.success("Preferences updated successfully.");
       } catch (error) {
         console.error("Failed to update notification preferences:", error);
