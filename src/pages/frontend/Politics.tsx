@@ -2,7 +2,6 @@ import { AdUnit } from "@/components/main-layout/shared/AdUnit";
 import { FeaturedSection } from "@/components/main-layout/content/FeaturedSection";
 import { HeroSection } from "@/components/main-layout/content/HeroSection";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
-import { latestStories } from "@/data/dummy/home";
 
 
 export default function Politics() {
@@ -12,7 +11,7 @@ export default function Politics() {
       <AdUnit variant="banner" />
       <FeaturedSection />
       <AdUnit variant="banner" />
-      <LatestStories articles={latestStories} />
+      <LatestStories />
      
     </article>
   );
