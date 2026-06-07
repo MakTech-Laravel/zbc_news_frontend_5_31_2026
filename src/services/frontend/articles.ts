@@ -1,4 +1,5 @@
 import { request } from "@/api/request";
+import type { Article } from "@/data/dummy/types";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 export type ArticleDetail = {
@@ -134,6 +135,105 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
         ? record.read_time
         : "5 min read",
     tags: parseTags(record.tags),
+  };
+}
+
+export type CategoryArticlesResult = {
+  categoryTitle: string;
+  articles: Article[];
+};
+
+function mapApiArticleListItem(raw: unknown): Article | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const record = raw as Record<string, unknown>;
+  const id = record.id;
+  const title = record.title;
+
+  if (id == null || typeof title !== "string" || !title.trim()) return null;
+
+  const published = formatPublishedAt(record.published_at ?? record.created_at);
+
+  return {
+    id: String(id),
+    slug: typeof record.slug === "string" ? record.slug : undefined,
+    title,
+    excerpt: typeof record.excerpt === "string" ? record.excerpt : undefined,
+    imageUrl: resolveMediaUrl(
+      typeof record.featured_image === "string"
+        ? record.featured_image
+        : typeof record.featured_image_url === "string"
+          ? record.featured_image_url
+          : "",
+    ),
+    category: resolveCategoryLabel(record),
+    author: resolveAuthorName(record),
+    readTime:
+      typeof record.read_time === "string" && record.read_time.trim()
+        ? record.read_time
+        : "5 min read",
+    publishedAt: published.label,
+    views: Number(record.views ?? record.view_count ?? 0) || undefined,
+  };
+}
+
+function extractArticleRows(body: unknown): unknown[] {
+  if (!body || typeof body !== "object") return [];
+
+  const root = body as Record<string, unknown>;
+  const payload = root.data ?? root;
+
+  if (Array.isArray(payload)) return payload;
+
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    const rows = record.data ?? record.articles ?? record.items;
+    if (Array.isArray(rows)) return rows;
+  }
+
+  return [];
+}
+
+function resolveCategoryTitle(body: unknown, fallbackSlug: string): string {
+  if (!body || typeof body !== "object") {
+    return fallbackSlug.replace(/-/g, " ");
+  }
+
+  const root = body as Record<string, unknown>;
+  const payload = root.data ?? root;
+
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const record = payload as Record<string, unknown>;
+
+    if (record.category && typeof record.category === "object") {
+      const category = record.category as Record<string, unknown>;
+      if (typeof category.title === "string") return category.title;
+      if (typeof category.name === "string") return category.name;
+    }
+
+    if (typeof record.category_title === "string") return record.category_title;
+    if (typeof record.title === "string" && Array.isArray(record.articles)) {
+      return record.title;
+    }
+  }
+
+  return fallbackSlug.replace(/-/g, " ");
+}
+
+export async function fetchArticlesByCategory(
+  categorySlug: string,
+): Promise<CategoryArticlesResult> {
+  const encodedSlug = encodeURIComponent(categorySlug);
+  const response = await request.get(`/articles/category/${encodedSlug}`);
+  const body = response.data;
+
+  const articles = extractArticleRows(body)
+    .map(mapApiArticleListItem)
+    .filter((article): article is Article => article !== null);
+
+  return {
+    categoryTitle: resolveCategoryTitle(body, categorySlug),
+    articles,
   };
 }
 
