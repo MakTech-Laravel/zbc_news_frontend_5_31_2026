@@ -2,13 +2,49 @@ import type { Article } from "@/data/dummy/types";
 import { cn } from "@/lib/utils";
 
 import { ArticleListItem } from "./ArticleListItem";
+import { request } from "@/api/request";
+import { useEffect, useState } from "react";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 type LatestStoriesProps = {
-  articles: Article[];
+  // articles: Article[];
   className?: string;
 };
 
-export function LatestStories({ articles, className }: LatestStoriesProps) {
+export function LatestStories({  className }: LatestStoriesProps) {
+
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLatestArticles = async () => {
+      try {
+        const response = await request.get("/articles/latest-stories");
+        const data = response.data.data;
+        setArticles(data.map((article: any) => ({
+          id:          String(article.id),
+          slug:        article.slug,
+          title:       article.title,
+          excerpt:     article.excerpt ?? undefined,
+          imageUrl:    resolveMediaUrl(article.featured_image),
+          category:    article.category?.title ?? "News",
+          author:      article.user?.name ?? "ZBC News",
+          readTime:    article.read_time ?? "5 min read",
+          publishedAt: article.published_at ?? "",
+        })));
+      } catch (error) {
+        console.error("Failed to fetch latest articles:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLatestArticles();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <section
       aria-labelledby="latest-stories-heading"

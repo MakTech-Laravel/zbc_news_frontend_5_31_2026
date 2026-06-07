@@ -5,7 +5,6 @@ import { HeroSection } from "@/components/main-layout/content/HeroSection";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
 import {
   gridArticles,
-  latestStories,
 } from "@/data/dummy/home";
 
 export default function Home() {
@@ -16,7 +15,7 @@ export default function Home() {
       <FeaturedSection />
       <ArticleGrid articles={gridArticles} />
       <AdUnit variant="banner" />
-      <LatestStories articles={latestStories} />
+      <LatestStories  />
       <AdUnit variant="banner" />
     </article>
   );
