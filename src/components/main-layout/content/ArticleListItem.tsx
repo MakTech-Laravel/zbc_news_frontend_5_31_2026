@@ -20,7 +20,7 @@ export function ArticleListItem({ article, className, hideViewsBelowSm }: Articl
         className,
       )}
     >
-      <Link to={`/news-details`} className="shrink-0">
+      <Link to={article.slug ? `/news-details/${article.slug}` : "/news-details"} className="shrink-0">
         <ArticleImage
           src={article.imageUrl}
           alt={article.title}
@@ -31,7 +31,7 @@ export function ArticleListItem({ article, className, hideViewsBelowSm }: Articl
       </Link>
       <div className="min-w-0 flex-1 space-y-1.5">
         <CategoryTag label={article.category} className="bg-brand-soft text-primary" />
-        <Link to={`/news-details`} className="block">
+        <Link to={article.slug ? `/news-details/${article.slug}` : "/news-details"} className="block">
           <h3 className="line-clamp-2 font-inter text-base font-semibold leading-[1.15] text-zbc-gray-1000 mb-2 hover:text-primary">
             {article.title}
           </h3>
