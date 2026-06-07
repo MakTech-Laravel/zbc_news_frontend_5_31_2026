@@ -138,7 +138,13 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
 }
 
 export async function fetchArticleBySlug(slug: string): Promise<ArticleDetail | null> {
-  const response = await request.get(`/articles/show/${encodeURIComponent(slug)}`);
+  const encodedSlug = encodeURIComponent(slug);
+  const response = await request.get(`/articles/show/${encodedSlug}`);
   const payload = response.data?.data ?? response.data;
   return mapApiArticleDetail(payload);
+}
+
+export async function recordArticleView(slug: string): Promise<void> {
+  const encodedSlug = encodeURIComponent(slug);
+  await request.post(`/articles/view/${encodedSlug}`).catch(() => {});
 }
