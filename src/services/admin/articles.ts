@@ -178,6 +178,21 @@ export async function fetchAdminArticles(): Promise<AdminArticlesListResult> {
   return parseAdminArticlesResponse(response.data);
 }
 
+export async function fetchAdminTrashedArticles(): Promise<AdminArticlesListResult> {
+  const response = await request.get("/admin/articles/trashed");
+  return parseAdminArticlesResponse(response.data);
+}
+
+export async function restoreAdminArticle(slug: string): Promise<void> {
+  const encodedSlug = encodeURIComponent(slug);
+  await request.post(`/admin/articles/restore/${encodedSlug}`);
+}
+
+export async function permanentlyDeleteAdminArticle(slug: string): Promise<void> {
+  const encodedSlug = encodeURIComponent(slug);
+  await request.delete(`/admin/articles/force/${encodedSlug}`);
+}
+
 export function buildArticleCategoryFilterOptions(
   categories: AdminArticleApiCategory[],
   articles: AdminArticle[],

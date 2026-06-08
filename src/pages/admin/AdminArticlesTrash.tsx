@@ -1,31 +1,33 @@
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
+import { Trash2, Undo2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Trash2 } from "lucide-react";
 
-import { useArticlesDataTable } from "@/components/admin/articles/useArticlesDataTable";
 import { AdminFilterBar } from "@/components/admin/shared/AdminFilterBar";
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { DataTable } from "@/components/ui/data-table";
-import { request } from "@/api/request";
-import { Button } from "@/components/ui/button";
+import type { DataTableAction } from "@/components/ui/data-table/types";
 import {
   ARTICLE_STATUS_FILTER_OPTIONS,
   type AdminArticle,
 } from "@/data/admin/mockArticles";
 import {
   buildArticleCategoryFilterOptions,
-  fetchAdminArticles,
+  fetchAdminTrashedArticles,
   matchesArticleSearch,
+  permanentlyDeleteAdminArticle,
+  restoreAdminArticle,
   type AdminArticleApiCategory,
 } from "@/services/admin/articles";
+import { useArticlesDataTable } from "@/components/admin/articles/useArticlesDataTable";
+import { Button } from "@/components/ui/button";
+import { request } from "@/api/request";
 
 const PAGE_SIZE = 10;
 
-export default function AdminArticles() {
-  const navigate = useNavigate();
+export default function AdminArticlesTrash() {
   const [articles, setArticles] = React.useState<AdminArticle[]>([]);
   const [categories, setCategories] = React.useState<AdminArticleApiCategory[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -39,12 +41,12 @@ export default function AdminArticles() {
     try {
       setLoading(true);
       const { articles: nextArticles, categories: nextCategories } =
-        await fetchAdminArticles();
+        await fetchAdminTrashedArticles();
       setArticles(nextArticles);
       setCategories(nextCategories);
     } catch (error) {
-      console.error("Failed to fetch articles:", error);
-      toast.error("Failed to load articles");
+      console.error("Failed to fetch trashed articles:", error);
+      toast.error("Failed to load trashed articles");
       setArticles([]);
       setCategories([]);
     } finally {
@@ -56,20 +58,9 @@ export default function AdminArticles() {
     void fetchArticles();
   }, [fetchArticles]);
 
-  React.useEffect(() => {
-    const onFocus = () => void fetchArticles();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [fetchArticles]);
-
   const categoryOptions = React.useMemo(
     () => buildArticleCategoryFilterOptions(categories, articles),
     [categories, articles],
-  );
-
-  const draftCount = React.useMemo(
-    () => articles.filter((a) => a.status === "draft" || a.hasUnsavedDraft).length,
-    [articles],
   );
 
   const filtered = React.useMemo(() => {
@@ -90,59 +81,80 @@ export default function AdminArticles() {
 
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const deleteArticle = async (article: AdminArticle) => {
-    try {
-      await request.delete(`/admin/articles/delete/${article.slug}`);
-      toast.success("Article deleted successfully");
-      await fetchArticles();
-    } catch (error) {
-      console.error("Failed to delete article:", error);
-      toast.error("Failed to delete article");
-    }
-  };
+  const restore = React.useCallback(
+    async (article: AdminArticle) => {
+      try {
+        await restoreAdminArticle(article.slug);
+        toast.success("Article restored successfully");
+        await fetchArticles();
+      } catch (error) {
+        console.error("Failed to restore article:", error);
+        toast.error("Failed to restore article");
+      }
+    },
+    [fetchArticles],
+  );
+
+  const permanentDelete = React.useCallback(
+    async (article: AdminArticle) => {
+      try {
+        await permanentlyDeleteAdminArticle(article.slug);
+        toast.success("Article permanently deleted");
+        await fetchArticles();
+      } catch (error) {
+        console.error("Failed to permanently delete article:", error);
+        toast.error("Failed to permanently delete article");
+      }
+    },
+    [fetchArticles],
+  );
+
+  const actions = React.useMemo<DataTableAction<AdminArticle>[]>(
+    () => [
+      {
+        id: "restore",
+        label: "Restore article",
+        icon: Undo2,
+        variant: "primary",
+        onClick: restore,
+      },
+      {
+        id: "permanent-delete",
+        label: "Permanently delete article",
+        icon: Trash2,
+        variant: "destructive",
+        onClick: permanentDelete,
+      },
+    ],
+    [restore, permanentDelete],
+  );
 
   const table = useArticlesDataTable({
     data: paged,
     selectedIds,
     onSelectionChange: setSelectedIds,
-    onEdit: (article) => {
-      navigate(`/admin/articles/edit/${encodeURIComponent(article.slug)}`);
-    },
-    onActivityLog: (article) => {
-      navigate(`/admin/articles/${encodeURIComponent(article.slug)}/activities`, {
-        state: { articleTitle: article.title },
-      });
-    },
-    onDelete: deleteArticle,
+    actions,
+    emptyMessage: "No trashed articles match your filters.",
   });
-
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <AdminPageHeader
-        title="Articles"
-        description={
-          draftCount > 0
-            ? `Manage articles across your workflow • ${draftCount} draft${draftCount === 1 ? "" : "s"}`
-            : "Manage articles across draft, review, scheduled, published, and archived states"
-        }
+        title="Article Trash"
+        description="Restore or permanently delete trashed articles."
         actions={
           <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/admin/articles/trash")}
-              className="h-10 w-full gap-2 sm:w-auto"
-            >
-              <Trash2 className="size-4" aria-hidden />
-              Trash
+            <Button asChild variant="outline" className="h-10 w-full sm:w-auto">
+              <Link to="/admin/articles">Back to Articles</Link>
             </Button>
             <Button
               type="button"
-              onClick={() => navigate("/admin/articles/create")}
-              className="h-10 w-full gap-2 rounded-[10px] bg-zbc-blue px-4 text-base font-medium hover:bg-zbc-blue/90 sm:w-auto"
+              variant="outline"
+              onClick={() => void fetchArticles()}
+              className="h-10 w-full gap-2 sm:w-auto"
             >
-              New Article
+              <Trash2 className="size-4" aria-hidden />
+              Refresh
             </Button>
           </>
         }
@@ -155,7 +167,7 @@ export default function AdminArticles() {
             setSearch(v);
             setPage(1);
           }}
-          searchPlaceholder="Search articles by title or author..."
+          searchPlaceholder="Search trashed articles by title or author..."
           statusValue={statusFilter}
           onStatusChange={(v) => {
             setStatusFilter(v);
@@ -191,3 +203,4 @@ export default function AdminArticles() {
     </div>
   );
 }
+
