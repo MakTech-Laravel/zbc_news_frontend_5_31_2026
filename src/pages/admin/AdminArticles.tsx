@@ -106,6 +106,11 @@ export default function AdminArticles() {
     onEdit: (article) => {
       navigate(`/admin/articles/edit/${encodeURIComponent(article.slug)}`);
     },
+    onActivityLog: (article) => {
+      navigate(`/admin/articles/${encodeURIComponent(article.slug)}/activities`, {
+        state: { articleTitle: article.title },
+      });
+    },
     onDelete: deleteArticle,
   });
 
