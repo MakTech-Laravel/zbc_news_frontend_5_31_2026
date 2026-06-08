@@ -7,12 +7,16 @@ type FeaturedImageUploadProps = {
   previewUrl: string | null;
   onFileSelect: (file: File | null) => void;
   className?: string;
+  uploadLabel?: string;
+  previewAlt?: string;
 };
 
 export function FeaturedImageUpload({
   previewUrl,
   onFileSelect,
   className,
+  uploadLabel = "Upload featured image",
+  previewAlt = "Featured preview",
 }: FeaturedImageUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = React.useState(false);
@@ -37,7 +41,7 @@ export function FeaturedImageUpload({
         <div className="relative overflow-hidden rounded-[10px] border border-admin-input-border">
           <img
             src={previewUrl}
-            alt="Featured preview"
+            alt={previewAlt}
             className="aspect-[16/10] w-full object-cover"
           />
           <button
@@ -69,7 +73,7 @@ export function FeaturedImageUpload({
           )}
         >
           <ImagePlus className="size-8 text-admin-label" aria-hidden />
-          <span className="text-sm font-medium text-admin-heading">Upload featured image</span>
+          <span className="text-sm font-medium text-admin-heading">{uploadLabel}</span>
           <span className="text-xs text-admin-trend-muted">PNG, JPG up to 5MB</span>
         </button>
       )}

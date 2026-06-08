@@ -8,6 +8,7 @@ import {
   ARTICLE_STATUS_LABELS,
   formatArticleLastSaved,
 } from "@/data/admin/articleWorkflow";
+import { ARTICLE_VISIBILITY_LABELS } from "@/data/admin/articleVisibility";
 
 function formatViews(views: number) {
   return views.toLocaleString("en-US");
@@ -34,6 +35,14 @@ const ARTICLES_COLUMNS: DataTableColumn<AdminArticle>[] = [
       variant: row.status,
       label: ARTICLE_STATUS_LABELS[row.status],
     }),
+    className: "whitespace-nowrap",
+  },
+  {
+    id: "visibility",
+    header: "Visibility",
+    hideOnMobile: true,
+    type: "text",
+    accessor: (row) => ARTICLE_VISIBILITY_LABELS[row.visibility],
     className: "whitespace-nowrap",
   },
   {
