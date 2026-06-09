@@ -19,6 +19,7 @@ type AdminFilterBarProps = {
   onCategoryChange?: (value: string) => void;
   categoryOptions?: AdminFilterOption[];
   showCategoryFilter?: boolean;
+  showStatusFilter?: boolean;
   className?: string;
 };
 
@@ -69,6 +70,7 @@ export function AdminFilterBar({
   onCategoryChange,
   categoryOptions,
   showCategoryFilter = true,
+  showStatusFilter = true,
   className,
 }: AdminFilterBarProps) {
   return (
@@ -93,12 +95,14 @@ export function AdminFilterBar({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <AdminFilterSelect
-          value={statusValue}
-          onChange={onStatusChange}
-          options={statusOptions}
-          aria-label="Filter by status"
-        />
+        {showStatusFilter ? (
+          <AdminFilterSelect
+            value={statusValue}
+            onChange={onStatusChange}
+            options={statusOptions}
+            aria-label="Filter by status"
+          />
+        ) : null}
         {showCategoryFilter && categoryValue != null && onCategoryChange && categoryOptions ? (
           <AdminFilterSelect
             value={categoryValue}
