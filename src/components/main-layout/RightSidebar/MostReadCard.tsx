@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import { mostReadItems } from "@/data/dummy/sidebar";
+// import { mostReadItems } from "@/data/dummy/sidebar";
 import { SidebarCard } from "@/components/main-layout/shared/SidebarCard";
 import { ChartNoAxesColumn, Eye } from "lucide-react";
 
