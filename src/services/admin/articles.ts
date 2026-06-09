@@ -1,4 +1,5 @@
 import { request } from "@/api/request";
+import { normalizeArticleVisibility } from "@/data/admin/articleVisibility";
 import type { AdminArticle, ArticleStatus } from "@/data/admin/mockArticles";
 
 export type AdminArticleApiCategory = {
@@ -84,6 +85,7 @@ function mapApiArticle(raw: unknown): AdminArticle | null {
     author: resolveAuthorLabel(record),
     category: resolveCategoryLabel(record),
     status: normalizeArticleStatus(record.status),
+    visibility: normalizeArticleVisibility(record.visibility),
     views: Number(record.views ?? record.view_count ?? 0),
     date: formatArticleDate(record.date ?? record.created_at ?? record.published_at),
     lastSavedAt:
@@ -176,6 +178,21 @@ export function parseAdminArticlesResponse(body: unknown): AdminArticlesListResu
 export async function fetchAdminArticles(): Promise<AdminArticlesListResult> {
   const response = await request.get("/articles");
   return parseAdminArticlesResponse(response.data);
+}
+
+export async function fetchAdminTrashedArticles(): Promise<AdminArticlesListResult> {
+  const response = await request.get("/admin/articles/trashed");
+  return parseAdminArticlesResponse(response.data);
+}
+
+export async function restoreAdminArticle(slug: string): Promise<void> {
+  const encodedSlug = encodeURIComponent(slug);
+  await request.post(`/admin/articles/restore/${encodedSlug}`);
+}
+
+export async function permanentlyDeleteAdminArticle(slug: string): Promise<void> {
+  const encodedSlug = encodeURIComponent(slug);
+  await request.delete(`/admin/articles/force/${encodedSlug}`);
 }
 
 export function buildArticleCategoryFilterOptions(

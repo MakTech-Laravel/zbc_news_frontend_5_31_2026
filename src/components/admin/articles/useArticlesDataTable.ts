@@ -1,4 +1,4 @@
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, History, Pencil, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import type { DataTableAction, DataTableColumn } from "@/components/ui/data-table";
@@ -8,6 +8,7 @@ import {
   ARTICLE_STATUS_LABELS,
   formatArticleLastSaved,
 } from "@/data/admin/articleWorkflow";
+import { ARTICLE_VISIBILITY_LABELS } from "@/data/admin/articleVisibility";
 
 function formatViews(views: number) {
   return views.toLocaleString("en-US");
@@ -34,6 +35,14 @@ const ARTICLES_COLUMNS: DataTableColumn<AdminArticle>[] = [
       variant: row.status,
       label: ARTICLE_STATUS_LABELS[row.status],
     }),
+    className: "whitespace-nowrap",
+  },
+  {
+    id: "visibility",
+    header: "Visibility",
+    hideOnMobile: true,
+    type: "text",
+    accessor: (row) => ARTICLE_VISIBILITY_LABELS[row.visibility],
     className: "whitespace-nowrap",
   },
   {
@@ -76,6 +85,7 @@ export type UseArticlesDataTableOptions = {
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
   onEdit?: (article: AdminArticle) => void;
+  onActivityLog?: (article: AdminArticle) => void;
   onDelete?: (article: AdminArticle) => void;
   actions?: DataTableAction<AdminArticle>[];
   columns?: DataTableColumn<AdminArticle>[];
@@ -83,7 +93,7 @@ export type UseArticlesDataTableOptions = {
 };
 
 export function useArticlesDataTable(options: UseArticlesDataTableOptions) {
-  const { onEdit, onDelete, actions, columns, ...rest } = options;
+  const { onEdit, onActivityLog, onDelete, actions, columns, ...rest } = options;
 
   const resolvedActions = React.useMemo<DataTableAction<AdminArticle>[]>(() => {
     if (actions) return actions;
@@ -100,6 +110,16 @@ export function useArticlesDataTable(options: UseArticlesDataTableOptions) {
       });
     }
 
+    if (onActivityLog) {
+      built.push({
+        id: "activity-log",
+        label: "View activity log",
+        icon: History,
+        variant: "muted",
+        onClick: onActivityLog,
+      });
+    }
+
     if (onDelete) {
       built.push({
         id: "delete",
@@ -111,7 +131,7 @@ export function useArticlesDataTable(options: UseArticlesDataTableOptions) {
     }
 
     return built;
-  }, [actions, onEdit, onDelete]);
+  }, [actions, onEdit, onActivityLog, onDelete]);
 
   return useDataTable<AdminArticle>({
     getRowId: (row: AdminArticle) => row.id,

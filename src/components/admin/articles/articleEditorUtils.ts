@@ -1,5 +1,6 @@
 export const EXCERPT_MAX_LENGTH = 160;
-export const SEO_TITLE_MAX_LENGTH = 70;
+export const META_TITLE_MAX_LENGTH = 70;
+export const META_DESCRIPTION_MAX_LENGTH = 160;
 
 export function slugifyArticleTitle(value: string) {
   return value

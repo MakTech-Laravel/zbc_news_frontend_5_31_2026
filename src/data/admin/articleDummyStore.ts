@@ -103,6 +103,7 @@ export function upsertAdminArticleFromEditor(
     author: authorLabel(form.authorId, existing?.author ?? "Unknown"),
     category: form.category || existing?.category || "Uncategorized",
     status,
+    visibility: existing?.visibility ?? "public",
     views: existing?.views ?? 0,
     date: existing?.date ?? new Date().toLocaleDateString(),
     lastSavedAt: now,

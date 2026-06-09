@@ -30,6 +30,8 @@ const AdminMonetization = lazy(() => import("@/pages/admin/AdminMonetization"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazy(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminArticlesEdit = lazy(() => import("@/pages/admin/AdminArticlesEdit"));
+const AdminArticleActivities = lazy(() => import("@/pages/admin/AdminArticleActivities"));
+const AdminArticlesTrash = lazy(() => import("@/pages/admin/AdminArticlesTrash"));
 
 const redirect = (to: string) => <Navigate to={to} replace />;
 
@@ -86,6 +88,14 @@ export const router = createBrowserRouter([
           {
             path: "articles/edit/:articleSlug",
             element: suspensePage(AdminArticlesEdit),
+          },
+          {
+            path: "articles/trash",
+            element: suspensePage(AdminArticlesTrash),
+          },
+          {
+            path: "articles/:articleSlug/activities",
+            element: suspensePage(AdminArticleActivities),
           },
           {
             path: "articles/create",

@@ -1,3 +1,5 @@
+import type { ArticleVisibility } from "@/data/admin/articleVisibility";
+
 export type ArticleStatus = "published" | "draft" | "scheduled" | "pending_review" | "archived";
 
 export type AdminArticle = {
@@ -7,6 +9,7 @@ export type AdminArticle = {
   author: string;
   category: string;
   status: ArticleStatus;
+  visibility: ArticleVisibility;
   views: number;
   date: string;
   /** ISO timestamp of the last manual or auto-save */
@@ -23,6 +26,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "John Doe",
     category: "Politics",
     status: "published",
+    visibility: "public",
     views: 125_400,
     date: "5/9/2026",
     lastSavedAt: "2026-05-09T14:30:00.000Z",
@@ -34,6 +38,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "Jane Smith",
     category: "Technology",
     status: "pending_review",
+    visibility: "public",
     views: 98_200,
     date: "5/8/2026",
   },
@@ -44,6 +49,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "Mike Johnson",
     category: "Sports",
     status: "draft",
+    visibility: "members",
     views: 0,
     date: "5/7/2026",
     lastSavedAt: "2026-05-07T09:15:00.000Z",
@@ -56,6 +62,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "Sarah Williams",
     category: "Health",
     status: "archived",
+    visibility: "premium",
     views: 76_300,
     date: "5/6/2026",
   },
@@ -66,6 +73,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "David Brown",
     category: "Business",
     status: "scheduled",
+    visibility: "premium",
     views: 12_450,
     date: "5/5/2026",
   },
@@ -76,6 +84,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "David Brown",
     category: "Business",
     status: "published",
+    visibility: "public",
     views: 12_450,
     date: "5/5/2026",
   },
@@ -86,6 +95,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "David Brown",
     category: "Business",
     status: "scheduled",
+    visibility: "public",
     views: 12_450,
     date: "5/5/2026",
   },
@@ -96,6 +106,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "David Brown",
     category: "Business",
     status: "scheduled",
+    visibility: "public",
     views: 12_450,
     date: "5/5/2026",
   },
@@ -106,6 +117,7 @@ export const MOCK_ADMIN_ARTICLES: AdminArticle[] = [
     author: "David Brown",
     category: "Business",
     status: "scheduled",
+    visibility: "public",
     views: 12_450,
     date: "5/5/2026",
   },

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 type AdminPageHeaderProps = {
   title: string;
   description?: string;
+  actions?: ReactNode;
   actionLabel?: string;
   onAction?: () => void;
   actionIcon?: ReactNode;
@@ -16,6 +17,7 @@ type AdminPageHeaderProps = {
 export function AdminPageHeader({
   title,
   description,
+  actions,
   actionLabel,
   onAction,
   actionIcon,
@@ -35,7 +37,11 @@ export function AdminPageHeader({
         ) : null}
       </div>
 
-      {actionLabel ? (
+      {actions ? (
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+          {actions}
+        </div>
+      ) : actionLabel ? (
         <Button
           type="button"
           onClick={onAction}

@@ -11,7 +11,8 @@ import { ArticleTagInput } from "@/components/admin/articles/ArticleTagInput";
 import {
   countWords,
   EXCERPT_MAX_LENGTH,
-  SEO_TITLE_MAX_LENGTH,
+  META_DESCRIPTION_MAX_LENGTH,
+  META_TITLE_MAX_LENGTH,
   stripHtml,
 } from "@/components/admin/articles/articleEditorUtils";
 // import { ARTICLE_EDITOR_AUTHORS } from "@/components/admin/articles/editor/types";
@@ -35,9 +36,16 @@ import {
   formatArticleLastSaved,
   resolveStatusAfterPublish,
 } from "@/data/admin/articleWorkflow";
+import {
+  ARTICLE_VISIBILITY_LABELS,
+  ARTICLE_VISIBILITY_VALUES,
+  normalizeArticleVisibility,
+  type ArticleVisibility,
+} from "@/data/admin/articleVisibility";
 import { slugifyCategoryName } from "@/data/admin/categoryStore";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 type AdminArticleEditorPageProps = {
   mode: "create" | "edit";
@@ -69,16 +77,26 @@ const articleFormSchema = z
       .string()
       .min(1, "Status is required")
       .pipe(z.enum(ARTICLE_STATUS_VALUES)),
+    visibility: z
+      .string()
+      .min(1, "Visibility is required")
+      .pipe(z.enum(ARTICLE_VISIBILITY_VALUES)),
     article_category_id: z.string().min(1, "Category is required"),
     tags: z.array(z.string()),
     excerpt: z
       .string()
       .max(EXCERPT_MAX_LENGTH, `Excerpt must be ${EXCERPT_MAX_LENGTH} characters or less`),
-    seo_title: z
+    meta_title: z
       .string()
       .max(
-        SEO_TITLE_MAX_LENGTH,
-        `SEO title must be ${SEO_TITLE_MAX_LENGTH} characters or less`,
+        META_TITLE_MAX_LENGTH,
+        `Meta title must be ${META_TITLE_MAX_LENGTH} characters or less`,
+      ),
+    meta_description: z
+      .string()
+      .max(
+        META_DESCRIPTION_MAX_LENGTH,
+        `Meta description must be ${META_DESCRIPTION_MAX_LENGTH} characters or less`,
       ),
     slug: z.string().min(1, "Slug is required"),
     scheduled_publishing: z.string(),
@@ -213,15 +231,20 @@ function mapArticleToFormValues(raw: unknown): ArticleFormInputValues {
             ? record.body
             : "",
     status: normalizeArticleStatus(record.status),
+    visibility: normalizeArticleVisibility(record.visibility),
     article_category_id: resolveCategoryId(record),
     tags: parseTags(record.tags),
     excerpt: typeof record.excerpt === "string" ? record.excerpt : "",
-    seo_title:
+    meta_title:
       typeof record.seo_title === "string"
         ? record.seo_title
-        : typeof record.seoTitle === "string"
-          ? record.seoTitle
-          : "",
+        : typeof record.meta_title === "string"
+          ? record.meta_title
+          : typeof record.seoTitle === "string"
+            ? record.seoTitle
+            : "",
+    meta_description:
+      typeof record.meta_description === "string" ? record.meta_description : "",
     slug: typeof record.slug === "string" ? record.slug : "",
     scheduled_publishing: toDatetimeLocalValue(
       record.scheduled_publishing ?? record.scheduledAt ?? record.publish_at,
@@ -230,13 +253,35 @@ function mapArticleToFormValues(raw: unknown): ArticleFormInputValues {
   };
 }
 
+function resolveImageUrlFromRecord(
+  record: Record<string, unknown>,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return resolveMediaUrl(value);
+    }
+  }
+  return null;
+}
+
 function resolveFeaturedImageUrl(raw: unknown): string | null {
   if (!raw || typeof raw !== "object") return null;
-  const record = raw as Record<string, unknown>;
-  if (typeof record.featured_image === "string") return record.featured_image;
-  if (typeof record.featured_image_url === "string") return record.featured_image_url;
-  if (typeof record.image === "string") return record.image;
-  return null;
+  return resolveImageUrlFromRecord(raw as Record<string, unknown>, [
+    "featured_image",
+    "featured_image_url",
+    "image",
+  ]);
+}
+
+function resolveOpenGraphImageUrl(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object") return null;
+  return resolveImageUrlFromRecord(raw as Record<string, unknown>, [
+    "open_graph_image",
+    "open_graph_image_url",
+    "og_image",
+  ]);
 }
 
 function buildArticlePayload(
@@ -248,9 +293,11 @@ function buildArticlePayload(
     article_description: data.article_description,
     slug: data.slug,
     status,
+    visibility: data.visibility,
     article_category_id: data.article_category_id,
     excerpt: data.excerpt,
-    seo_title: data.seo_title,
+    meta_title: data.meta_title,
+    meta_description: data.meta_description,
     // author_id: data.author_id,
     tags: data.tags,
     ...(data.scheduled_publishing
@@ -295,6 +342,10 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const [featuredImagePreview, setFeaturedImagePreview] = React.useState<string | null>(
     null,
   );
+  const [openGraphImageFile, setOpenGraphImageFile] = React.useState<File | null>(null);
+  const [openGraphImagePreview, setOpenGraphImagePreview] = React.useState<string | null>(
+    null,
+  );
   const [slugTouched, setSlugTouched] = React.useState(false);
   const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
@@ -320,10 +371,12 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       title: "",
       article_description: "",
       status: "",
+      visibility: "public",
       article_category_id: "",
       tags: [],
       excerpt: "",
-      seo_title: "",
+      meta_title: "",
+      meta_description: "",
       slug: "",
       scheduled_publishing: "",
       // author_id: "",
@@ -376,6 +429,8 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       setSlugTouched(true);
       setFeaturedImagePreview(resolveFeaturedImageUrl(article));
       setFeaturedImageFile(null);
+      setOpenGraphImagePreview(resolveOpenGraphImageUrl(article));
+      setOpenGraphImageFile(null);
       skipUnsavedPromptRef.current = false;
     } catch (error) {
       console.error("Failed to fetch article:", error);
@@ -395,8 +450,11 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       if (featuredImagePreview?.startsWith("blob:")) {
         URL.revokeObjectURL(featuredImagePreview);
       }
+      if (openGraphImagePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(openGraphImagePreview);
+      }
     };
-  }, [featuredImagePreview]);
+  }, [featuredImagePreview, openGraphImagePreview]);
 
   const wordCount = React.useMemo(
     () => countWords(watchedContent ?? ""),
@@ -418,10 +476,17 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     const payload = buildArticlePayload(data, nextStatus);
 
     try {
-      if (featuredImageFile) {
+      const hasImageUpload = Boolean(featuredImageFile || openGraphImageFile);
+
+      if (hasImageUpload) {
         const formData = new FormData();
         appendPayloadToFormData(formData, payload);
-        formData.append("featured_image", featuredImageFile);
+        if (featuredImageFile) {
+          formData.append("featured_image", featuredImageFile);
+        }
+        if (openGraphImageFile) {
+          formData.append("open_graph_image", openGraphImageFile);
+        }
 
         if (isEdit && articleSlugParam) {
           await request.post(`/admin/articles/update/${articleSlugParam}`, formData);
@@ -441,6 +506,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       setLastSavedAt(new Date().toISOString());
       reset({ ...data, status: nextStatus }, { keepDirty: false });
       setFeaturedImageFile(null);
+      setOpenGraphImageFile(null);
       skipUnsavedPromptRef.current = true;
       setShowLeaveDialog(false);
       pendingLeaveRef.current = null;
@@ -475,6 +541,14 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const handleFeaturedImageSelect = (file: File | null) => {
     setFeaturedImageFile(file);
     setFeaturedImagePreview((current) => {
+      if (current?.startsWith("blob:")) URL.revokeObjectURL(current);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  };
+
+  const handleOpenGraphImageSelect = (file: File | null) => {
+    setOpenGraphImageFile(file);
+    setOpenGraphImagePreview((current) => {
       if (current?.startsWith("blob:")) URL.revokeObjectURL(current);
       return file ? URL.createObjectURL(file) : null;
     });
@@ -643,6 +717,32 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                 <InputError message={errors.status?.message} />
               </div>
 
+              <div className="space-y-1">
+                <label className={fieldLabelClassName}>Visibility</label>
+                <Controller
+                  name="visibility"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || undefined}
+                      onValueChange={(value) => field.onChange(value as ArticleVisibility)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select visibility" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ARTICLE_VISIBILITY_VALUES.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {ARTICLE_VISIBILITY_LABELS[value]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <InputError message={errors.visibility?.message} />
+              </div>
+
               {watchedStatus === "scheduled" ? (
                 <div className="space-y-1">
                   <label htmlFor="article-schedule" className={fieldLabelClassName}>
@@ -736,18 +836,49 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
               <div className="space-y-1">
                 <label htmlFor="article-seo-title" className={fieldLabelClassName}>
-                  SEO Title
+                  Meta Title
                 </label>
                 <Input
-                  id="article-seo-title"
+                  id="article-meta-title"
                   placeholder="Custom title for search engines"
-                  maxLength={SEO_TITLE_MAX_LENGTH}
-                  {...register("seo_title")}
+                  maxLength={META_TITLE_MAX_LENGTH}
+                  {...register("meta_title")}
                 />
                 <p className="text-xs text-admin-trend-muted">
-                  {(watchedValues.seo_title ?? "").length}/{SEO_TITLE_MAX_LENGTH} characters
+                  {(watchedValues.meta_title ?? "").length}/{META_TITLE_MAX_LENGTH} characters
                 </p>
-                <InputError message={errors.seo_title?.message} />
+                <InputError message={errors.meta_title?.message} />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="article-meta-description" className={fieldLabelClassName}>
+                  Meta Description
+                </label>
+                <textarea
+                  id="article-meta-description"
+                  {...register("meta_description")}
+                  rows={4}
+                  maxLength={META_DESCRIPTION_MAX_LENGTH}
+                  placeholder="Description for search engines and social sharing…"
+                  className={cn(
+                    "flex min-h-[96px] w-full resize-none rounded-md border border-zbc-gray-200/50 bg-zbc-gray-200/50 px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:border-zbc-blue-200/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zbc-blue-200/50 md:text-sm",
+                  )}
+                />
+                <p className="text-xs text-admin-trend-muted">
+                  {(watchedValues.meta_description ?? "").length}/{META_DESCRIPTION_MAX_LENGTH}{" "}
+                  characters
+                </p>
+                <InputError message={errors.meta_description?.message} />
+              </div>
+
+              <div className="space-y-1">
+                <label className={fieldLabelClassName}>Open Graph Image</label>
+                <FeaturedImageUpload
+                  previewUrl={openGraphImagePreview}
+                  onFileSelect={handleOpenGraphImageSelect}
+                  uploadLabel="Upload Open Graph image"
+                  previewAlt="Open Graph preview"
+                />
               </div>
 
               <div className="space-y-1">
