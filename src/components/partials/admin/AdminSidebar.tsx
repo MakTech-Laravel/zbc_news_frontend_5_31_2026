@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  ShieldCheck,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -31,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/admin/dashboard", Icon: LayoutDashboard, end: true },
   { label: "Categories", to: "/admin/categories", Icon: FolderTree },
   { label: "Articles", to: "/admin/articles", Icon: FileText },
+  { label: "RABC", to: "/admin/rabc", Icon: ShieldCheck },
   { label: "Users", to: "/admin/users", Icon: Users },
   { label: "Monetization", to: "/admin/monetization", Icon: CreditCard },
   { label: "Settings", to: "/admin/settings", Icon: Settings, end: false },
