@@ -1,23 +1,44 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bookmark, ChevronLeft, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { cn } from "@/lib/utils";
+import { api } from "@/api/client";
 
 type ArticleDetailToolbarProps = {
+  articleId: number;
+  articleCategoryId: number;
   articleTitle?: string;
   articleSlug?: string;
   className?: string;
 };
 
 export function ArticleDetailToolbar({
+  articleId,
   articleTitle,
   articleSlug,
   className,
 }: ArticleDetailToolbarProps) {
   const navigate = useNavigate();
+
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!articleId) return;
+    fetchSavedStatus();
+  }, [articleId]);
+
+  async function fetchSavedStatus() {
+    try {
+      const response = await api.get(`/admin/save-articles/check/${articleId}`);
+      setSaved(response.data.data.saved);
+    } catch (error: any) {
+      if (error?.response?.status === 401) return;
+      console.error(error);
+    }
+  }
 
   function handleBack() {
     if (window.history.length > 1) {
@@ -31,6 +52,7 @@ export function ArticleDetailToolbar({
     const url = articleSlug
       ? `${window.location.origin}/news-details/${encodeURIComponent(articleSlug)}`
       : window.location.href;
+
     const title = articleTitle ?? "ZBC News";
 
     if (navigator.share) {
@@ -46,13 +68,37 @@ export function ArticleDetailToolbar({
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard");
     } catch {
-      toast.error("Unable to share this article");
+      toast.error("Unable to share article");
     }
   }
 
-  function handleBookmark() {
-    setSaved((current) => !current);
-    toast.success(saved ? "Removed from saved articles" : "Saved for later");
+  async function handleBookmark() {
+    if (loading) return;
+
+    try {
+      setLoading(true);
+
+      const response = await api.post("/admin/save-articles/toggle", {
+        article_id: articleId,
+      });
+
+      const isSaved = response.data.data.saved;
+      setSaved(isSaved);
+
+      toast.success(
+        isSaved ? "Saved for later" : "Removed from saved articles",
+      );
+    } catch (error: any) {
+      if (error?.response?.status === 401) {
+        toast.error("Please login to save articles");
+        navigate("/login");
+        return;
+      }
+      console.error(error);
+      toast.error("Failed to update saved article");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -62,6 +108,7 @@ export function ArticleDetailToolbar({
         className,
       )}
     >
+      {/* Back Button */}
       <button
         type="button"
         onClick={handleBack}
@@ -71,20 +118,27 @@ export function ArticleDetailToolbar({
         Back
       </button>
 
+      {/* Action Buttons */}
       <div className="flex items-center gap-4">
+        {/* Bookmark / Save Button */}
         <button
           type="button"
-          onClick={handleBookmark}
+          onClick={() => void handleBookmark()}
+          disabled={loading}
           aria-label={saved ? "Remove from saved articles" : "Save article"}
           aria-pressed={saved}
-          className="inline-flex size-8 items-center justify-center text-zbc-gray-700 transition-colors hover:text-zbc-gray-1000"
+          className="inline-flex size-8 items-center justify-center text-zbc-gray-700 transition-colors hover:text-zbc-gray-1000 disabled:opacity-50"
         >
           <Bookmark
-            className={cn("size-[18px]", saved && "fill-current text-primary")}
+            className={cn(
+              "size-[18px] transition-colors",
+              saved && "fill-current text-primary",
+            )}
             aria-hidden
           />
         </button>
 
+        {/* Share Button */}
         <button
           type="button"
           onClick={() => void handleShare()}

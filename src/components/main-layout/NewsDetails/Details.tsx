@@ -91,17 +91,24 @@ function DetailsSkeleton() {
   return (
     <article className="bg-background text-foreground">
       <div className="mx-auto w-full max-w-4xl px-0 sm:px-2">
-        <ArticleDetailToolbar />
-        <div className="animate-pulse space-y-6 pt-6">
-        <div className="h-6 w-24 rounded bg-muted" />
-        <div className="h-10 w-full rounded bg-muted" />
-        <div className="h-6 w-3/4 rounded bg-muted" />
-        <div className="aspect-[16/9] w-full rounded-lg bg-muted" />
-        <div className="space-y-3">
-          <div className="h-4 w-full rounded bg-muted" />
-          <div className="h-4 w-full rounded bg-muted" />
-          <div className="h-4 w-2/3 rounded bg-muted" />
+        {/* <ArticleDetailToolbar /> */}
+        <div className="flex items-center justify-between border-b border-border bg-background py-3">
+          <div className="h-5 w-12 rounded bg-muted" />
+          <div className="flex gap-4">
+            <div className="size-8 rounded bg-muted" />
+            <div className="size-8 rounded bg-muted" />
+          </div>
         </div>
+        <div className="animate-pulse space-y-6 pt-6">
+          <div className="h-6 w-24 rounded bg-muted" />
+          <div className="h-10 w-full rounded bg-muted" />
+          <div className="h-6 w-3/4 rounded bg-muted" />
+          <div className="aspect-[16/9] w-full rounded-lg bg-muted" />
+          <div className="space-y-3">
+            <div className="h-4 w-full rounded bg-muted" />
+            <div className="h-4 w-full rounded bg-muted" />
+            <div className="h-4 w-2/3 rounded bg-muted" />
+          </div>
         </div>
       </div>
     </article>
@@ -113,6 +120,7 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
     <article className="bg-background text-foreground">
       <div className="mx-auto w-full max-w-4xl px-0 sm:px-2">
         <ArticleDetailToolbar
+          articleId={article.id}
           articleTitle={article.title}
           articleSlug={article.slug}
         />
