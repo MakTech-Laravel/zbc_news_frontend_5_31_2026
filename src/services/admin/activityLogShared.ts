@@ -76,6 +76,45 @@ function resolvePerformedBy(raw: Record<string, unknown>): string {
   return "System";
 }
 
+function isCategoryFieldKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return (
+    normalized === "category" ||
+    normalized === "category_id" ||
+    normalized === "categoryid" ||
+    normalized.endsWith("_category_id")
+  );
+}
+
+function normalizeActivityFieldValue(
+  key: string,
+  entryValue: unknown,
+): ActivityFieldValue | undefined {
+  if (entryValue === null) return null;
+
+  if (
+    typeof entryValue === "string" ||
+    typeof entryValue === "number" ||
+    typeof entryValue === "boolean"
+  ) {
+    return entryValue;
+  }
+
+  if (!entryValue || typeof entryValue !== "object" || Array.isArray(entryValue)) {
+    return undefined;
+  }
+
+  const record = entryValue as Record<string, unknown>;
+
+  if (isCategoryFieldKey(key)) {
+    if (typeof record.title === "string" && record.title.trim()) return record.title;
+    if (typeof record.name === "string" && record.name.trim()) return record.name;
+    if (record.id != null) return record.id as number;
+  }
+
+  return undefined;
+}
+
 function parseRecordObject(value: unknown): Record<string, ActivityFieldValue> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 
@@ -83,13 +122,9 @@ function parseRecordObject(value: unknown): Record<string, ActivityFieldValue> |
   const result: Record<string, ActivityFieldValue> = {};
 
   Object.entries(record).forEach(([key, entryValue]) => {
-    if (
-      entryValue === null ||
-      typeof entryValue === "string" ||
-      typeof entryValue === "number" ||
-      typeof entryValue === "boolean"
-    ) {
-      result[key] = entryValue;
+    const normalized = normalizeActivityFieldValue(key, entryValue);
+    if (normalized !== undefined) {
+      result[key] = normalized;
     }
   });
 

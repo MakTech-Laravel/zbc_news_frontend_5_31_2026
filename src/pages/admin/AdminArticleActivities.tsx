@@ -7,6 +7,7 @@ import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { ActivityLogPageWrapper } from "@/components/admin/shared/ActivityLogPageWrapper";
 import { ActivityLogTable } from "@/components/admin/shared/ActivityLogTable";
 import { renderArticleActivityExtra } from "@/components/admin/shared/renderArticleActivityExtra";
+import { useActivityCategoryLabels } from "@/components/admin/shared/useActivityCategoryLabels";
 import {
   fetchArticleActivities,
   type ArticleActivity,
@@ -30,6 +31,7 @@ export default function AdminArticleActivities() {
   const [pageSize, setPageSize] = React.useState(15);
 
   const decodedSlug = articleSlug ? decodeURIComponent(articleSlug) : "";
+  const categoryLabels = useActivityCategoryLabels();
 
   const loadActivities = React.useCallback(async () => {
     if (!decodedSlug) return;
@@ -92,7 +94,9 @@ export default function AdminArticleActivities() {
     >
       <ActivityLogTable
         logs={activities}
-        renderExtra={(activity) => renderArticleActivityExtra(activity)}
+        renderExtra={(activity) =>
+          renderArticleActivityExtra(activity, { categoryLabels })
+        }
       />
     </ActivityLogPageWrapper>
   );
