@@ -7,6 +7,10 @@ export type UserFeedArticle = {
   readTime: string;
   publishedAt: string;
   views?: number;
+  slug?: string;
+  savedRecordId?: string;
+  savedAt?: string;
+  categorySlug?: string;
 };
 
 export type UserContinueReadingItem = {

@@ -19,6 +19,8 @@ export default function UserSavedArticles() {
     quickFilter,
   });
 
+  const savedArticles = activeTab === "saved" ? articles : [];
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <UserPageHeader
@@ -42,18 +44,26 @@ export default function UserSavedArticles() {
         <div className="min-w-0 space-y-3 sm:space-y-4">
           <UserPageTabs
             tabs={[
-              { id: "saved", label: `Saved (${articles.length})` },
-              { id: "history", label: "Reading History" },
+              { id: "saved", label: `Saved (${savedArticles.length})` },
+              // { id: "history", label: "Reading History" },
             ]}
             activeId={activeTab}
             onChange={setActiveTab}
           />
-          {loading ? (
+          {activeTab === "history" ? (
+            <p className="text-sm text-admin-label">Reading history is not available yet.</p>
+          ) : loading ? (
             <p className="text-sm text-admin-label">Loading saved articles…</p>
+          ) : savedArticles.length === 0 ? (
+            <p className="text-sm text-admin-label">No saved articles yet.</p>
           ) : (
             <div className="space-y-3">
-              {articles.map((article) => (
-                <UserFeedArticleCard key={article.id} article={article} density="compact" />
+              {savedArticles.map((article) => (
+                <UserFeedArticleCard
+                  key={article.savedRecordId ?? article.id}
+                  article={article}
+                  density="compact"
+                />
               ))}
             </div>
           )}

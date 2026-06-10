@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/api/client";
 
 type ArticleDetailToolbarProps = {
-  articleId: number;
-  articleCategoryId: number;
+  articleId: string | number;
   articleTitle?: string;
   articleSlug?: string;
   className?: string;
@@ -25,14 +24,16 @@ export function ArticleDetailToolbar({
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const numericArticleId = Number(articleId);
+
   useEffect(() => {
-    if (!articleId) return;
+    if (!numericArticleId) return;
     fetchSavedStatus();
-  }, [articleId]);
+  }, [numericArticleId]);
 
   async function fetchSavedStatus() {
     try {
-      const response = await api.get(`/admin/save-articles/check/${articleId}`);
+      const response = await api.get(`/admin/save-articles/check/${numericArticleId}`);
       setSaved(response.data.data.saved);
     } catch (error: any) {
       if (error?.response?.status === 401) return;
@@ -79,7 +80,7 @@ export function ArticleDetailToolbar({
       setLoading(true);
 
       const response = await api.post("/admin/save-articles/toggle", {
-        article_id: articleId,
+        article_id: numericArticleId,
       });
 
       const isSaved = response.data.data.saved;
