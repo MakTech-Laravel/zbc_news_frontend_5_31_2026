@@ -10,7 +10,7 @@ import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { DataTable } from "@/components/ui/data-table";
-import { MOCK_ADMIN_USERS } from "@/data/admin/mockUsers";
+// import { MOCK_ADMIN_USERS } from "@/data/admin/mockUsers";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import InputPassword from "@/components/input-password";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/select";
+import { request } from "@/api/request";
 
 
 const PAGE_SIZE = 10;
@@ -129,6 +130,8 @@ export default function AdminUser() {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingUserId, setEditingUserId] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState(EMPTY_USER_FORM);
+  const [users, setUsers] = React.useState<AdminUserRow[]>([]);
+  const [loading, setLoading] = React.useState(false);
 
   const isEditing = editingUserId !== null;
 
@@ -152,14 +155,33 @@ export default function AdminUser() {
     setIsModalOpen(true);
   };
 
+
+
+ 
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+    try {
+      const response = await request.get("/admin/users");
+      setUsers(response.data.data || response.data);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchUsers();
+}, []);
+
   const filtered = React.useMemo(() => {
-    return MOCK_ADMIN_USERS.filter((user) => {
-      if (!matchesSearch(user, search)) return false;
-      if (statusFilter !== "all" && user.status !== statusFilter) return false;
-      if (roleFilter !== "all" && user.role !== roleFilter) return false;
-      return true;
-    });
-  }, [search, statusFilter, roleFilter]);
+  return users.filter((user) => {
+    if (!matchesSearch(user, search)) return false;
+    if (statusFilter !== "all" && user.status !== statusFilter) return false;
+    if (roleFilter !== "all" && user.role !== roleFilter) return false;
+    return true;
+  });
+}, [users, search, statusFilter, roleFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
