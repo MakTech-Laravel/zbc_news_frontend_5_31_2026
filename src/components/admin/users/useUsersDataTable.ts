@@ -8,6 +8,8 @@ export type AdminUserRow = {
   name: string;
   email: string;
   role: string;
+  roleLabel: string;
+  roles: string[];
   status: "active" | "inactive";
   joined: string;
   avatarUrl?: string | null;
