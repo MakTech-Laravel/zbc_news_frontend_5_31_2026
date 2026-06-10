@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import {
@@ -119,6 +120,7 @@ function matchesSearch(user: AdminUserRow, query: string) {
 }
 
 export default function AdminUser() {
+  const navigate = useNavigate();
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [roleFilter, setRoleFilter] = React.useState("all");
@@ -285,6 +287,11 @@ export default function AdminUser() {
     selectedIds,
     onSelectionChange: setSelectedIds,
     onEdit: openEditModal,
+    onActivityLog: (user) => {
+      navigate(`/admin/users/${user.id}/article-activities`, {
+        state: { userName: user.name, userEmail: user.email },
+      });
+    },
     onDelete: deleteUser,
   });
 
