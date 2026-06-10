@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calendar, Clock, MessageCircle } from "lucide-react";
 
+import { ArticleDetailToolbar } from "@/components/main-layout/NewsDetails/ArticleDetailToolbar";
 import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import NotFound from "@/pages/global/NotFound";
@@ -89,15 +90,25 @@ const articleBodyClassName = cn(
 function DetailsSkeleton() {
   return (
     <article className="bg-background text-foreground">
-      <div className="mx-auto w-full max-w-4xl animate-pulse space-y-6 px-0 sm:px-2">
-        <div className="h-6 w-24 rounded bg-muted" />
-        <div className="h-10 w-full rounded bg-muted" />
-        <div className="h-6 w-3/4 rounded bg-muted" />
-        <div className="aspect-[16/9] w-full rounded-lg bg-muted" />
-        <div className="space-y-3">
-          <div className="h-4 w-full rounded bg-muted" />
-          <div className="h-4 w-full rounded bg-muted" />
-          <div className="h-4 w-2/3 rounded bg-muted" />
+      <div className="mx-auto w-full max-w-4xl px-0 sm:px-2">
+        {/* <ArticleDetailToolbar /> */}
+        <div className="flex items-center justify-between border-b border-border bg-background py-3">
+          <div className="h-5 w-12 rounded bg-muted" />
+          <div className="flex gap-4">
+            <div className="size-8 rounded bg-muted" />
+            <div className="size-8 rounded bg-muted" />
+          </div>
+        </div>
+        <div className="animate-pulse space-y-6 pt-6">
+          <div className="h-6 w-24 rounded bg-muted" />
+          <div className="h-10 w-full rounded bg-muted" />
+          <div className="h-6 w-3/4 rounded bg-muted" />
+          <div className="aspect-[16/9] w-full rounded-lg bg-muted" />
+          <div className="space-y-3">
+            <div className="h-4 w-full rounded bg-muted" />
+            <div className="h-4 w-full rounded bg-muted" />
+            <div className="h-4 w-2/3 rounded bg-muted" />
+          </div>
         </div>
       </div>
     </article>
@@ -108,7 +119,13 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
   return (
     <article className="bg-background text-foreground">
       <div className="mx-auto w-full max-w-4xl px-0 sm:px-2">
-        <header className="space-y-4 pb-6 sm:space-y-5 sm:pb-8">
+        <ArticleDetailToolbar
+          articleId={article.id}
+          articleTitle={article.title}
+          articleSlug={article.slug}
+        />
+
+        <header className="space-y-4 pb-6 pt-6 sm:space-y-5 sm:pb-8">
           <CategoryTag
             label={article.category}
             className="bg-primary/10 text-primary"

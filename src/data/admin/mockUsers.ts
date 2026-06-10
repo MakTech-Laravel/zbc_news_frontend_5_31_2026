@@ -1,6 +1,8 @@
 import type { AdminUserRow } from "@/components/admin/users/useUsersDataTable";
 
-export const MOCK_ADMIN_USERS: AdminUserRow[] = [
+type MockUserSeed = Omit<AdminUserRow, "roleLabel" | "roles">;
+
+const MOCK_USER_SEEDS: MockUserSeed[] = [
   {
     id: "1",
     name: "John Doe",
@@ -98,3 +100,9 @@ export const MOCK_ADMIN_USERS: AdminUserRow[] = [
     joined: "11/18/2024",
   },
 ];
+
+export const MOCK_ADMIN_USERS: AdminUserRow[] = MOCK_USER_SEEDS.map((user) => ({
+  ...user,
+  roleLabel: user.role,
+  roles: user.role ? [user.role] : [],
+}));

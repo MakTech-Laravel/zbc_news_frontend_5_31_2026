@@ -1,4 +1,6 @@
 import * as React from "react";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 import {
   useUsersDataTable,
@@ -10,7 +12,6 @@ import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { DataTable } from "@/components/ui/data-table";
-import { MOCK_ADMIN_USERS } from "@/data/admin/mockUsers";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import InputPassword from "@/components/input-password";
@@ -21,8 +22,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/select";
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/select";
+import { fetchAdminRoles } from "@/services/admin/roles";
+import {
+  createAdminUser,
+  deleteAdminUser,
+  fetchAdminUsers,
+  formatRoleLabel,
+  updateAdminUser,
+  userMatchesRoleFilter,
+} from "@/services/admin/users";
 
 const PAGE_SIZE = 10;
 
@@ -35,10 +50,6 @@ function userNameInitials(name: string) {
     .toUpperCase();
 }
 
-/**
- * Desktop: Name, Role, Status, Joined visible in the table.
- * Mobile: only Name in the row; Role, Status, Joined open in the collapse drawer (like Actions).
- */
 const ADMIN_USER_TABLE_COLUMNS: DataTableColumn<AdminUserRow>[] = [
   {
     id: "name",
@@ -58,7 +69,7 @@ const ADMIN_USER_TABLE_COLUMNS: DataTableColumn<AdminUserRow>[] = [
     header: "Role",
     hideOnMobile: true,
     type: "text",
-    accessor: (row) => row.role,
+    accessor: (row) => row.roleLabel,
     className: "min-w-[140px] whitespace-nowrap",
   },
   {
@@ -88,19 +99,6 @@ const USER_STATUS_OPTIONS = [
   { value: "inactive", label: "Inactive" },
 ] as const;
 
-const USER_ROLE_OPTIONS = [
-  { value: "all", label: "All Roles" },
-  { value: "Editor-in-Chief", label: "Editor-in-Chief" },
-  { value: "Senior Editor", label: "Senior Editor" },
-  { value: "Editor", label: "Editor" },
-  { value: "Contributor", label: "Contributor" },
-  { value: "Admin", label: "Admin" },
-] as const;
-
-const USER_FORM_ROLE_OPTIONS = USER_ROLE_OPTIONS.filter(
-  (option) => option.value !== "all",
-);
-
 const EMPTY_USER_FORM = {
   name: "",
   email: "",
@@ -116,11 +114,13 @@ function matchesSearch(user: AdminUserRow, query: string) {
   if (!q) return true;
   return (
     user.name.toLowerCase().includes(q) ||
-    user.email.toLowerCase().includes(q)
+    user.email.toLowerCase().includes(q) ||
+    user.roleLabel.toLowerCase().includes(q)
   );
 }
 
 export default function AdminUser() {
+  const navigate = useNavigate();
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [roleFilter, setRoleFilter] = React.useState("all");
@@ -129,8 +129,63 @@ export default function AdminUser() {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingUserId, setEditingUserId] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState(EMPTY_USER_FORM);
+  const [users, setUsers] = React.useState<AdminUserRow[]>([]);
+  const [roleOptions, setRoleOptions] = React.useState<
+    { value: string; label: string }[]
+  >([]);
+  const [loading, setLoading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
 
   const isEditing = editingUserId !== null;
+
+  const roleFilterOptions = React.useMemo(
+    () => [{ value: "all", label: "All Roles" }, ...roleOptions],
+    [roleOptions],
+  );
+
+  const fetchUsers = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchAdminUsers();
+      setUsers(data);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      toast.error("Failed to load users");
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchRoles = React.useCallback(async () => {
+    try {
+      const roles = await fetchAdminRoles();
+      setRoleOptions(
+        roles.map((role) => ({
+          value: role.name,
+          label: formatRoleLabel(role.name),
+        })),
+      );
+    } catch (error) {
+      console.error("Failed to fetch roles:", error);
+      toast.error("Failed to load roles");
+      setRoleOptions([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void fetchUsers();
+    void fetchRoles();
+  }, [fetchUsers, fetchRoles]);
+
+  React.useEffect(() => {
+    const onFocus = () => {
+      void fetchUsers();
+      void fetchRoles();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchUsers, fetchRoles]);
 
   const openCreateModal = () => {
     setEditingUserId(null);
@@ -152,14 +207,70 @@ export default function AdminUser() {
     setIsModalOpen(true);
   };
 
+  const deleteUser = async (user: AdminUserRow) => {
+    if (!window.confirm(`Delete user "${user.name}"?`)) return;
+
+    try {
+      await deleteAdminUser(user.id);
+      toast.success("User deleted successfully");
+      await fetchUsers();
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      toast.error("Failed to delete user");
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim() || !formData.email.trim() || !formData.role) {
+      toast.error("Name, email, and role are required");
+      return;
+    }
+
+    if (!isEditing && !formData.password) {
+      toast.error("Password is required for new users");
+      return;
+    }
+
+    const payload = {
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      role: formData.role,
+      status: formData.status,
+      ...(formData.password
+        ? {
+            password: formData.password,
+            password_confirmation: formData.password_confirmation,
+          }
+        : {}),
+    };
+
+    try {
+      setSaving(true);
+      if (isEditing && editingUserId) {
+        await updateAdminUser(editingUserId, payload);
+        toast.success("User updated successfully");
+      } else {
+        await createAdminUser(payload);
+        toast.success("User created successfully");
+      }
+      setIsModalOpen(false);
+      await fetchUsers();
+    } catch (error) {
+      console.error("Failed to save user:", error);
+      toast.error("Failed to save user");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const filtered = React.useMemo(() => {
-    return MOCK_ADMIN_USERS.filter((user) => {
+    return users.filter((user) => {
       if (!matchesSearch(user, search)) return false;
       if (statusFilter !== "all" && user.status !== statusFilter) return false;
-      if (roleFilter !== "all" && user.role !== roleFilter) return false;
+      if (!userMatchesRoleFilter(user, roleFilter)) return false;
       return true;
     });
-  }, [search, statusFilter, roleFilter]);
+  }, [users, search, statusFilter, roleFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -176,9 +287,12 @@ export default function AdminUser() {
     selectedIds,
     onSelectionChange: setSelectedIds,
     onEdit: openEditModal,
-    onDelete: () => {
-      /* confirm delete */
+    onActivityLog: (user) => {
+      navigate(`/admin/users/${user.id}/article-activities`, {
+        state: { userName: user.name, userEmail: user.email },
+      });
     },
+    onDelete: deleteUser,
   });
 
   return (
@@ -209,12 +323,18 @@ export default function AdminUser() {
             setRoleFilter(v);
             setPage(1);
           }}
-          categoryOptions={[...USER_ROLE_OPTIONS]}
+          categoryOptions={roleFilterOptions}
         />
       </AdminPanel>
 
       <AdminPanel padding="none" className="overflow-hidden">
-        <DataTable {...table} />
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : (
+          <DataTable {...table} />
+        )}
       </AdminPanel>
 
       <AdminPagination
@@ -224,11 +344,12 @@ export default function AdminUser() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />
+
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent
           className={cn(
-            'flex max-h-[min(90dvh,100%)] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden',
-            'border-[#DDD8C8] bg-primary-foreground p-4 sm:w-full sm:p-6',
+            "flex max-h-[min(90dvh,100%)] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden",
+            "border-[#DDD8C8] bg-primary-foreground p-4 sm:w-full sm:p-6",
           )}
         >
           <DialogHeader className="shrink-0 pr-8 text-left">
@@ -237,47 +358,76 @@ export default function AdminUser() {
             </DialogTitle>
           </DialogHeader>
 
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-1">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-1">
             <div className="grid grid-cols-1 gap-4 sm:gap-5">
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">Name</label>
-                  <Input 
-                    type="text" 
-                    placeholder="Name" 
+                  <label
+                    htmlFor="name"
+                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                  >
+                    Name
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">Email</label>
-                  <Input 
-                    type="email" 
-                    placeholder="Email" 
+                  <label
+                    htmlFor="email"
+                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                  >
+                    Email
+                  </label>
+                  <Input
+                    type="email"
+                    placeholder="Email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="role" className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">Role</label>
-                  <Select 
+                  <label
+                    htmlFor="role"
+                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                  >
+                    Role
+                  </label>
+                  <Select
                     value={formData.role}
-                    onValueChange={(value) => setFormData({ ...formData, role: value })}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, role: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
-                      {USER_FORM_ROLE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      {roleOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div>
-                  <label htmlFor="status" className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">Status</label>
+                  <label
+                    htmlFor="status"
+                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                  >
+                    Status
+                  </label>
                   <Select
                     value={formData.status}
                     onValueChange={(value) =>
@@ -296,49 +446,70 @@ export default function AdminUser() {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div>
-                  <label htmlFor="password" className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">Password</label>
-                  <InputPassword 
-                    placeholder="Password" 
+                  <label
+                    htmlFor="password"
+                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                  >
+                    Password
+                  </label>
+                  <InputPassword
+                    placeholder={isEditing ? "Leave blank to keep current" : "Password"}
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
                   />
                 </div>
+
                 <div>
-                  <label htmlFor="password_confirmation" className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">Password Confirmation</label>
-                  <InputPassword 
-                    placeholder="Password Confirmation" 
+                  <label
+                    htmlFor="password_confirmation"
+                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                  >
+                    Password Confirmation
+                  </label>
+                  <InputPassword
+                    placeholder="Password Confirmation"
                     value={formData.password_confirmation}
-                    onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        password_confirmation: e.target.value,
+                      })
+                    }
                   />
                 </div>
+
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
                     className="h-10 w-full sm:w-auto"
                     onClick={() => setIsModalOpen(false)}
+                    disabled={saving}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="button"
                     className="h-10 w-full sm:w-auto"
-                    onClick={() => {
-                      console.log(
-                        isEditing ? "Update user:" : "Create user:",
-                        { id: editingUserId, ...formData },
-                      );
-                      setIsModalOpen(false);
-                    }}
+                    onClick={() => void handleSave()}
+                    disabled={saving}
                   >
-                    {isEditing ? "Save" : "Create"}
+                    {saving
+                      ? isEditing
+                        ? "Saving…"
+                        : "Creating…"
+                      : isEditing
+                        ? "Save"
+                        : "Create"}
                   </Button>
                 </div>
               </div>
             </div>
           </div>
-
         </DialogContent>
       </Dialog>
     </div>

@@ -1,5 +1,6 @@
 import * as React from "react";
-import { ChevronDown, Filter, FolderOpen } from "lucide-react";
+import { ChevronDown, FolderOpen } from "lucide-react";
+// import { ChevronDown, Filter, FolderOpen } from "lucide-react";
 import type { ReactNode } from "react";
 
 import {
@@ -69,9 +70,9 @@ export function UserFilterPanel({
   categories,
   activeCategoryId,
   onCategoryChange,
-  quickFilters,
-  activeQuickFilter,
-  onQuickFilterChange,
+  // quickFilters,
+  // activeQuickFilter,
+  // onQuickFilterChange,
 }: UserFilterPanelProps) {
   return (
     <div className="space-y-4">
@@ -99,7 +100,7 @@ export function UserFilterPanel({
         </ul>
       </FilterCollapsibleCard>
 
-      <FilterCollapsibleCard title="Quick Filters" icon={<Filter className="size-4" />}>
+      {/* <FilterCollapsibleCard title="Quick Filters" icon={<Filter className="size-4" />}>
         <div className="flex flex-col gap-2 border-t border-border p-4 xl:border-t-0">
           {quickFilters.map((filter) => (
             <button
@@ -117,7 +118,7 @@ export function UserFilterPanel({
             </button>
           ))}
         </div>
-      </FilterCollapsibleCard>
+      </FilterCollapsibleCard> */}
     </div>
   );
 }

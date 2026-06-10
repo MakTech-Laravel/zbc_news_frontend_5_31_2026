@@ -18,10 +18,12 @@ type UserFeedArticleCardProps = {
 
 function UserFeedArticleCardComponent({
   article,
-  href = "/news-details",
+  href,
   density = "default",
   className,
 }: UserFeedArticleCardProps) {
+  const articleHref =
+    href ?? (article.slug ? `/news-details/${encodeURIComponent(article.slug)}` : "/news-details");
   const isCompact = density === "compact";
 
   return (
@@ -36,7 +38,7 @@ function UserFeedArticleCardComponent({
         </div>
 
         <Link
-          to={href}
+          to={articleHref}
           className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <h2
