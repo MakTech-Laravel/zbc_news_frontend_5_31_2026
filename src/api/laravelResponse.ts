@@ -16,12 +16,28 @@ function permissionNamesFromRaw(raw: unknown): string[] {
   return out
 }
 
-/** Map AdminResource / admin login payload into AuthUser with route role `admin` + Spatie fields. */
+function normalizeSpatieRoleName(name: string): string {
+  return name.trim().toLowerCase().replace(/_/g, '-')
+}
+
+/** Single route role from API `roles[0]` or `role`, with a typed fallback. */
+function primaryRoleFromRaw(raw: Record<string, unknown>, fallback: string): string {
+  const spatieRoles = spatieRoleNamesFromRaw(raw.roles)
+  if (spatieRoles.length > 0) {
+    return normalizeSpatieRoleName(spatieRoles[0]!)
+  }
+  if (typeof raw.role === 'string' && raw.role) {
+    return normalizeSpatieRoleName(raw.role)
+  }
+  return fallback
+}
+
+/** Map AdminResource / admin login payload into AuthUser preserving the API role name. */
 export function normalizeAdminAuthUser(raw: Record<string, unknown>): AuthUser {
   const spatieRoles = spatieRoleNamesFromRaw(raw.roles)
   const perms = permissionNamesFromRaw(raw.permissions)
   const { roles: _dropRoles, permissions: _dropPerms, ...rest } = raw
-  const routeRoles = Array.from(new Set(['admin', ...spatieRoles]))
+  const role = primaryRoleFromRaw(raw, 'admin')
   const isSuper =
     raw.is_super_admin === true ||
     raw.is_super_admin === 1 ||
@@ -33,8 +49,8 @@ export function normalizeAdminAuthUser(raw: Record<string, unknown>): AuthUser {
     })
   return {
     ...(rest as unknown as AuthUser),
-    role: 'admin',
-    roles: routeRoles,
+    role,
+    roles: [role],
     adminSpatieRoles: spatieRoles,
     permissions: perms,
     is_super_admin: isSuper ? true : raw.is_super_admin === false ? false : undefined,
@@ -45,29 +61,16 @@ export function normalizeAdminAuthUser(raw: Record<string, unknown>): AuthUser {
 export function normalizeAuthUser(raw: Record<string, unknown>): AuthUser {
   if (isAdminResourceShape(raw)) return normalizeAdminAuthUser(raw)
 
-  const spatieRoles = spatieRoleNamesFromRaw(raw.roles)
-  const spatieNormalized = spatieRoles.map(normalizeSpatieRoleName)
   const perms = permissionNamesFromRaw(raw.permissions)
-  const routeRole =
-    typeof raw.role === 'string' && raw.role
-      ? normalizeSpatieRoleName(raw.role)
-      : spatieNormalized.includes('vendor')
-        ? 'vendor'
-        : spatieNormalized.includes('user')
-          ? 'user'
-          : 'user'
+  const routeRole = primaryRoleFromRaw(raw, 'user')
   const { roles: _dropRoles, permissions: _dropPerms, ...rest } = raw
 
   return {
     ...(rest as unknown as AuthUser),
     role: routeRole,
-    roles: Array.from(new Set([routeRole, ...spatieRoles])),
+    roles: [routeRole],
     permissions: perms.length ? perms : undefined,
   }
-}
-
-function normalizeSpatieRoleName(name: string): string {
-  return name.trim().toLowerCase().replace(/_/g, '-')
 }
 
 function spatieRoleNamesFromRaw(raw: unknown): string[] {
