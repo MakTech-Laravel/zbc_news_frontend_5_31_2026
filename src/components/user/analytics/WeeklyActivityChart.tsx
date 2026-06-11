@@ -1,18 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AnalyticsChartCard } from "@/components/user/analytics/AnalyticsChartCard";
-import { weeklyActivityData } from "@/data/dummy/readingAnalytics";
+import type { WeeklyActivityItem } from "@/types/readingAnalytics";
 
 const CHART_H = 250;
 const PAD = { top: 8, right: 12, bottom: 32, left: 36 };
-const MAX = 12;
-const Y_TICKS = [0, 3, 6, 9, 12];
 
-export function WeeklyActivityChart() {
+function buildChartScale(maxValue: number) {
+  const max = Math.max(5, Math.ceil(maxValue / 4) * 4);
+  const step = max / 4;
+  const ticks = [0, step, step * 2, step * 3, max].map((tick) => Math.round(tick));
+  return { max, ticks: [...new Set(ticks)] };
+}
+
+type WeeklyActivityChartProps = {
+  data: WeeklyActivityItem[];
+};
+
+export function WeeklyActivityChart({ data }: WeeklyActivityChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+
+  const { max, ticks } = useMemo(() => {
+    const peak = data.reduce((highest, item) => Math.max(highest, item.count), 0);
+    return buildChartScale(peak);
+  }, [data]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -26,12 +40,12 @@ export function WeeklyActivityChart() {
 
   const innerW = Math.max(0, width - PAD.left - PAD.right);
   const innerH = CHART_H - PAD.top - PAD.bottom;
-  const barW = innerW / weeklyActivityData.length - 12;
+  const barW = data.length > 0 ? innerW / data.length - 12 : 0;
 
   return (
     <AnalyticsChartCard title="Weekly Activity" subtitle="Articles read per day">
       <div ref={containerRef}>
-        {width > 0 ? (
+        {width > 0 && data.length > 0 ? (
           <svg
             width="100%"
             height={CHART_H}
@@ -39,8 +53,8 @@ export function WeeklyActivityChart() {
             role="img"
             aria-label="Bar chart of articles read per day this week"
           >
-            {Y_TICKS.map((tick) => {
-              const y = PAD.top + innerH - (tick / MAX) * innerH;
+            {ticks.map((tick) => {
+              const y = PAD.top + innerH - (tick / max) * innerH;
               return (
                 <g key={tick}>
                   <line
@@ -65,9 +79,9 @@ export function WeeklyActivityChart() {
               );
             })}
 
-            {weeklyActivityData.map((item, i) => {
-              const barH = (item.articles / MAX) * innerH;
-              const x = PAD.left + i * (innerW / weeklyActivityData.length) + 6;
+            {data.map((item, i) => {
+              const barH = max > 0 ? (item.count / max) * innerH : 0;
+              const x = PAD.left + i * (innerW / data.length) + 6;
               const y = PAD.top + innerH - barH;
               return (
                 <g key={item.day}>
@@ -94,7 +108,9 @@ export function WeeklyActivityChart() {
             })}
           </svg>
         ) : (
-          <div className="h-[250px]" aria-hidden />
+          <div className="flex h-[250px] items-center justify-center text-sm text-ink-muted">
+            No weekly activity yet.
+          </div>
         )}
       </div>
     </AnalyticsChartCard>
