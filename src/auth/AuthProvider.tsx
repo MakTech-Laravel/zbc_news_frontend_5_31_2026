@@ -144,7 +144,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Super-admin must pass all UI checks even when JWT/profile omits route role `admin`.
       if (isSpatieSuperAdmin(user)) return true
       if (!isAdminPanelUser(user)) return false
-      if (permission === 'view dashboard') return true
       return Boolean(user?.permissions?.includes(permission))
     },
     [user],
