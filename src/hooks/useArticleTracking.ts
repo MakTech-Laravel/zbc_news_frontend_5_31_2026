@@ -1,13 +1,36 @@
 import { useEffect, useRef } from "react";
-// import { useAuth } from "@/auth/useAuth";
+
+import { useAuth } from "@/auth/useAuth";
+import { getAccessToken, getStoredAuthUser } from "@/auth/token";
+import { env } from "@/config/env";
 
 const MIN_READ_SECONDS = 5;
 
+function resolveUserId(
+  authUser: ReturnType<typeof useAuth>["user"],
+): number | null {
+  const id = authUser?.id ?? getStoredAuthUser()?.id;
+  if (id == null || id === "") return null;
+  const numericId = Number(id);
+  return Number.isNaN(numericId) ? null : numericId;
+}
+
+function getTrackUrl(): string {
+  const base = env.apiBaseUrl.replace(/\/$/, "");
+  return `${base}/articles/track-read`;
+}
+
 export const useArticleTracking = (articleId: number | undefined): void => {
+  const { user } = useAuth();
+  const userIdRef = useRef<number | null>(null);
   const startTime = useRef<number>(Date.now());
   const maxScroll = useRef<number>(0);
   const sessionId = useRef<string>(crypto.randomUUID());
   const hasSent = useRef<boolean>(false);
+
+  useEffect(() => {
+    userIdRef.current = resolveUserId(user);
+  }, [user]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -16,7 +39,6 @@ export const useArticleTracking = (articleId: number | undefined): void => {
       const percent = Math.round(Math.min(scrolled * 100, 100));
       if (percent > maxScroll.current) maxScroll.current = percent;
     };
-
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -28,46 +50,57 @@ export const useArticleTracking = (articleId: number | undefined): void => {
     if (timeSpent < MIN_READ_SECONDS) return;
 
     hasSent.current = true;
-    // const user = useAuth().user;
+
+    const userId  = userIdRef.current;
+    const token   = getAccessToken();
+    const trackUrl = getTrackUrl();
 
     const payload = JSON.stringify({
-      article_id: articleId,
-      session_id: sessionId.current,
-      time_spent: timeSpent,
+      article_id:   articleId,
+      session_id:   sessionId.current,
+      time_spent:   timeSpent,
       scroll_depth: maxScroll.current,
-    //   user_id: user?.id ?? null,
+      ...(userId ? { user_id: userId } : {}),
     });
 
-    console.log('[Tracking] Sending payload →', payload);
-
-    const TRACK_URL = "/api/v1/articles/track-read";
-
-    const sent = navigator.sendBeacon(
-      TRACK_URL,
-      new Blob([payload], { type: "application/json" }),
-    );
-
-    console.log('[Tracking] sendBeacon result →', sent ? ' sent' : ' failed');
-
-    if (!sent) {
-      fetch(TRACK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
+    if (token) {
+      fetch(trackUrl, {
+        method:    "POST",
+        headers:   {
+          "Content-Type":  "application/json",
+          "Accept":        "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body:      payload,
         keepalive: true,
+        credentials: env.authStrategy === "http_only_cookie" ? "include" : "same-origin",
       }).catch(() => {});
+
+    } else {
+      const sent = navigator.sendBeacon(
+        trackUrl,
+        new Blob([payload], { type: "application/json" })
+      );
+
+      if (!sent) {
+        fetch(trackUrl, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
     }
   };
 
   useEffect(() => {
     if (!articleId) return;
 
-    hasSent.current = false;
+    hasSent.current   = false;
     startTime.current = Date.now();
     maxScroll.current = 0;
     sessionId.current = crypto.randomUUID();
-
-    console.log('[Tracking] Started for articleId →', articleId);
+    userIdRef.current = resolveUserId(user);
 
     const onVisibilityChange = () => {
       if (document.hidden) sendTrackingData();
