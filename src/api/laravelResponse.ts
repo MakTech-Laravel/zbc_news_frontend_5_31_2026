@@ -94,10 +94,10 @@ function isAdminResourceShape(o: Record<string, unknown>): boolean {
 
   const routeRole =
     typeof o.role === 'string' ? normalizeSpatieRoleName(o.role) : ''
-  if (routeRole === 'user' || routeRole === 'vendor') return false
+  if (routeRole === 'user') return false
 
   const spatieNames = spatieRoleNamesFromRaw(o.roles).map(normalizeSpatieRoleName)
-  if (spatieNames.includes('user') || spatieNames.includes('vendor')) return false
+  if (spatieNames.includes('user')) return false
 
   if (rolesLookLikeSpatieAdmin(o.roles)) return true
   if (o.is_super_admin === true || o.is_super_admin === 1 || o.is_super_admin === '1') return true

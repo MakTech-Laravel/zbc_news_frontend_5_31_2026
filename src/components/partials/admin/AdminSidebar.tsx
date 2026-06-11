@@ -15,41 +15,19 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
 import { ZbcAdminLogo } from "@/components/partials/admin/ZbcAdminLogo";
 import { HeaderAvatar } from "@/components/ui/HeaderAvatar";
+import { ADMIN_NAV_ITEMS } from "@/config/adminNav";
+import { usePermission } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
-import { hasPermission } from "@/hooks/permissionResolver";
 
-type NavItem = {
-  label: string;
-  to: string;
-  Icon: LucideIcon;
-  end?: boolean;
-  permission?: string;
+const NAV_ICONS: Record<string, LucideIcon> = {
+  "/admin/dashboard": LayoutDashboard,
+  "/admin/categories": FolderTree,
+  "/admin/articles": FileText,
+  "/admin/rabc": ShieldCheck,
+  "/admin/users": Users,
+  "/admin/monetization": CreditCard,
+  "/admin/settings": Settings,
 };
-
-function navEnd(item: NavItem) {
-  return item.end ?? true;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  {
-    label: "Dashboard", to: "/admin/dashboard",
-    Icon: LayoutDashboard,
-    end: true,
-
-  },
-  { label: "Categories", to: "/admin/categories", Icon: FolderTree },
-  { label: "Articles", to: "/admin/articles", Icon: FileText },
-  { label: "RABC", to: "/admin/rabc", Icon: ShieldCheck },
-  {
-    label: "Users",
-    to: "/admin/users",
-    Icon: Users,
-    end: true,
-    permission: "user.list"
-  },
-  { label: "Monetization", to: "/admin/monetization", Icon: CreditCard, permission: "monetization.list" },
-  { label: "Settings", to: "/admin/settings", Icon: Settings, end: false },
-];
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -62,7 +40,8 @@ function resolveRoleLabel(user: ReturnType<typeof useAuth>["user"]) {
   const spatie = user?.adminSpatieRoles?.[0];
   if (spatie) return spatie.replace(/-/g, " ");
   if (user?.is_super_admin) return "Super Admin";
-  return "Editor-in-Chief";
+  if (user?.role) return user.role.replace(/-/g, " ");
+  return "Staff";
 }
 
 function resolveAvatarUrl(user: ReturnType<typeof useAuth>["user"]) {
@@ -84,10 +63,15 @@ type AdminSidebarProps = {
 
 export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProps) {
   const { user, logout } = useAuth();
+  const { can } = usePermission();
   const [loggingOut, setLoggingOut] = React.useState(false);
   const displayName = user?.name ?? user?.email ?? "Admin";
   const initials = getInitials(displayName);
   const avatarUrl = resolveAvatarUrl(user);
+
+  const visibleNavItems = ADMIN_NAV_ITEMS.filter((item) =>
+    item.permission ? can(item.permission) : true,
+  );
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -100,9 +84,7 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-admin-sidebar text-white">
-      {/* Logo */}
       <div className={cn("shrink-0 py-2 transition-all duration-300", collapsed ? "px-0 flex justify-center" : "px-6")}>
-        {/* collapsed icon/short logo, full logo */}
         {collapsed ? (
           <div className="size-9 rounded-md bg-zbc-blue flex items-center justify-center text-xs font-bold">
             ZB
@@ -112,44 +94,43 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
         )}
       </div>
 
-      {/* Nav items */}
       <nav
         className="flex shrink-0 flex-col gap-0 pt-6"
         aria-label="Admin navigation"
       >
-        {NAV_ITEMS.map((item) => (
-          <>
-            {hasPermission(item.permission || '') && (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={navEnd(item)}
-                onClick={onNavigate}
-                title={collapsed ? item.label : undefined}
-                className={({ isActive }) =>
-                  cn(
-                    "flex h-12 items-center transition-colors",
-                    collapsed ? "justify-center px-0" : "gap-3 px-6 py-3",
-                    isActive
-                      ? cn(
-                        "bg-zbc-blue text-white",
-                        !collapsed && "border-l-4 border-admin-nav-active-border pl-7 pr-6",
-                      )
-                      : "text-admin-nav-muted hover:text-white",
-                  )
-                }
-              >
-                <item.Icon className="size-5 shrink-0" aria-hidden />
-                {!collapsed && (
-                  <span className="text-base truncate">{item.label}</span>
-                )}
-              </NavLink>
-            )}
-          </>
-        ))}
+        {visibleNavItems.map((item) => {
+          const Icon = NAV_ICONS[item.path] ?? LayoutDashboard;
+          const end = item.end ?? true;
+
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={end}
+              onClick={onNavigate}
+              title={collapsed ? item.label : undefined}
+              className={({ isActive }) =>
+                cn(
+                  "flex h-12 items-center transition-colors",
+                  collapsed ? "justify-center px-0" : "gap-3 px-6 py-3",
+                  isActive
+                    ? cn(
+                      "bg-zbc-blue text-white",
+                      !collapsed && "border-l-4 border-admin-nav-active-border pl-7 pr-6",
+                    )
+                    : "text-admin-nav-muted hover:text-white",
+                )
+              }
+            >
+              <Icon className="size-5 shrink-0" aria-hidden />
+              {!collapsed && (
+                <span className="text-base truncate">{item.label}</span>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
-      {/* Footer: user + logout */}
       <div
         className={cn(
           "mt-auto shrink-0 border-t border-admin-sidebar-border py-4 transition-all duration-300",
