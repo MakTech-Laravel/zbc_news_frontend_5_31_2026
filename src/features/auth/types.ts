@@ -1,4 +1,4 @@
-export type AuthRole = 'user' | 'vendor'
+export type AuthRole = 'user'
 
 export type LoginPayload = {
   email: string

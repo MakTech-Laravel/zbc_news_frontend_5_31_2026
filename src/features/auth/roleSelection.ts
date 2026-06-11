@@ -3,7 +3,7 @@ import { type AuthRole } from '@/features/auth/types'
 const AUTH_SELECTED_ROLE_STORAGE_KEY = 'auth:selectedRole'
 
 export function isAuthRole(value: string | null | undefined): value is AuthRole {
-  return value === 'user' || value === 'vendor'
+  return value === 'user'
 }
 
 export function getStoredAuthRole(): AuthRole | null {

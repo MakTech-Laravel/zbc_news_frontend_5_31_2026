@@ -1,12 +1,39 @@
 import * as React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+
+import { AdminOutletTransition } from "@/components/admin/shared/AdminOutletTransition";
 import { AdminHeader } from "@/components/partials/admin/AdminHeader";
 import { AdminSidebar } from "@/components/partials/admin/AdminSidebar";
-import { AdminOutletTransition } from "@/components/admin/shared/AdminOutletTransition";
+import { isUserPanelUser } from "@/auth/roles";
+import { useAuth } from "@/auth/useAuth";
+import { getRequiredPermissionForAdminPath } from "@/config/adminAccess";
+import { usePermission } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
 
 export function AdminLayout() {
+  const location = useLocation();
+  const { user } = useAuth();
+  const { can, isUserLoading } = usePermission();
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+
+  const requiredPermission = getRequiredPermissionForAdminPath(location.pathname);
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-admin-surface text-sm text-muted-foreground">
+        Loading&hellip;
+      </div>
+    );
+  }
+
+  if (isUserPanelUser(user)) {
+    return <Navigate to="/user/dashboard" replace />;
+  }
+
+  if (requiredPermission && !can(requiredPermission)) {
+    return <Navigate to="/unauthorized" replace state={{ from: location }} />;
+  }
 
   return (
     <div className="flex h-dvh overflow-hidden bg-admin-surface">

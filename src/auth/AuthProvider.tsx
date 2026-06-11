@@ -13,7 +13,7 @@ import {
 import { type AuthUser } from '@/auth/types'
 import { isSpatieSuperAdmin } from '@/auth/adminSpatie'
 import { getRoleLogoutPath } from '@/auth/rolePolicy'
-import { getUserRoles, hasAnyRole } from '@/auth/roles'
+import { getUserRoles, isAdminPanelUser } from '@/auth/roles'
 import { env } from '@/config/env'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -65,9 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Profile probe must not replace a valid admin session with a misparsed object (missing route role).
         if (
           prev &&
-          (hasAnyRole(prev, 'admin') || isSpatieSuperAdmin(prev)) &&
-          !hasAnyRole(u, 'admin') &&
-          !isSpatieSuperAdmin(u)
+          isAdminPanelUser(prev) &&
+          !isAdminPanelUser(u)
         ) {
           return prev
         }
@@ -144,8 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (permission: string) => {
       // Super-admin must pass all UI checks even when JWT/profile omits route role `admin`.
       if (isSpatieSuperAdmin(user)) return true
-      if (!hasAnyRole(user, 'admin')) return false
-      // Admin shell landing: RoleGate already proved panel access; API still enforces each action.
+      if (!isAdminPanelUser(user)) return false
       if (permission === 'view dashboard') return true
       return Boolean(user?.permissions?.includes(permission))
     },
@@ -156,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (spatieRoleName: string) => {
       if (user?.adminSpatieRoles?.includes(spatieRoleName)) return true
       if (user?.roles?.includes(spatieRoleName)) return true
-      if (!hasAnyRole(user, 'admin')) return false
+      if (!isAdminPanelUser(user)) return false
       return false
     },
     [user],
