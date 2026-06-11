@@ -1,6 +1,10 @@
 import * as React from "react";
-import { Bell, Globe, Mail, MapPin, User } from "lucide-react";
+import { Bell, Mail, MapPin, User } from "lucide-react";
 import { Link } from "react-router-dom";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useRef, useState } from "react";
 
 import { useAuth } from "@/auth/useAuth";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
@@ -10,8 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
-import { useState } from "react";
 import toast from "react-hot-toast";
+import InputError from "@/components/input-error";
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -19,6 +23,15 @@ function getInitials(name: string) {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
 }
+
+const profileSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  region: z.string().optional(),
+  bio: z.string().optional(),
+});
+
+type ProfileForm = z.infer<typeof profileSchema>;
 
 type SettingsCardHeaderProps = {
   title: string;
@@ -98,16 +111,91 @@ type NotifKey = keyof NotificationPreferences;
 
 export function UserProfileForm() {
   const { user } = useAuth();
-  const displayName = user?.name ?? "John Doe";
-  const email = user?.email ?? "john.doe@example.com";
-  const initials = getInitials(displayName);
+  const initials = getInitials(user?.name ?? "John Doe");
 
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ProfileForm>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: { name: "", email: "", region: "", bio: "" },
+  });
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await request.get("/admin/users/profile");
+        const d = res.data.data;
+        console.log(d);
+        reset({
+          name: d.name ?? "",
+          email: d.email ?? "",
+          region: d.user_information?.region ?? "",
+          bio: d.user_information?.bio ?? "",
+        });
+        if (d.user_information?.profile_image) {
+          setImagePreview(d.user_information.profile_image);
+        }
+      } catch {
+        toast.error("Failed to load profile.");
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [reset]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleImageRemove = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const onSubmit = async (data: ProfileForm) => {
+    try {
+      setSaving(true);
+
+      const formData = new FormData();
+      formData.append("name", data.name);
+      formData.append("email", data.email);
+      if (data.region) formData.append("region", data.region);
+      if (data.bio) formData.append("bio", data.bio);
+      if (imageFile) formData.append("profile_image", imageFile);
+      formData.append("_method", "PUT");
+
+      await request.post("/admin/users/profile/update", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      toast.success("Profile updated successfully.");
+    } catch {
+      toast.error("Failed to update profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Notification preferences
   const [notifications, setNotifications] =
     React.useState<NotificationPreferences | null>(null);
   const [notifLoading, setNotifLoading] = useState(true);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // GET
   React.useEffect(() => {
     const fetchPreferences = async () => {
       try {
@@ -141,6 +229,7 @@ export function UserProfileForm() {
 
   return (
     <div className="space-y-6">
+      {/* Profile Information */}
       <UserDashboardCard>
         <div className="w-full md:w-1/2">
           <SettingsCardHeader
@@ -148,15 +237,42 @@ export function UserProfileForm() {
             subtitle="Update your personal details"
           />
           <div className="space-y-6 px-6 pb-6">
+            {/* Avatar */}
             <div className="flex flex-wrap items-center gap-4">
-              <span className="inline-flex size-20 items-center justify-center rounded-full bg-zbc-gray-200 text-2xl font-semibold text-zbc-gray-900">
-                {initials}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+              <span className="inline-flex size-20 items-center justify-center overflow-hidden rounded-full bg-zbc-gray-200 text-2xl font-semibold text-zbc-gray-900">
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt="Profile"
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
               </span>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   Change Photo
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleImageRemove}
+                  disabled={!imagePreview}
+                >
                   Remove
                 </Button>
               </div>
@@ -164,127 +280,103 @@ export function UserProfileForm() {
 
             <div className="h-px bg-border" />
 
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
-                  <User className="size-4 text-admin-label" aria-hidden />
-                  Full Name
-                </label>
-                <Input defaultValue={displayName} className="h-9" />
+            {/* Form */}
+            {profileLoading ? (
+              <div className="grid gap-6 sm:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "h-9 animate-pulse rounded bg-muted",
+                      i === 3 && "sm:col-span-2 h-24",
+                    )}
+                  />
+                ))}
               </div>
-              <div className="space-y-2">
-                <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
-                  <Mail className="size-4 text-admin-label" aria-hidden />
-                  Email
-                </label>
-                <Input type="email" defaultValue={email} className="h-9" />
-              </div>
-              <div className="space-y-2">
-                <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
-                  <Globe className="size-4 text-admin-label" aria-hidden />
-                  Language
-                </label>
-                <Input defaultValue="English (US)" className="h-9" />
-              </div>
-              <div className="space-y-2">
-                <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
-                  <MapPin className="size-4 text-admin-label" aria-hidden />
-                  Region
-                </label>
-                <Input defaultValue="United States" className="h-9" />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <label className="text-sm font-medium text-admin-heading">
-                  Bio
-                </label>
-                <textarea
-                  className="min-h-[100px] w-full rounded-lg border border-admin-input-border bg-card px-3 py-2 text-sm text-admin-heading placeholder:text-admin-label/60"
-                  placeholder="Tell us about yourself..."
-                />
-              </div>
-            </div>
+            ) : (
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {/* Name */}
+                  <div className="space-y-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
+                      <User className="size-4 text-admin-label" aria-hidden />
+                      Full Name
+                    </label>
+                    <Input {...register("name")} className="h-9" />
+                    {errors.name && (
+                      <InputError message={errors.name.message!} />
+                    )}
+                  </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button variant="default" className="bg-zbc-gray-700 text-white">
-                Save Changes
-              </Button>
-              <Button variant="outline">Cancel</Button>
-            </div>
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
+                      <Mail className="size-4 text-admin-label" aria-hidden />
+                      Email
+                    </label>
+                    <Input
+                      type="email"
+                      {...register("email")}
+                      className="h-9"
+                    />
+                    {errors.email && (
+                      <InputError message={errors.email.message!} />
+                    )}
+                  </div>
+
+                  {/* Region */}
+                  <div className="space-y-2">
+                    <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
+                      <MapPin className="size-4 text-admin-label" aria-hidden />
+                      Region
+                    </label>
+                    <Input {...register("region")} className="h-9" />
+                    {errors.region && (
+                      <InputError message={errors.region.message!} />
+                    )}
+                  </div>
+
+                  {/* Bio */}
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="text-sm font-medium text-admin-heading">
+                      Bio
+                    </label>
+                    <textarea
+                      {...register("bio")}
+                      className="min-h-[100px] w-full rounded-lg border border-admin-input-border bg-card px-3 py-2 text-sm text-admin-heading placeholder:text-admin-label/60"
+                      placeholder="Tell us about yourself..."
+                    />
+                    {errors.bio && <InputError message={errors.bio.message!} />}
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <Button
+                    type="submit"
+                    variant="default"
+                    className="bg-zbc-gray-700 text-white"
+                    disabled={saving}
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      reset();
+                      handleImageRemove();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </UserDashboardCard>
 
-      {/* <UserDashboardCard>
-        <SettingsCardHeader
-          title="Appearance"
-          subtitle="Customize how ZBC News looks"
-        />
-        <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-6">
-          <div className="flex items-start gap-3">
-            <Moon className="mt-0.5 size-5 text-admin-label" aria-hidden />
-            <div>
-              <p className="text-base font-medium text-admin-heading">Dark Mode</p>
-              <p className="text-sm text-admin-label">Switch between light and dark themes</p>
-            </div>
-          </div>
-          <div className="inline-flex rounded-lg border border-border bg-muted p-1">
-            {(
-              [
-                { id: "light" as const, label: "Light", Icon: Sun },
-                { id: "dark" as const, label: "Dark", Icon: Moon },
-                { id: "auto" as const, label: "Auto", Icon: null },
-              ] as const
-            ).map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTheme(id)}
-                className={cn(
-                  "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
-                  theme === id
-                    ? "bg-card text-admin-heading shadow-sm"
-                    : "text-admin-label hover:text-admin-heading",
-                )}
-              >
-                {Icon ? <Icon className="size-4" aria-hidden /> : null}
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </UserDashboardCard> */}
-
-      {/* <UserDashboardCard>
-        <SettingsCardHeader
-          title="Topic Preferences"
-          subtitle="Choose topics you're interested in"
-        />
-        <div className="grid gap-3 px-6 pb-6 sm:grid-cols-2">
-          <div className="space-y-3">
-            {leftTopics.map((topic) => (
-              <TopicToggleRow
-                key={topic.id}
-                id={`topic-${topic.id}`}
-                label={topic.label}
-                checked={topics[topic.id]}
-                onChange={(v) => setTopic(topic.id, v)}
-              />
-            ))}
-          </div>
-          <div className="space-y-3">
-            {rightTopics.map((topic) => (
-              <TopicToggleRow
-                key={topic.id}
-                id={`topic-${topic.id}`}
-                label={topic.label}
-                checked={topics[topic.id]}
-                onChange={(v) => setTopic(topic.id, v)}
-              />
-            ))}
-          </div>
-        </div>
-      </UserDashboardCard> */}
-
+      {/* Notification Preferences */}
       <UserDashboardCard>
         <div id="notification-preferences" className="scroll-mt-6" />
         <SettingsCardHeader
@@ -312,6 +404,7 @@ export function UserProfileForm() {
         </div>
       </UserDashboardCard>
 
+      {/* Account Status */}
       <UserDashboardCard>
         <SettingsCardHeader title="Account Status" compact />
         <div className="space-y-3 px-6 pb-6">
