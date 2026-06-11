@@ -16,12 +16,14 @@ import { useAuth } from "@/auth/useAuth";
 import { ZbcAdminLogo } from "@/components/partials/admin/ZbcAdminLogo";
 import { HeaderAvatar } from "@/components/ui/HeaderAvatar";
 import { cn } from "@/lib/utils";
+import { hasPermission } from "@/hooks/permissionResolver";
 
 type NavItem = {
   label: string;
   to: string;
   Icon: LucideIcon;
   end?: boolean;
+  permission?: string;
 };
 
 function navEnd(item: NavItem) {
@@ -29,12 +31,23 @@ function navEnd(item: NavItem) {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", to: "/admin/dashboard", Icon: LayoutDashboard, end: true },
+  {
+    label: "Dashboard", to: "/admin/dashboard",
+    Icon: LayoutDashboard,
+    end: true,
+
+  },
   { label: "Categories", to: "/admin/categories", Icon: FolderTree },
   { label: "Articles", to: "/admin/articles", Icon: FileText },
   { label: "RABC", to: "/admin/rabc", Icon: ShieldCheck },
-  { label: "Users", to: "/admin/users", Icon: Users },
-  { label: "Monetization", to: "/admin/monetization", Icon: CreditCard },
+  {
+    label: "Users",
+    to: "/admin/users",
+    Icon: Users,
+    end: true,
+    permission: "user.list"
+  },
+  { label: "Monetization", to: "/admin/monetization", Icon: CreditCard, permission: "monetization.list" },
   { label: "Settings", to: "/admin/settings", Icon: Settings, end: false },
 ];
 
@@ -105,30 +118,34 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
         aria-label="Admin navigation"
       >
         {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={navEnd(item)}
-            onClick={onNavigate}
-            title={collapsed ? item.label : undefined}
-            className={({ isActive }) =>
-              cn(
-                "flex h-12 items-center transition-colors",
-                collapsed ? "justify-center px-0" : "gap-3 px-6 py-3",
-                isActive
-                  ? cn(
-                      "bg-zbc-blue text-white",
-                      !collapsed && "border-l-4 border-admin-nav-active-border pl-7 pr-6",
-                    )
-                  : "text-admin-nav-muted hover:text-white",
-              )
-            }
-          >
-            <item.Icon className="size-5 shrink-0" aria-hidden />
-            {!collapsed && (
-              <span className="text-base truncate">{item.label}</span>
+          <>
+            {hasPermission(item.permission || '') && (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={navEnd(item)}
+                onClick={onNavigate}
+                title={collapsed ? item.label : undefined}
+                className={({ isActive }) =>
+                  cn(
+                    "flex h-12 items-center transition-colors",
+                    collapsed ? "justify-center px-0" : "gap-3 px-6 py-3",
+                    isActive
+                      ? cn(
+                        "bg-zbc-blue text-white",
+                        !collapsed && "border-l-4 border-admin-nav-active-border pl-7 pr-6",
+                      )
+                      : "text-admin-nav-muted hover:text-white",
+                  )
+                }
+              >
+                <item.Icon className="size-5 shrink-0" aria-hidden />
+                {!collapsed && (
+                  <span className="text-base truncate">{item.label}</span>
+                )}
+              </NavLink>
             )}
-          </NavLink>
+          </>
         ))}
       </nav>
 

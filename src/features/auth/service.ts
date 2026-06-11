@@ -117,6 +117,10 @@ export async function loginUserWithRole(payload: LoginPayload, handlers: AuthHan
       'Login response is missing access token.',
     )
     ensureRoleMatchesExpected(user, payload.role)
+    localStorage.setItem(
+      "permissions",
+      JSON.stringify(user?.permissions)
+    );
     return user
   } catch (error) {
     handlers.resetAuthState()
