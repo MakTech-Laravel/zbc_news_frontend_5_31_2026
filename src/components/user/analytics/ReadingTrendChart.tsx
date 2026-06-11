@@ -1,30 +1,47 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AnalyticsChartCard } from "@/components/user/analytics/AnalyticsChartCard";
-import { readingTrendData } from "@/data/dummy/readingAnalytics";
+import type { MonthlyTrendItem } from "@/types/readingAnalytics";
 
 const CHART_H = 274;
 const PAD = { top: 12, right: 16, bottom: 32, left: 40 };
-const MAX = 80;
-const Y_TICKS = [0, 20, 40, 60, 80];
 
-function toPoints(values: number[], width: number) {
+function buildChartScale(maxValue: number) {
+  const max = Math.max(5, Math.ceil(maxValue / 4) * 4);
+  const step = max / 4;
+  const ticks = [0, step, step * 2, step * 3, max].map((tick) => Math.round(tick));
+  return { max, ticks: [...new Set(ticks)] };
+}
+
+function toPoints(values: number[], width: number, max: number) {
   const innerW = width - PAD.left - PAD.right;
   const innerH = CHART_H - PAD.top - PAD.bottom;
+  const divisor = Math.max(values.length - 1, 1);
+
   return values
-    .map((v, i) => {
-      const x = PAD.left + (i / (values.length - 1)) * innerW;
-      const y = PAD.top + innerH - (v / MAX) * innerH;
+    .map((value, index) => {
+      const x = PAD.left + (index / divisor) * innerW;
+      const y = PAD.top + innerH - (value / max) * innerH;
       return `${x},${y}`;
     })
     .join(" ");
 }
 
-export function ReadingTrendChart() {
+type ReadingTrendChartProps = {
+  data: MonthlyTrendItem[];
+};
+
+export function ReadingTrendChart({ data }: ReadingTrendChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+
+  const values = useMemo(() => data.map((item) => item.count), [data]);
+  const { max, ticks } = useMemo(() => {
+    const peak = values.reduce((highest, value) => Math.max(highest, value), 0);
+    return buildChartScale(peak);
+  }, [values]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -36,15 +53,15 @@ export function ReadingTrendChart() {
     return () => observer.disconnect();
   }, []);
 
-  const values = readingTrendData.map((d) => d.articles);
   const innerW = Math.max(0, width - PAD.left - PAD.right);
   const innerH = CHART_H - PAD.top - PAD.bottom;
-  const points = width > 0 ? toPoints(values, width) : "";
+  const points = width > 0 ? toPoints(values, width, max) : "";
+  const divisor = Math.max(data.length - 1, 1);
 
   return (
     <AnalyticsChartCard title="Reading Trend" subtitle="Monthly articles read over time">
       <div ref={containerRef}>
-        {width > 0 ? (
+        {width > 0 && data.length > 0 ? (
           <svg
             width="100%"
             height={CHART_H}
@@ -52,8 +69,8 @@ export function ReadingTrendChart() {
             role="img"
             aria-label="Line chart of monthly articles read"
           >
-            {Y_TICKS.map((tick) => {
-              const y = PAD.top + innerH - (tick / MAX) * innerH;
+            {ticks.map((tick) => {
+              const y = PAD.top + innerH - (tick / max) * innerH;
               return (
                 <g key={tick}>
                   <line
@@ -87,11 +104,11 @@ export function ReadingTrendChart() {
               points={points}
             />
 
-            {readingTrendData.map((item, i) => {
-              const x = PAD.left + (i / (readingTrendData.length - 1)) * innerW;
-              const y = PAD.top + innerH - (item.articles / MAX) * innerH;
+            {data.map((item, index) => {
+              const x = PAD.left + (index / divisor) * innerW;
+              const y = PAD.top + innerH - (item.count / max) * innerH;
               return (
-                <g key={item.month}>
+                <g key={`${item.month}-${index}`}>
                   <circle cx={x} cy={y} r={4} fill="#030213" />
                   <text
                     x={x}
@@ -108,7 +125,9 @@ export function ReadingTrendChart() {
             })}
           </svg>
         ) : (
-          <div className="h-[274px]" aria-hidden />
+          <div className="flex h-[274px] items-center justify-center text-sm text-ink-muted">
+            No monthly trend data yet.
+          </div>
         )}
       </div>
     </AnalyticsChartCard>
