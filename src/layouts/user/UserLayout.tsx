@@ -1,13 +1,30 @@
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { UserSidebar } from "@/components/partials/user/UserSidebar";
+import { Navigate } from "react-router-dom";
+
+import { isAdminPanelUser } from "@/auth/roles";
+import { useAuth } from "@/auth/useAuth";
 import { UserHeader } from "@/components/partials/user/UserHeader";
+import { UserSidebar } from "@/components/partials/user/UserSidebar";
 import { UserOutletTransition } from "@/components/user/shared/UserOutletTransition";
 import { UserNotificationsProvider } from "@/contexts/UserNotificationsContext";
+import { cn } from "@/lib/utils";
 
 export function UserLayout() {
+  const { user, isUserLoading } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-admin-surface text-sm text-muted-foreground">
+        Loading&hellip;
+      </div>
+    );
+  }
+
+  if (isAdminPanelUser(user)) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
 
   return (
     <UserNotificationsProvider>

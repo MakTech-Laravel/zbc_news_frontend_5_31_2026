@@ -5,8 +5,7 @@ import {
 } from '@/api/laravelResponse'
 import { request } from '@/api/request'
 import { type AuthContextValue } from '@/auth/context'
-import { isSpatieSuperAdmin } from '@/auth/adminSpatie'
-import { getUserRoles, isAdminPanelUser, isUserPanelUser } from '@/auth/roles'
+import { getUserRoles, isAdminPanelUser } from '@/auth/roles'
 import { setAccessToken, setRefreshToken, setStoredAuthUser } from '@/auth/token'
 import { type AuthUser } from '@/auth/types'
 import {
@@ -58,9 +57,9 @@ function ensureRoleMatchesExpected(user: unknown, expectedRole: AuthRole) {
       : extractUserFromAuthPayload(user)) ?? null
   if (!parsed) return
 
-  const roles = getUserRoles(parsed)
-  if (roles.includes('admin') || isSpatieSuperAdmin(parsed)) return
+  if (isAdminPanelUser(parsed)) return
 
+  const roles = getUserRoles(parsed)
   if (!roles.includes(expectedRole)) {
     throw new Error(
       `This account is not registered as ${expectedRole}. Please choose the correct account type.`,
@@ -228,9 +227,5 @@ export function resolveDashboardPath(user: unknown) {
   if (!authUser) return '/user/dashboard'
 
   if (isAdminPanelUser(authUser)) return '/admin/dashboard'
-  if (isUserPanelUser(authUser)) return '/user/dashboard'
-
-  const roles = getUserRoles(authUser)
-  if (roles.includes('vendor')) return '/vendor/dashboard'
   return '/user/dashboard'
 }
