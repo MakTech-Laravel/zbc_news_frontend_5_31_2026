@@ -13,6 +13,8 @@ import {
   type ArticleDetail,
 } from "@/services/frontend/articles";
 import { AdUnit } from "../shared/AdUnit";
+import { useArticleTracking } from "@/hooks/useArticleTracking";
+
 
 type SocialIconProps = { className?: string };
 
@@ -116,6 +118,9 @@ function DetailsSkeleton() {
 }
 
 function ArticleContent({ article }: { article: ArticleDetail }) {
+
+  useArticleTracking(Number(article.id));
+
   return (
     <article className="bg-background text-foreground">
       <div className="mx-auto w-full max-w-4xl px-0 sm:px-2">
