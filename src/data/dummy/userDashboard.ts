@@ -15,6 +15,7 @@ export type UserFeedArticle = {
 
 export type UserContinueReadingItem = {
   id: string;
+  slug?: string;
   category: string;
   title: string;
   readTime: string;
