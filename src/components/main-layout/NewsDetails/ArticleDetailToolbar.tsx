@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bookmark, ChevronLeft, Share2 } from "lucide-react";
+import { ChevronLeft, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { ArticleSaveButton } from "@/components/articles/ArticleSaveButton";
 import { cn } from "@/lib/utils";
-import { api } from "@/api/client";
 
 type ArticleDetailToolbarProps = {
   articleId: string | number;
@@ -20,26 +19,6 @@ export function ArticleDetailToolbar({
   className,
 }: ArticleDetailToolbarProps) {
   const navigate = useNavigate();
-
-  const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const numericArticleId = Number(articleId);
-
-  useEffect(() => {
-    if (!numericArticleId) return;
-    fetchSavedStatus();
-  }, [numericArticleId]);
-
-  async function fetchSavedStatus() {
-    try {
-      const response = await api.get(`/admin/save-articles/check/${numericArticleId}`);
-      setSaved(response.data.data.saved);
-    } catch (error: any) {
-      if (error?.response?.status === 401) return;
-      console.error(error);
-    }
-  }
 
   function handleBack() {
     if (window.history.length > 1) {
@@ -73,35 +52,6 @@ export function ArticleDetailToolbar({
     }
   }
 
-  async function handleBookmark() {
-    if (loading) return;
-
-    try {
-      setLoading(true);
-
-      const response = await api.post("/admin/save-articles/toggle", {
-        article_id: numericArticleId,
-      });
-
-      const isSaved = response.data.data.saved;
-      setSaved(isSaved);
-
-      toast.success(
-        isSaved ? "Saved for later" : "Removed from saved articles",
-      );
-    } catch (error: any) {
-      if (error?.response?.status === 401) {
-        toast.error("Please login to save articles");
-        navigate("/login");
-        return;
-      }
-      console.error(error);
-      toast.error("Failed to update saved article");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <div
       className={cn(
@@ -109,7 +59,6 @@ export function ArticleDetailToolbar({
         className,
       )}
     >
-      {/* Back Button */}
       <button
         type="button"
         onClick={handleBack}
@@ -119,27 +68,9 @@ export function ArticleDetailToolbar({
         Back
       </button>
 
-      {/* Action Buttons */}
       <div className="flex items-center gap-4">
-        {/* Bookmark / Save Button */}
-        <button
-          type="button"
-          onClick={() => void handleBookmark()}
-          disabled={loading}
-          aria-label={saved ? "Remove from saved articles" : "Save article"}
-          aria-pressed={saved}
-          className="inline-flex size-8 items-center justify-center text-zbc-gray-700 transition-colors hover:text-zbc-gray-1000 disabled:opacity-50"
-        >
-          <Bookmark
-            className={cn(
-              "size-[18px] transition-colors",
-              saved && "fill-current text-primary",
-            )}
-            aria-hidden
-          />
-        </button>
+        <ArticleSaveButton articleId={articleId} variant="toolbar" />
 
-        {/* Share Button */}
         <button
           type="button"
           onClick={() => void handleShare()}

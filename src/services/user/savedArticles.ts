@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import { toggleArticleSave } from "@/services/user/articleSave";
 import type { SavedArticlesQuery, UserCategoryFilter, UserFeedArticle } from "@/types/user";
 
 export const savedQuickFilters = [
@@ -315,7 +316,5 @@ export async function fetchSavedArticles(
 }
 
 export async function unsaveArticle(articleId: string | number): Promise<void> {
-  await api.post("/admin/save-articles/toggle", {
-    article_id: Number(articleId),
-  });
+  await toggleArticleSave(articleId);
 }
