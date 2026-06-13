@@ -13,6 +13,7 @@ export type WorldArticleRegion = Exclude<WorldRegionId, "all"> | "world";
 
 export type WorldFeedArticle = {
   id: string;
+  slug?: string;
   category: string;
   region: WorldArticleRegion;
   title: string;

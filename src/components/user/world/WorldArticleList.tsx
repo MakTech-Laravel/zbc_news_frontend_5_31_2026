@@ -16,7 +16,7 @@ export function WorldArticleList({ articles, className }: WorldArticleListProps)
           className,
         )}
       >
-        No articles in this region yet.
+        No articles yet.
       </p>
     );
   }

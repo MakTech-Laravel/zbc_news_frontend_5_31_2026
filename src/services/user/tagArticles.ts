@@ -3,6 +3,7 @@ import { resolveMediaUrl } from "@/lib/mediaUrl";
 import type { UserFeedArticle } from "@/types/user";
 
 export const BREAKING_NEWS_TAG_SLUG = "breaking-news";
+export const WORLD_NEWS_TAG_SLUG = "world";
 
 export type TagArticleType = "latest" | "trending" | "recommended";
 
