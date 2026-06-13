@@ -34,6 +34,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.ARTICLES.LIST,
   },
   {
+    label: 'Media',
+    path: '/admin/media',
+    segment: 'media',
+    permission: PERMISSIONS.MEDIA.LIST,
+  },
+  {
     label: 'RABC',
     path: '/admin/rabc',
     segment: 'rabc',
