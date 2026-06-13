@@ -36,6 +36,9 @@ export const PERMISSIONS = {
     RESTORE: 'articles.restore',
     FORCE_DELETE: 'articles.force-delete',
     ACTIVITIES: 'articles.activities',
+    STATS: 'articles.stats',
+    /** User-panel read history (Spatie group: Articles). */
+    USER_READ_HISTORY: 'user.read-history',
   },
   TAGS: {
     LIST: 'tags.list',
@@ -71,6 +74,15 @@ export const PERMISSIONS = {
   PERMISSIONS: {
     LIST: 'permissions.list',
   },
+  MEDIA: {
+    LIST: 'media.list',
+    CREATE: 'media.create',
+    SHOW: 'media.show',
+    DELETE: 'media.delete',
+    BULK_DELETE: 'media.bulk-delete',
+    SIGNED_PARAMS: 'media.signed-params',
+    TRANSFORM: 'media.transform',
+  },
   USERS: {
     LIST: 'users.list',
     CREATE: 'users.create',
@@ -81,6 +93,7 @@ export const PERMISSIONS = {
     DELETE: 'users.delete',
     ARTICLE_ACTIVITIES: 'users.article-activities',
     TWO_FACTOR_ENABLE: 'users.two-factor-enable',
+    READING_ANALYTICS: 'users.reading-analytics',
   },
 } as const
 
@@ -92,7 +105,7 @@ type LeafPermissionValues<T> = T extends string
 
 export type PermissionKey = LeafPermissionValues<typeof PERMISSIONS>
 
-/** Spatie group labels keyed by permission name. */
+/** Spatie `group_name` keyed by permission `name`. */
 export const PERMISSION_GROUP_BY_KEY: Record<PermissionKey, string> = {
   [PERMISSIONS.CATEGORIES.LIST]: 'Categories',
   [PERMISSIONS.CATEGORIES.CREATE]: 'Categories',
@@ -117,6 +130,8 @@ export const PERMISSION_GROUP_BY_KEY: Record<PermissionKey, string> = {
   [PERMISSIONS.ARTICLES.RESTORE]: 'Articles',
   [PERMISSIONS.ARTICLES.FORCE_DELETE]: 'Articles',
   [PERMISSIONS.ARTICLES.ACTIVITIES]: 'Articles',
+  [PERMISSIONS.ARTICLES.STATS]: 'Articles',
+  [PERMISSIONS.ARTICLES.USER_READ_HISTORY]: 'Articles',
   [PERMISSIONS.TAGS.LIST]: 'Tags',
   [PERMISSIONS.TAGS.CREATE]: 'Tags',
   [PERMISSIONS.TAGS.SHOW]: 'Tags',
@@ -139,6 +154,13 @@ export const PERMISSION_GROUP_BY_KEY: Record<PermissionKey, string> = {
   [PERMISSIONS.NOTIFICATION_PREFERENCES.SHOW]: 'Notification Preferences',
   [PERMISSIONS.NOTIFICATION_PREFERENCES.UPDATE]: 'Notification Preferences',
   [PERMISSIONS.PERMISSIONS.LIST]: 'Permissions',
+  [PERMISSIONS.MEDIA.LIST]: 'Media',
+  [PERMISSIONS.MEDIA.CREATE]: 'Media',
+  [PERMISSIONS.MEDIA.SHOW]: 'Media',
+  [PERMISSIONS.MEDIA.DELETE]: 'Media',
+  [PERMISSIONS.MEDIA.BULK_DELETE]: 'Media',
+  [PERMISSIONS.MEDIA.SIGNED_PARAMS]: 'Media',
+  [PERMISSIONS.MEDIA.TRANSFORM]: 'Media',
   [PERMISSIONS.USERS.LIST]: 'Users',
   [PERMISSIONS.USERS.CREATE]: 'Users',
   [PERMISSIONS.USERS.PROFILE]: 'Users',
@@ -148,7 +170,23 @@ export const PERMISSION_GROUP_BY_KEY: Record<PermissionKey, string> = {
   [PERMISSIONS.USERS.DELETE]: 'Users',
   [PERMISSIONS.USERS.ARTICLE_ACTIVITIES]: 'Users',
   [PERMISSIONS.USERS.TWO_FACTOR_ENABLE]: 'Users',
+  [PERMISSIONS.USERS.READING_ANALYTICS]: 'Users',
 }
 
-/** All permission names in API order (for tests / tooling). */
+/** All permission names in API order. */
 export const ALL_PERMISSION_KEYS = Object.keys(PERMISSION_GROUP_BY_KEY) as PermissionKey[]
+
+/**
+ * Permissions used only on the user panel (not admin sidebar / AdminLayout gates).
+ */
+export const USER_PANEL_PERMISSION_KEYS: PermissionKey[] = [
+  PERMISSIONS.SAVE_ARTICLES.LIST,
+  PERMISSIONS.SAVE_ARTICLES.TOGGLE,
+  PERMISSIONS.NOTIFICATION_PREFERENCES.SHOW,
+  PERMISSIONS.NOTIFICATION_PREFERENCES.UPDATE,
+  PERMISSIONS.ARTICLES.USER_READ_HISTORY,
+  PERMISSIONS.USERS.PROFILE,
+  PERMISSIONS.USERS.PROFILE_UPDATE,
+  PERMISSIONS.USERS.TWO_FACTOR_ENABLE,
+  PERMISSIONS.USERS.READING_ANALYTICS,
+]
