@@ -1,5 +1,5 @@
 import { LongReadArticleCard } from "@/components/user/long-reads/LongReadArticleCard";
-import type { LongReadArticle } from "@/data/dummy/longReads";
+import type { LongReadArticle } from "@/types/longReads";
 import { cn } from "@/lib/utils";
 
 type LongReadsArticleListProps = {

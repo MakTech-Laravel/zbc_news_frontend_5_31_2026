@@ -27,8 +27,15 @@ function StatRow({ label, value, progress }: StatRowProps) {
   );
 }
 
-export function UserThisWeek() {
-  const { articlesRead, readingTime } = userThisWeekStats;
+type UserThisWeekProps = {
+  stats?: {
+    articlesRead: { value: number; progress: number };
+    readingTime: { value: string; progress: number };
+  };
+};
+
+export function UserThisWeek({ stats }: UserThisWeekProps) {
+  const { articlesRead, readingTime } = stats ?? userThisWeekStats;
 
   return (
     <UserDashboardCard>

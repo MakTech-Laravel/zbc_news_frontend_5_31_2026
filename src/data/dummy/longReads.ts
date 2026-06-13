@@ -1,37 +1,24 @@
 import { longReadImages } from "@/lib/longReadImages";
 
-export type LongReadTab = "all" | "award-winning" | "most-read";
+export type {
+  LongReadArticle,
+  LongReadCollection,
+  LongReadLengthFilter,
+  LongReadStats,
+  LongReadTab,
+} from "@/types/longReads";
 
-export type LongReadArticle = {
-  id: string;
-  category: string;
-  title: string;
-  description: string;
-  author: string;
-  readTime: string;
-  views: number;
-  imageUrl: string;
-  awardWinning?: boolean;
-};
-
-export type LongReadCollection = {
-  id: string;
-  label: string;
-  count: number;
-};
-
-export type LongReadLengthFilter = {
-  id: string;
-  label: string;
-};
+export {
+  filterLongReadArticles,
+  formatViewCount,
+} from "@/types/longReads";
 
 export const longReadStats = {
   articles: 64,
   averageReadTime: "32 min",
-  awardWinning: 12,
 } as const;
 
-export const longReadCollections: LongReadCollection[] = [
+export const longReadCollections: import("@/types/longReads").LongReadCollection[] = [
   { id: "climate", label: "Climate & Environment", count: 12 },
   { id: "tech", label: "Technology & Innovation", count: 8 },
   { id: "society", label: "Society & Culture", count: 15 },
@@ -39,7 +26,7 @@ export const longReadCollections: LongReadCollection[] = [
   { id: "politics", label: "Politics & Power", count: 9 },
 ];
 
-export const longReadLengthFilters: LongReadLengthFilter[] = [
+export const longReadLengthFilters: import("@/types/longReads").LongReadLengthFilter[] = [
   { id: "quick", label: "Quick reads (15–20 min)" },
   { id: "medium", label: "Medium (20–30 min)" },
   { id: "deep", label: "Deep dives (30+ min)" },
@@ -48,7 +35,7 @@ export const longReadLengthFilters: LongReadLengthFilter[] = [
 export const editorsNote =
   "Our long-form journalism provides the depth and context needed to understand complex global issues. Each story represents months of research and reporting.";
 
-export const longReadArticles: LongReadArticle[] = [
+export const longReadArticles: import("@/types/longReads").LongReadArticle[] = [
   {
     id: "lr-1",
     category: "Environment",
@@ -59,7 +46,6 @@ export const longReadArticles: LongReadArticle[] = [
     readTime: "35 min read",
     views: 89400,
     imageUrl: longReadImages.environment,
-    awardWinning: true,
   },
   {
     id: "lr-2",
@@ -82,7 +68,6 @@ export const longReadArticles: LongReadArticle[] = [
     readTime: "42 min read",
     views: 95600,
     imageUrl: longReadImages.humanInterest,
-    awardWinning: true,
   },
   {
     id: "lr-4",
@@ -105,7 +90,6 @@ export const longReadArticles: LongReadArticle[] = [
     readTime: "32 min read",
     views: 68300,
     imageUrl: longReadImages.science,
-    awardWinning: true,
   },
   {
     id: "lr-6",
@@ -119,20 +103,3 @@ export const longReadArticles: LongReadArticle[] = [
     imageUrl: longReadImages.politics,
   },
 ];
-
-export function filterLongReadArticles(
-  articles: LongReadArticle[],
-  tab: LongReadTab,
-): LongReadArticle[] {
-  if (tab === "award-winning") {
-    return articles.filter((a) => a.awardWinning);
-  }
-  if (tab === "most-read") {
-    return [...articles].sort((a, b) => b.views - a.views);
-  }
-  return articles;
-}
-
-export function formatViewCount(views: number): string {
-  return `${views.toLocaleString()} views`;
-}

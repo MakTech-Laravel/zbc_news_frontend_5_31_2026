@@ -1,26 +1,12 @@
-import { useMemo, useState } from "react";
 import { Globe } from "lucide-react";
 
+import { UserPersonalizedFeed } from "@/components/user/dashboard/UserPersonalizedFeed";
 import { UserHeroStoryCard } from "@/components/user/shared/UserHeroStoryCard";
 import { UserSectionHeader } from "@/components/user/shared/UserSectionHeader";
-import { WorldArticleList } from "@/components/user/world/WorldArticleList";
-import { WorldInsightsGrid } from "@/components/user/world/WorldInsightsGrid";
-import { WorldRegionTabs } from "@/components/user/world/WorldRegionTabs";
-import {
-  filterWorldArticles,
-  worldArticles,
-  worldHeroStory,
-  worldRegionTabs,
-  type WorldRegionId,
-} from "@/data/dummy/worldNews";
+import { useWorldNews } from "@/hooks/useWorldNews";
 
 export default function UserWorld() {
-  const [activeRegion, setActiveRegion] = useState<WorldRegionId>("all");
-
-  const filteredArticles = useMemo(
-    () => filterWorldArticles(worldArticles, activeRegion),
-    [activeRegion],
-  );
+  const { data, loading, error } = useWorldNews();
 
   return (
     <div className="space-y-6 pb-8">
@@ -30,21 +16,17 @@ export default function UserWorld() {
         Icon={Globe}
       />
 
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
       <div className="border-l-4 border-zbc-breaking pl-1">
-        <UserHeroStoryCard story={worldHeroStory} />
+        <UserHeroStoryCard story={data.featuredStory} loading={loading} />
       </div>
 
-      <WorldRegionTabs
-        tabs={worldRegionTabs}
-        activeId={activeRegion}
-        onChange={setActiveRegion}
+      <UserPersonalizedFeed
+        title="World News Feed"
+        feeds={data.feeds}
+        loading={loading}
       />
-
-      <div role="tabpanel" aria-label={activeRegion}>
-        <WorldArticleList articles={filteredArticles} />
-      </div>
-
-      <WorldInsightsGrid onRegionSelect={setActiveRegion} />
     </div>
   );
 }

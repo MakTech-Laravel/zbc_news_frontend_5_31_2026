@@ -1,6 +1,6 @@
-import { Award, BookOpen, Clock } from "lucide-react";
+import { BookOpen, Clock } from "lucide-react";
 
-import { longReadStats } from "@/data/dummy/longReads";
+import type { LongReadStats } from "@/types/longReads";
 
 function StatItem({
   icon: Icon,
@@ -24,7 +24,12 @@ function StatItem({
   );
 }
 
-export function LongReadsHeader() {
+type LongReadsHeaderProps = {
+  stats?: LongReadStats;
+  loading?: boolean;
+};
+
+export function LongReadsHeader({ stats, loading = false }: LongReadsHeaderProps) {
   return (
     <header className="space-y-6">
       <div className="flex items-center gap-3">
@@ -40,11 +45,22 @@ export function LongReadsHeader() {
       </div>
 
       <div className="rounded-[14px] border border-border-light bg-gradient-to-r from-user-long-read/10 via-user-long-read/5 to-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-6">
-          <StatItem icon={BookOpen} value={String(longReadStats.articles)} label="Long-form Articles" />
-          <StatItem icon={Clock} value={longReadStats.averageReadTime} label="Average Read Time" />
-          <StatItem icon={Award} value={String(longReadStats.awardWinning)} label="Award-Winning Stories" />
-        </div>
+        {loading ? (
+          <p className="text-sm text-admin-label">Loading stats…</p>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-6">
+            <StatItem
+              icon={BookOpen}
+              value={String(stats?.articles ?? 0)}
+              label="Long-form Articles"
+            />
+            <StatItem
+              icon={Clock}
+              value={stats?.averageReadTime ?? "—"}
+              label="Average Read Time"
+            />
+          </div>
+        )}
       </div>
     </header>
   );

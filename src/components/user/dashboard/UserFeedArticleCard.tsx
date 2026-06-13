@@ -1,7 +1,8 @@
 import * as React from "react";
-import { Bookmark, Clock, Share2 } from "lucide-react";
+import { Clock, Share2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { ArticleSaveButton } from "@/components/articles/ArticleSaveButton";
 import { UserCategoryBadge } from "@/components/user/dashboard/UserCategoryBadge";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
 import type { UserFeedArticle } from "@/types/user";
@@ -74,13 +75,7 @@ function UserFeedArticleCardComponent({
             </span>
           </p>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Save article"
-              className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-admin-label transition-colors hover:bg-muted sm:size-9"
-            >
-              <Bookmark className="size-4" />
-            </button>
+            <ArticleSaveButton articleId={article.id} variant="card" />
             <button
               type="button"
               aria-label="Share article"

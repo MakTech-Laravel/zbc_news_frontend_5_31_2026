@@ -9,6 +9,7 @@ type WorldArticleCardProps = {
 function toFeedArticle(article: WorldFeedArticle): UserFeedArticle {
   return {
     id: article.id,
+    slug: article.slug,
     category: article.category,
     title: article.title,
     excerpt: article.excerpt,

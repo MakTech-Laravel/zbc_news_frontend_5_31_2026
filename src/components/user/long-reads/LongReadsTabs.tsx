@@ -1,9 +1,8 @@
 import { cn } from "@/lib/utils";
-import type { LongReadTab } from "@/data/dummy/longReads";
+import type { LongReadTab } from "@/types/longReads";
 
 const TABS: { id: LongReadTab; label: string }[] = [
   { id: "all", label: "All Long Reads" },
-  { id: "award-winning", label: "Award-Winning" },
   { id: "most-read", label: "Most Read" },
 ];
 

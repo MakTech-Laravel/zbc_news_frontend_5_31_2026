@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 
-import { formatViewCount, type LongReadArticle } from "@/data/dummy/longReads";
+import { formatViewCount, type LongReadArticle } from "@/types/longReads";
 import { cn } from "@/lib/utils";
 
 type LongReadArticleCardProps = {
@@ -11,6 +11,10 @@ type LongReadArticleCardProps = {
 };
 
 export function LongReadArticleCard({ article, featured = false, className }: LongReadArticleCardProps) {
+  const articleHref = article.slug
+    ? `/news-details/${encodeURIComponent(article.slug)}`
+    : "/news-details";
+
   return (
     <article
       className={cn(
@@ -19,13 +23,28 @@ export function LongReadArticleCard({ article, featured = false, className }: Lo
         className,
       )}
     >
+      {article.imageUrl ? (
+        <div
+          className={cn(
+            "shrink-0 overflow-hidden bg-zbc-gray-900",
+            featured ? "h-48 w-full sm:h-auto sm:w-72" : "h-44 w-full",
+          )}
+        >
+          <img
+            src={article.imageUrl}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          />
+        </div>
+      ) : null}
 
       <div className={cn("flex flex-1 flex-col p-6", featured && "justify-center")}>
         <span className="inline-flex w-fit rounded-lg bg-[#ECEEF2] px-2.5 py-0.5 font-inter text-xs font-medium text-[#030213]">
           {article.category}
         </span>
 
-        <Link to="/news-details" className="mt-3 block">
+        <Link to={articleHref} className="mt-3 block">
           <h2
             className={cn(
               "font-inter font-semibold leading-snug text-ink-heading transition-colors group-hover:text-user-long-read",
