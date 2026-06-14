@@ -220,6 +220,13 @@ function resolveCategoryTitle(body: unknown, fallbackSlug: string): string {
   return fallbackSlug.replace(/-/g, " ");
 }
 
+export async function fetchGridArticles(): Promise<Article[]> {
+  const response = await request.get("/articles/grid");
+  return extractArticleRows(response.data)
+    .map(mapApiArticleListItem)
+    .filter((article): article is Article => article !== null);
+}
+
 export async function fetchArticlesByCategory(
   categorySlug: string,
 ): Promise<CategoryArticlesResult> {
