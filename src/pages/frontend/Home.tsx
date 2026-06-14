@@ -6,9 +6,6 @@ import { CategoryArticlesView } from "@/components/main-layout/content/CategoryA
 import { FeaturedSection } from "@/components/main-layout/content/FeaturedSection";
 import { HeroSection } from "@/components/main-layout/content/HeroSection";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
-import {
-  gridArticles,
-} from "@/data/dummy/home";
 
 export default function Home() {
   const { slug } = useParams<{ slug?: string }>();
@@ -22,7 +19,7 @@ export default function Home() {
       <HeroSection  />
       <AdUnit variant="banner" />
       <FeaturedSection />
-      <ArticleGrid articles={gridArticles} />
+      <ArticleGrid />
       <AdUnit variant="banner" />
       <LatestStories  />
       <AdUnit variant="banner" />
