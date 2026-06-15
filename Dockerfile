@@ -21,7 +21,8 @@ ENV VITE_AUTH_LOGOUT_PATH=$VITE_AUTH_LOGOUT_PATH
 
 # Install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+# RUN npm ci --ignore-scripts
+RUN npm ci --ignore-scripts && npm rebuild lightningcss @tailwindcss/oxide
 
 # Copy source and build
 COPY . .
