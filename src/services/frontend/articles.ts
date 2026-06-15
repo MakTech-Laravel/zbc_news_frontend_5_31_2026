@@ -227,6 +227,33 @@ export async function fetchGridArticles(): Promise<Article[]> {
     .filter((article): article is Article => article !== null);
 }
 
+let mostReadCache: Article[] | null = null;
+let mostReadPromise: Promise<Article[]> | null = null;
+
+export async function fetchMostReadArticles(): Promise<Article[]> {
+  if (mostReadCache) return mostReadCache;
+
+  if (!mostReadPromise) {
+    mostReadPromise = request
+      .get("/articles/most-read")
+      .then((response) =>
+        extractArticleRows(response.data)
+          .map(mapApiArticleListItem)
+          .filter((article): article is Article => article !== null),
+      )
+      .then((articles) => {
+        mostReadCache = articles;
+        return articles;
+      })
+      .catch((error) => {
+        mostReadPromise = null;
+        throw error;
+      });
+  }
+
+  return mostReadPromise;
+}
+
 export async function fetchArticlesByCategory(
   categorySlug: string,
 ): Promise<CategoryArticlesResult> {
