@@ -1,42 +1,53 @@
-import { Clock, Eye, Flame } from "lucide-react";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { Clock, Eye, Share2, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { ArticleSaveButton } from "@/components/articles/ArticleSaveButton";
-import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
+import { ArticleShareModal } from "@/components/articles/ArticleShareModal";
 import { UserCategoryBadge } from "@/components/user/dashboard/UserCategoryBadge";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
 import { userFeaturedStory } from "@/data/dummy/userDashboard";
 import type { UserFeaturedStoryData } from "@/services/user/tagArticles";
+import { cn } from "@/lib/utils";
+
+function IconActionButton({
+  label,
+  children,
+  className,
+  onClick,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "inline-flex size-9 items-center justify-center rounded-lg border border-border bg-card text-admin-label transition-colors hover:bg-muted",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 type UserFeaturedStoryProps = {
   story?: UserFeaturedStoryData | null;
-  loading?: boolean;
 };
 
-export function UserFeaturedStory({ story, loading = false }: UserFeaturedStoryProps) {
+export function UserFeaturedStory({ story }: UserFeaturedStoryProps) {
+  const [shareOpen, setShareOpen] = useState(false);
   const displayStory = story ?? userFeaturedStory;
   const articleHref = story?.slug
     ? `/news-details/${encodeURIComponent(story.slug)}`
     : "/news-details";
   const articleId = story?.id;
-
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-admin-heading">
-          <Flame className="size-6 text-zbc-red" aria-hidden />
-          <h2 className="text-xl font-semibold leading-7">Featured Story</h2>
-        </div>
-        <UserDashboardCard>
-          <div className="animate-pulse space-y-4 p-6">
-            <div className="h-44 rounded-lg bg-muted sm:h-56" />
-            <div className="h-4 w-3/4 rounded bg-muted" />
-            <div className="h-4 w-1/2 rounded bg-muted" />
-          </div>
-        </UserDashboardCard>
-      </div>
-    );
-  }
 
   if (story === null) {
     return (
@@ -95,13 +106,9 @@ export function UserFeaturedStory({ story, loading = false }: UserFeaturedStoryP
             </div>
             <div className="flex items-center gap-2">
               <ArticleSaveButton articleId={articleId} variant="card" />
-              <ArticleShareButton
-                slug={story?.slug}
-                title={displayStory.title}
-                excerpt={displayStory.excerpt}
-                imageUrl={displayStory.imageUrl}
-                variant="icon"
-              />
+              <IconActionButton label="Share article" onClick={() => setShareOpen(true)}>
+                <Share2 className="size-4" />
+              </IconActionButton>
             </div>
           </div>
           <Link
@@ -112,6 +119,15 @@ export function UserFeaturedStory({ story, loading = false }: UserFeaturedStoryP
           </Link>
         </div>
       </UserDashboardCard>
+
+      <ArticleShareModal
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        slug={story?.slug}
+        title={displayStory.title}
+        summary={displayStory.excerpt}
+        imageUrl={displayStory.imageUrl}
+      />
     </div>
   );
 }

@@ -3,21 +3,19 @@ import { useEffect, useRef, useState } from "react";
 
 import type { AdminTrafficChart } from "@/services/admin/dashboard";
 
-const FALLBACK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const FALLBACK_VISITORS = [8200, 9100, 8800, 10200, 11500, 9800, 10800];
-const FALLBACK_PAGE_VIEWS = [10000, 12400, 11800, 13800, 15200, 13100, 14500];
-
 const CHART_H = 220;
 const PAD = { top: 12, right: 16, bottom: 28, left: 44 };
+const Y_TICKS = [0, 4000, 8000, 12000, 16000];
+const MAX = 16000;
 
-function toPoints(values: number[], width: number, max: number) {
+function toPoints(values: number[], width: number) {
   const innerW = width - PAD.left - PAD.right;
   const innerH = CHART_H - PAD.top - PAD.bottom;
   if (values.length < 2) return "";
   return values
     .map((v, i) => {
       const x = PAD.left + (i / (values.length - 1)) * innerW;
-      const y = PAD.top + innerH - (v / max) * innerH;
+      const y = PAD.top + innerH - (Math.min(v, MAX) / MAX) * innerH;
       return `${x},${y}`;
     })
     .join(" ");
@@ -28,16 +26,9 @@ type TrafficOverviewChartProps = {
 };
 
 export function TrafficOverviewChart({ data }: TrafficOverviewChartProps) {
-  const labels    = data?.labels    ?? FALLBACK_LABELS;
-  const visitors  = data?.visitors  ?? FALLBACK_VISITORS;
-  const pageViews = data?.page_views ?? FALLBACK_PAGE_VIEWS;
-
-  const maxVal = Math.max(...visitors, ...pageViews, 1);
-  const niceMax = Math.ceil(maxVal / 4000) * 4000 || 16000;
-  const yTickCount = 5;
-  const Y_TICKS = Array.from({ length: yTickCount }, (_, i) =>
-    Math.round((i / (yTickCount - 1)) * niceMax),
-  );
+  const labels = data?.labels ?? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const visitors = data?.visitors ?? [0, 0, 0, 0, 0, 0, 0];
+  const pageViews = data?.page_views ?? [0, 0, 0, 0, 0, 0, 0];
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
@@ -57,8 +48,8 @@ export function TrafficOverviewChart({ data }: TrafficOverviewChartProps) {
   const innerW = width - PAD.left - PAD.right;
   const innerH = CHART_H - PAD.top - PAD.bottom;
 
-  const visitorsPoints = toPoints(visitors, width, niceMax);
-  const pageViewsPoints = toPoints(pageViews, width, niceMax);
+  const visitorsPoints = toPoints(visitors, width);
+  const pageViewsPoints = toPoints(pageViews, width);
 
   return (
     <section className="rounded-[10px] border border-border bg-card px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6">
@@ -76,7 +67,7 @@ export function TrafficOverviewChart({ data }: TrafficOverviewChartProps) {
         >
           {/* Y axis grid + labels */}
           {Y_TICKS.map((tick) => {
-            const y = PAD.top + innerH - (tick / niceMax) * innerH;
+            const y = PAD.top + innerH - (tick / MAX) * innerH;
             return (
               <g key={tick}>
                 <line
@@ -123,7 +114,7 @@ export function TrafficOverviewChart({ data }: TrafficOverviewChartProps) {
             const x = PAD.left + (i / (labels.length - 1)) * innerW;
             return (
               <text
-                key={day}
+                key={`${day}-${i}`}
                 x={x}
                 y={CHART_H - 6}
                 textAnchor="middle"

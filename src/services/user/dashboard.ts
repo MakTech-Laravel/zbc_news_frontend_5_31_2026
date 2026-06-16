@@ -1,4 +1,5 @@
 import { request } from "@/api/request";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import type { UserFeedArticle } from "@/types/user";
 
 export type UserFeaturedStory = {
@@ -54,7 +55,7 @@ function mapFeedArticle(raw: Record<string, unknown>): UserFeedArticle {
     title: (raw.title as string) ?? "",
     slug: (raw.slug as string) ?? "",
     excerpt: (raw.excerpt as string) ?? "",
-    imageUrl: (raw.imageUrl as string) ?? "",
+    imageUrl: resolveMediaUrl((raw.imageUrl as string) ?? ""),
     category: (raw.category as string) ?? "General",
     categorySlug: (raw.categorySlug as string) ?? "general",
     readTime: (raw.readTime as string) ?? "3 min read",
@@ -79,7 +80,14 @@ export async function fetchUserDashboard(): Promise<UserDashboardData> {
   const d = (response.data?.data ?? response.data) as Record<string, unknown>;
 
   return {
-    featured_story: d.featured_story as UserFeaturedStory | null,
+    featured_story: d.featured_story
+      ? {
+          ...(d.featured_story as UserFeaturedStory),
+          imageUrl: resolveMediaUrl(
+            ((d.featured_story as UserFeaturedStory).imageUrl as string) ?? "",
+          ),
+        }
+      : null,
     feeds: mapFeeds((d.feeds ?? {}) as Record<string, unknown>),
     continue_reading: Array.isArray(d.continue_reading)
       ? (d.continue_reading as Array<Record<string, unknown>>).map((item) => ({

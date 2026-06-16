@@ -6,7 +6,6 @@ import {
   FileText,
   Users,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 import { AdminMetricCard } from "@/components/admin/dashboard/AdminMetricCard";
 import { RecentArticlesCard } from "@/components/admin/dashboard/RecentArticlesCard";
@@ -15,25 +14,98 @@ import { TopPerformingArticlesCard } from "@/components/admin/dashboard/TopPerfo
 import { TrafficOverviewChart } from "@/components/admin/dashboard/TrafficOverviewChart";
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
-import type { MetricIconTone } from "@/components/admin/dashboard/AdminMetricCard";
+import type { AdminMetricItem } from "@/services/admin/dashboard";
 import { useNavigate } from "react-router-dom";
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  "Published Articles": FileText,
-  "Active Users": Users,
-  "Total Page Views": Eye,
-  "Revenue (MTD)": DollarSign,
-  "Draft Articles": FileText,
-  "Scheduled Posts": CalendarClock,
-  "Engagement Rate": Activity,
-};
+const PRIMARY_METRICS = [
+  {
+    label: "Published Articles",
+    value: "0",
+    trend: "+0%",
+    iconTone: "blue" as const,
+    Icon: FileText,
+  },
+  {
+    label: "Active Users",
+    value: "0",
+    trend: "+0%",
+    iconTone: "green" as const,
+    Icon: Users,
+  },
+  {
+    label: "Total Page Views",
+    value: "0",
+    trend: "+0%",
+    iconTone: "purple" as const,
+    Icon: Eye,
+  },
+  {
+    label: "Revenue (MTD)",
+    value: "$0",
+    trend: "+0%",
+    iconTone: "orange" as const,
+    Icon: DollarSign,
+  },
+];
+
+const SECONDARY_METRICS = [
+  {
+    label: "Draft Articles",
+    value: "0",
+    iconTone: "yellow" as const,
+    Icon: FileText,
+  },
+  {
+    label: "Scheduled Posts",
+    value: "0",
+    iconTone: "indigo" as const,
+    Icon: CalendarClock,
+  },
+  {
+    label: "Engagement Rate",
+    value: "0%",
+    trend: "+0%",
+    iconTone: "red" as const,
+    Icon: Activity,
+  },
+];
+
+function formatMetricValue(label: string, value: string | number): string {
+  if (typeof value === "string") return value;
+  if (label === "Total Page Views") {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+    return value.toLocaleString();
+  }
+  return value.toLocaleString();
+}
+
+function mergeMetrics<T extends { label: string; value: string; trend?: string }>(
+  base: T[],
+  api: AdminMetricItem[] | undefined,
+): T[] {
+  if (!api?.length) return base;
+  return base.map((metric) => {
+    const fromApi = api.find((m) => m.label === metric.label);
+    if (!fromApi) return metric;
+    return {
+      ...metric,
+      value: formatMetricValue(metric.label, fromApi.value),
+      ...(fromApi.trend !== undefined ? { trend: fromApi.trend } : {}),
+    };
+  });
+}
+
+function trendDirection(trend?: string): "up" | "down" {
+  return trend?.trim().startsWith("-") ? "down" : "up";
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { data, loading } = useAdminDashboard();
+  const { data } = useAdminDashboard();
 
-  const primaryMetrics = data?.primary_metrics ?? [];
-  const secondaryMetrics = data?.secondary_metrics ?? [];
+  const primaryMetrics = mergeMetrics(PRIMARY_METRICS, data?.primary_metrics);
+  const secondaryMetrics = mergeMetrics(SECONDARY_METRICS, data?.secondary_metrics);
 
   return (
     <div className="space-y-6">
@@ -45,49 +117,23 @@ export default function AdminDashboard() {
       />
 
       <section className="grid gap-6 xl:grid-cols-4">
-        {loading
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-32 animate-pulse rounded-[10px] border border-border bg-card" />
-            ))
-          : primaryMetrics.map((metric) => {
-              const Icon = ICON_MAP[metric.label] ?? FileText;
-              const trend = metric.trend;
-              const trendDir = trend?.startsWith("-") ? "down" : "up";
-              return (
-                <AdminMetricCard
-                  key={metric.label}
-                  label={metric.label}
-                  value={String(metric.value)}
-                  Icon={Icon}
-                  iconTone={metric.iconTone as MetricIconTone}
-                  trend={trend}
-                  trendDirection={trendDir}
-                />
-              );
-            })}
+        {primaryMetrics.map((metric) => (
+          <AdminMetricCard
+            key={metric.label}
+            {...metric}
+            trendDirection={trendDirection(metric.trend)}
+          />
+        ))}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
-        {loading
-          ? Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-[10px] border border-border bg-card" />
-            ))
-          : secondaryMetrics.map((metric) => {
-              const Icon = ICON_MAP[metric.label] ?? Activity;
-              const trend = metric.trend;
-              const trendDir = trend?.startsWith("-") ? "down" : "up";
-              return (
-                <AdminMetricCard
-                  key={metric.label}
-                  label={metric.label}
-                  value={String(metric.value)}
-                  Icon={Icon}
-                  iconTone={metric.iconTone as MetricIconTone}
-                  trend={trend}
-                  trendDirection={trendDir}
-                />
-              );
-            })}
+        {secondaryMetrics.map((metric) => (
+          <AdminMetricCard
+            key={metric.label}
+            {...metric}
+            trendDirection={trendDirection(metric.trend)}
+          />
+        ))}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
@@ -96,8 +142,8 @@ export default function AdminDashboard() {
           <RevenueAnalyticsChart data={data?.revenue_chart} />
         </div>
         <div className="space-y-6">
-          <RecentArticlesCard articles={data?.recent_articles} loading={loading} />
-          <TopPerformingArticlesCard articles={data?.top_articles} loading={loading} />
+          <RecentArticlesCard articles={data?.recent_articles} />
+          <TopPerformingArticlesCard articles={data?.top_articles} />
         </div>
       </section>
     </div>
