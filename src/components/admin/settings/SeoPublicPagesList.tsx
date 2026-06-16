@@ -1,8 +1,9 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
 
-import { listSeoPages } from "@/data/admin/mockSeoPages";
 import { SeoEditButton } from "@/components/admin/settings/SeoEditButton";
+import { fetchAdminSeoPages } from "@/services/admin/seoPages";
+import type { SeoPage } from "@/types/siteSettings";
 import { cn } from "@/lib/utils";
 
 function displayMetaTitle(value: string) {
@@ -28,12 +29,28 @@ function useIsMobile(breakpoint = 992) {
 }
 
 export function SeoPublicPagesList() {
-  const pages = listSeoPages();
+  const [pages, setPages] = React.useState<SeoPage[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const isMobile = useIsMobile();
 
-  const [openRows, setOpenRows] = React.useState<Set<string>>(
-    () => new Set(pages.map((p) => p.id)),
-  );
+  React.useEffect(() => {
+    fetchAdminSeoPages()
+      .then((rows) => {
+        const sorted = [...rows].sort((a, b) => {
+          const rank = (page: SeoPage) => {
+            if (page.pageKey === "home") return 0;
+            if (!page.isTemplate) return 1;
+            return 2;
+          };
+          const diff = rank(a) - rank(b);
+          return diff !== 0 ? diff : a.name.localeCompare(b.name);
+        });
+        setPages(sorted);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const [openRows, setOpenRows] = React.useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     setOpenRows(new Set(pages.map((p) => p.id)));
@@ -45,6 +62,15 @@ export function SeoPublicPagesList() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  }
+
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="mt-4 h-40 animate-pulse rounded bg-muted" />
+      </div>
+    );
   }
 
   return (
@@ -60,12 +86,10 @@ export function SeoPublicPagesList() {
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border border-border">
-              {/* First column — always visible */}
               <th className="px-3 py-2.5 text-base font-medium text-admin-heading">
                 Page
               </th>
 
-              {/* Desktop only columns */}
               {!isMobile && (
                 <>
                   <th className="px-3 py-2.5 text-center text-base font-medium text-admin-heading">
@@ -78,7 +102,6 @@ export function SeoPublicPagesList() {
                 </>
               )}
 
-              {/* Mobile: expand toggle column */}
               {isMobile && (
                 <th className="w-10 px-3 py-2.5" aria-label="Expand" />
               )}
@@ -91,19 +114,21 @@ export function SeoPublicPagesList() {
 
               return (
                 <React.Fragment key={page.id}>
-                  {/* Main row */}
                   <tr
                     className={cn(
                       "border-x border-b border-border",
                       index === pages.length - 1 && !isMobile && "rounded-b-lg",
                     )}
                   >
-                    {/* Page name — always visible */}
                     <td className="px-3 py-2.5 text-base font-medium text-admin-heading">
                       {page.name}
+                      {page.isTemplate ? (
+                        <span className="ml-2 text-xs font-normal text-admin-trend-muted">
+                          template
+                        </span>
+                      ) : null}
                     </td>
 
-                    {/* Desktop columns */}
                     {!isMobile && (
                       <>
                         <td className="px-3 py-2.5 text-center text-base text-[#555555]">
@@ -113,12 +138,11 @@ export function SeoPublicPagesList() {
                           {displayMetaTitle(page.metaTitle)}
                         </td>
                         <td className="px-3 py-2.5 text-center">
-                          <SeoEditButton to={`/admin/settings/seo/${page.id}`} />
+                          <SeoEditButton to={`/admin/settings/seo/${page.pageKey}`} />
                         </td>
                       </>
                     )}
 
-                    {/* Mobile: expand toggle only */}
                     {isMobile && (
                       <td className="w-10 px-3 py-2.5 align-middle">
                         <div className="flex justify-end">
@@ -146,7 +170,6 @@ export function SeoPublicPagesList() {
                     )}
                   </tr>
 
-                  {/* Drawer row — mobile only */}
                   {isMobile && (
                     <tr>
                       <td colSpan={2} className="p-0">
@@ -165,7 +188,6 @@ export function SeoPublicPagesList() {
                                 !isOpen && "border-b-0",
                               )}
                             >
-                              {/* Hidden fields */}
                               <div className="mb-3 space-y-3">
                                 <p className="text-[10px] font-semibold uppercase tracking-widest text-admin-trend-muted">
                                   More details
@@ -188,12 +210,11 @@ export function SeoPublicPagesList() {
                                 </div>
                               </div>
 
-                              {/* Action inside drawer */}
                               <div className="flex items-center gap-2 border-t border-border pt-3">
                                 <p className="text-[10px] font-semibold uppercase tracking-widest text-admin-trend-muted">
                                   Actions
                                 </p>
-                                <SeoEditButton to={`/admin/settings/seo/${page.id}`} />
+                                <SeoEditButton to={`/admin/settings/seo/${page.pageKey}`} />
                               </div>
                             </div>
                           </div>

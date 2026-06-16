@@ -16,6 +16,10 @@ export type ArticleDetail = {
   publishedAtIso: string;
   readTime: string;
   tags: string[];
+  metaTitle: string;
+  metaDescription: string;
+  metaKeywords: string;
+  shareImageUrl: string;
 };
 
 function formatPublishedAt(value: unknown): { label: string; iso: string } {
@@ -65,6 +69,7 @@ function parseTags(raw: unknown): string[] {
       if (typeof tag === "string") return tag;
       if (tag && typeof tag === "object") {
         const record = tag as Record<string, unknown>;
+        if (typeof record.tag === "string") return record.tag;
         if (typeof record.name === "string") return record.name;
         if (typeof record.title === "string") return record.title;
       }
@@ -111,6 +116,10 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
 
   const published = formatPublishedAt(record.published_at ?? record.created_at);
   const authorName = resolveAuthorName(record);
+  const seo =
+    record.seo && typeof record.seo === "object"
+      ? (record.seo as Record<string, unknown>)
+      : null;
 
   return {
     id: String(id),
@@ -135,13 +144,101 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
         ? record.read_time
         : "5 min read",
     tags: parseTags(record.tags),
+    metaTitle:
+      typeof record.meta_title === "string" && record.meta_title.trim()
+        ? record.meta_title
+        : typeof seo?.meta_title === "string"
+          ? seo.meta_title
+          : title,
+    metaDescription:
+      typeof record.meta_description === "string" && record.meta_description.trim()
+        ? record.meta_description
+        : typeof seo?.meta_description === "string"
+          ? seo.meta_description
+          : subtitle || stripHtmlFromArticle(articleDescription).slice(0, 160),
+    metaKeywords:
+      typeof record.meta_keywords === "string" && record.meta_keywords.trim()
+        ? record.meta_keywords
+        : typeof seo?.meta_keywords === "string"
+          ? seo.meta_keywords
+          : parseTags(record.tags).join(", "),
+    shareImageUrl: resolveMediaUrl(
+      typeof record.open_graph_image === "string" && record.open_graph_image.trim()
+        ? record.open_graph_image
+        : typeof record.featured_image === "string"
+          ? record.featured_image
+          : typeof record.featured_image_url === "string"
+            ? record.featured_image_url
+            : "",
+    ),
   };
+}
+
+function stripHtmlFromArticle(value: string): string {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export type CategoryArticlesResult = {
   categoryTitle: string;
+  categorySeo: {
+    metaTitle: string;
+    metaDescription: string;
+    metaKeywords: string;
+  };
   articles: Article[];
+  meta?: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
 };
+
+function resolveCategorySeo(body: unknown, fallbackTitle: string) {
+  if (!body || typeof body !== "object") {
+    return {
+      metaTitle: "",
+      metaDescription: "",
+      metaKeywords: "",
+    };
+  }
+
+  const root = body as Record<string, unknown>;
+  const payload = root.data ?? root;
+
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return {
+      metaTitle: "",
+      metaDescription: "",
+      metaKeywords: "",
+    };
+  }
+
+  const record = payload as Record<string, unknown>;
+  const category =
+    record.category && typeof record.category === "object"
+      ? (record.category as Record<string, unknown>)
+      : null;
+  const seo =
+    category?.seo && typeof category.seo === "object"
+      ? (category.seo as Record<string, unknown>)
+      : null;
+
+  return {
+    metaTitle:
+      (typeof category?.meta_title === "string" && category.meta_title) ||
+      (typeof seo?.meta_title === "string" ? seo.meta_title : "") ||
+      `${fallbackTitle} News — ZBC News`,
+    metaDescription:
+      (typeof category?.meta_description === "string" && category.meta_description) ||
+      (typeof seo?.meta_description === "string" ? seo.meta_description : "") ||
+      "",
+    metaKeywords:
+      (typeof category?.meta_keywords === "string" && category.meta_keywords) ||
+      (typeof seo?.meta_keywords === "string" ? seo.meta_keywords : "") ||
+      "",
+  };
+}
 
 function mapApiArticleListItem(raw: unknown): Article | null {
   if (!raw || typeof raw !== "object") return null;
@@ -174,6 +271,7 @@ function mapApiArticleListItem(raw: unknown): Article | null {
         : "5 min read",
     publishedAt: published.label,
     views: Number(record.views ?? record.view_count ?? 0) || undefined,
+    tags: parseTags(record.tags),
   };
 }
 
@@ -227,6 +325,22 @@ export async function fetchGridArticles(): Promise<Article[]> {
     .filter((article): article is Article => article !== null);
 }
 
+export type ArticlesByTagType = "latest" | "trending" | "recommended";
+
+export async function fetchArticlesByTag(
+  tagSlug: string,
+  type: ArticlesByTagType = "latest",
+): Promise<Article[]> {
+  const encodedTag = encodeURIComponent(tagSlug);
+  const response = await request.get(`/articles/by-tag/${encodedTag}`, {
+    params: { type },
+  });
+
+  return extractArticleRows(response.data)
+    .map(mapApiArticleListItem)
+    .filter((article): article is Article => article !== null);
+}
+
 let mostReadCache: Article[] | null = null;
 let mostReadPromise: Promise<Article[]> | null = null;
 
@@ -256,19 +370,40 @@ export async function fetchMostReadArticles(): Promise<Article[]> {
 
 export async function fetchArticlesByCategory(
   categorySlug: string,
+  page = 1,
 ): Promise<CategoryArticlesResult> {
   const encodedSlug = encodeURIComponent(categorySlug);
-  const response = await request.get(`/articles/category/${encodedSlug}`);
+  const response = await request.get(`/articles/category/${encodedSlug}`, {
+    params: { page },
+  });
   const body = response.data;
 
   const articles = extractArticleRows(body)
     .map(mapApiArticleListItem)
     .filter((article): article is Article => article !== null);
 
+  const payload = (body as { data?: Record<string, unknown> })?.data ?? body;
+  const meta =
+    payload && typeof payload === "object" && "meta" in payload
+      ? (payload.meta as CategoryArticlesResult["meta"])
+      : undefined;
+
   return {
     categoryTitle: resolveCategoryTitle(body, categorySlug),
+    categorySeo: resolveCategorySeo(body, resolveCategoryTitle(body, categorySlug)),
     articles,
+    meta,
   };
+}
+
+export async function fetchRelatedArticles(slug: string): Promise<Article[]> {
+  const encodedSlug = encodeURIComponent(slug);
+  const response = await request.get(`/articles/related/${encodedSlug}`);
+  const body = response.data;
+
+  return extractArticleRows(body)
+    .map(mapApiArticleListItem)
+    .filter((article): article is Article => article !== null);
 }
 
 export async function fetchArticleBySlug(slug: string): Promise<ArticleDetail | null> {
@@ -276,9 +411,4 @@ export async function fetchArticleBySlug(slug: string): Promise<ArticleDetail | 
   const response = await request.get(`/articles/show/${encodedSlug}`);
   const payload = response.data?.data ?? response.data;
   return mapApiArticleDetail(payload);
-}
-
-export async function recordArticleView(slug: string): Promise<void> {
-  const encodedSlug = encodeURIComponent(slug);
-  await request.post(`/articles/view/${encodedSlug}`).catch(() => {});
 }

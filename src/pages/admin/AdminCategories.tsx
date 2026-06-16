@@ -32,6 +32,12 @@ import {
 } from "@/components/select";
 import { CATEGORY_STATUS_FILTER_OPTIONS } from "@/data/admin/mockCategories";
 import { slugifyCategoryName } from "@/data/admin/categoryStore";
+import {
+  buildCategorySeoDefaults,
+  META_DESCRIPTION_MAX_LENGTH,
+  META_KEYWORDS_MAX_LENGTH,
+  META_TITLE_MAX_LENGTH,
+} from "@/components/admin/articles/articleEditorUtils";
 import InputError from "@/components/input-error";
 import { request } from "@/api/request";
 import { cn } from "@/lib/utils";
@@ -81,6 +87,9 @@ const categoryFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   slug: z.string().min(1, "Slug is required"),
   status: z.enum(["active", "inactive"]),
+  meta_title: z.string().max(META_TITLE_MAX_LENGTH),
+  meta_description: z.string().max(META_DESCRIPTION_MAX_LENGTH),
+  meta_keywords: z.string().max(META_KEYWORDS_MAX_LENGTH),
 });
 
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
@@ -146,6 +155,9 @@ export default function AdminCategories() {
       title: "",
       slug: "",
       status: "active",
+      meta_title: "",
+      meta_description: "",
+      meta_keywords: "",
     },
   });
 
@@ -187,14 +199,21 @@ export default function AdminCategories() {
   // ── API: POST / PUT — Form submit ──────────────────────────────────────────
 
   const onSubmit = async (data: CategoryFormValues) => {
+    const seoDefaults = buildCategorySeoDefaults(data.title, data.slug);
+    const payload = {
+      ...data,
+      meta_title: data.meta_title.trim() || seoDefaults.meta_title,
+      meta_description: data.meta_description.trim() || seoDefaults.meta_description,
+      meta_keywords: data.meta_keywords.trim() || seoDefaults.meta_keywords,
+    };
+
     try {
       if (isEditing) {
-        // PUT — category updat e
-        await request.post(`/admin/categories/update/${editingCategoryId}`, data);
+        await request.post(`/admin/categories/update/${editingCategoryId}`, payload);
         toast.success("Category updated successfully");
       } else {
         // POST — new category create
-        await request.post("/admin/categories/store", data);
+        await request.post("/admin/categories/store", payload);
         toast.success("Category created successfully");
       }
       await fetchCategories();
@@ -227,7 +246,7 @@ export default function AdminCategories() {
   const openCreateModal = () => {
     setEditingCategoryId(null);
     setSlugTouched(false);
-    reset({ title: "", slug: "", status: "active" });
+    reset({ title: "", slug: "", status: "active", meta_title: "", meta_description: "", meta_keywords: "" });
     setIsModalOpen(true);
   };
 
@@ -238,6 +257,9 @@ export default function AdminCategories() {
       title: category.title,
       slug: category.slug,
       status: category.status,
+      meta_title: (category as { meta_title?: string }).meta_title ?? "",
+      meta_description: (category as { meta_description?: string }).meta_description ?? "",
+      meta_keywords: (category as { meta_keywords?: string }).meta_keywords ?? "",
     });
     setIsModalOpen(true);
   };
@@ -399,6 +421,60 @@ export default function AdminCategories() {
                   )}
                 />
                 <InputError message={errors.status?.message} />
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-border bg-admin-surface/40 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-admin-heading">SEO metadata</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => {
+                      const title = watch("title");
+                      const slug = watch("slug");
+                      const defaults = buildCategorySeoDefaults(title, slug);
+                      setValue("meta_title", defaults.meta_title);
+                      setValue("meta_description", defaults.meta_description);
+                      setValue("meta_keywords", defaults.meta_keywords);
+                    }}
+                  >
+                    Generate from category
+                  </Button>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
+                    Meta title
+                  </label>
+                  <Input placeholder="Leave empty to auto-fill on save" {...register("meta_title")} />
+                  <InputError message={errors.meta_title?.message} />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
+                    Meta description
+                  </label>
+                  <textarea
+                    rows={3}
+                    {...register("meta_description")}
+                    className="flex min-h-[72px] w-full resize-none rounded-md border border-zbc-gray-200/50 bg-zbc-gray-200/50 px-3 py-2 text-base shadow-sm md:text-sm"
+                  />
+                  <InputError message={errors.meta_description?.message} />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
+                    Meta keywords
+                  </label>
+                  <textarea
+                    rows={2}
+                    {...register("meta_keywords")}
+                    className="flex min-h-[56px] w-full resize-none rounded-md border border-zbc-gray-200/50 bg-zbc-gray-200/50 px-3 py-2 text-base shadow-sm md:text-sm"
+                  />
+                  <InputError message={errors.meta_keywords?.message} />
+                </div>
               </div>
 
               {/* Actions */}

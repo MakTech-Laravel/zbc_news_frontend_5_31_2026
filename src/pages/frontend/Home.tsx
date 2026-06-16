@@ -6,9 +6,12 @@ import { CategoryArticlesView } from "@/components/main-layout/content/CategoryA
 import { FeaturedSection } from "@/components/main-layout/content/FeaturedSection";
 import { HeroSection } from "@/components/main-layout/content/HeroSection";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 
 export default function Home() {
   const { slug } = useParams<{ slug?: string }>();
+
+  useDocumentHead({ path: slug ? `/${slug}` : "/" });
 
   if (slug) {
     return <CategoryArticlesView categorySlug={slug} />;

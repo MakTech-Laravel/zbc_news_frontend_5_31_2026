@@ -1,8 +1,9 @@
 import * as React from "react";
-import { Clock, Share2 } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { ArticleSaveButton } from "@/components/articles/ArticleSaveButton";
+import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
 import { UserCategoryBadge } from "@/components/user/dashboard/UserCategoryBadge";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
 import type { UserFeedArticle } from "@/types/user";
@@ -76,13 +77,12 @@ function UserFeedArticleCardComponent({
           </p>
           <div className="flex items-center gap-2">
             <ArticleSaveButton articleId={article.id} variant="card" />
-            <button
-              type="button"
-              aria-label="Share article"
-              className="inline-flex size-8 items-center justify-center rounded-lg border border-border text-admin-label transition-colors hover:bg-muted sm:size-9"
-            >
-              <Share2 className="size-4" />
-            </button>
+            <ArticleShareButton
+              slug={article.slug}
+              title={article.title}
+              excerpt={article.excerpt}
+              imageUrl={article.imageUrl}
+            />
           </div>
         </div>
       </article>

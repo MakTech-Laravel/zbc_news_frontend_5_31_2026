@@ -8,7 +8,7 @@ export function LeftSidebar() {
   return (
     <aside className="space-y-5" aria-label="Left sidebar">
       <WeatherWidget />
-      <AdUnit variant="sidebar" />
+      <AdUnit variant="sidebar" slotKey="left_sidebar_primary" />
       <NewsletterSignup />
       <SidebarNav />
     </aside>

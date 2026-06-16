@@ -1,10 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"] as const;
-
-const AD_REVENUE = [14000, 15500, 16200, 17800, 19100, 20500];
-const SUBSCRIPTIONS = [8200, 8800, 9100, 9800, 10400, 11200];
+import type { AdminRevenueChart } from "@/services/admin/dashboard";
 
 const CHART_H = 220;
 const PAD = { top: 12, right: 16, bottom: 28, left: 44 };
@@ -13,9 +10,14 @@ const BAR_GAP = 6;
 
 type RevenueAnalyticsChartProps = {
   title?: string;
+  data?: AdminRevenueChart | null;
 };
 
-export function RevenueAnalyticsChart({ title = "Revenue Analytics" }: RevenueAnalyticsChartProps) {
+export function RevenueAnalyticsChart({ title = "Revenue Analytics", data }: RevenueAnalyticsChartProps) {
+  const months = data?.labels ?? ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+  const adRevenue = data?.ad_revenue ?? [0, 0, 0, 0, 0, 0];
+  const subscriptions = data?.subscriptions ?? [0, 0, 0, 0, 0, 0];
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
 
@@ -32,7 +34,7 @@ export function RevenueAnalyticsChart({ title = "Revenue Analytics" }: RevenueAn
   const max = 32000;
   const innerW = width - PAD.left - PAD.right;
   const innerH = CHART_H - PAD.top - PAD.bottom;
-  const groupW = innerW / MONTHS.length;
+  const groupW = innerW / months.length;
   const barW = (groupW - GROUP_GAP) / 2 - BAR_GAP / 2;
   const yTicks = [0, 8000, 16000, 24000, 32000];
 
@@ -74,10 +76,10 @@ export function RevenueAnalyticsChart({ title = "Revenue Analytics" }: RevenueAn
               );
             })}
 
-            {MONTHS.map((month, i) => {
+            {months.map((month, i) => {
               const groupX = PAD.left + i * groupW + GROUP_GAP / 2;
-              const adH = (AD_REVENUE[i] / max) * innerH;
-              const subH = (SUBSCRIPTIONS[i] / max) * innerH;
+              const adH = (Math.min(adRevenue[i] ?? 0, max) / max) * innerH;
+              const subH = (Math.min(subscriptions[i] ?? 0, max) / max) * innerH;
               const baseY = PAD.top + innerH;
 
               return (

@@ -13,34 +13,36 @@ import { RevenueAnalyticsChart } from "@/components/admin/dashboard/RevenueAnaly
 import { TopPerformingArticlesCard } from "@/components/admin/dashboard/TopPerformingArticlesCard";
 import { TrafficOverviewChart } from "@/components/admin/dashboard/TrafficOverviewChart";
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
+import { useAdminDashboard } from "@/hooks/useAdminDashboard";
+import type { AdminMetricItem } from "@/services/admin/dashboard";
 import { useNavigate } from "react-router-dom";
 
 const PRIMARY_METRICS = [
   {
     label: "Published Articles",
-    value: "1,248",
-    trend: "+12.5%",
+    value: "0",
+    trend: "+0%",
     iconTone: "blue" as const,
     Icon: FileText,
   },
   {
     label: "Active Users",
-    value: "45,234",
-    trend: "+8.2%",
+    value: "0",
+    trend: "+0%",
     iconTone: "green" as const,
     Icon: Users,
   },
   {
     label: "Total Page Views",
-    value: "2.4M",
-    trend: "+15.3%",
+    value: "0",
+    trend: "+0%",
     iconTone: "purple" as const,
     Icon: Eye,
   },
   {
     label: "Revenue (MTD)",
-    value: "$41,800",
-    trend: "+18.7%",
+    value: "$0",
+    trend: "+0%",
     iconTone: "orange" as const,
     Icon: DollarSign,
   },
@@ -49,27 +51,62 @@ const PRIMARY_METRICS = [
 const SECONDARY_METRICS = [
   {
     label: "Draft Articles",
-    value: "87",
+    value: "0",
     iconTone: "yellow" as const,
     Icon: FileText,
   },
   {
     label: "Scheduled Posts",
-    value: "24",
+    value: "0",
     iconTone: "indigo" as const,
     Icon: CalendarClock,
   },
   {
     label: "Engagement Rate",
-    value: "68%",
-    trend: "+5.2%",
+    value: "0%",
+    trend: "+0%",
     iconTone: "red" as const,
     Icon: Activity,
   },
 ];
 
+function formatMetricValue(label: string, value: string | number): string {
+  if (typeof value === "string") return value;
+  if (label === "Total Page Views") {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+    return value.toLocaleString();
+  }
+  return value.toLocaleString();
+}
+
+function mergeMetrics<T extends { label: string; value: string; trend?: string }>(
+  base: T[],
+  api: AdminMetricItem[] | undefined,
+): T[] {
+  if (!api?.length) return base;
+  return base.map((metric) => {
+    const fromApi = api.find((m) => m.label === metric.label);
+    if (!fromApi) return metric;
+    return {
+      ...metric,
+      value: formatMetricValue(metric.label, fromApi.value),
+      ...(fromApi.trend !== undefined ? { trend: fromApi.trend } : {}),
+    };
+  });
+}
+
+function trendDirection(trend?: string): "up" | "down" {
+  return trend?.trim().startsWith("-") ? "down" : "up";
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { data } = useAdminDashboard();
+
+  const primaryMetrics = mergeMetrics(PRIMARY_METRICS, data?.primary_metrics);
+  const secondaryMetrics = mergeMetrics(SECONDARY_METRICS, data?.secondary_metrics);
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
@@ -80,25 +117,33 @@ export default function AdminDashboard() {
       />
 
       <section className="grid gap-6 xl:grid-cols-4">
-        {PRIMARY_METRICS.map((metric) => (
-          <AdminMetricCard key={metric.label} {...metric} trendDirection="up" />
+        {primaryMetrics.map((metric) => (
+          <AdminMetricCard
+            key={metric.label}
+            {...metric}
+            trendDirection={trendDirection(metric.trend)}
+          />
         ))}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
-        {SECONDARY_METRICS.map((metric) => (
-          <AdminMetricCard key={metric.label} {...metric} trendDirection="up" />
+        {secondaryMetrics.map((metric) => (
+          <AdminMetricCard
+            key={metric.label}
+            {...metric}
+            trendDirection={trendDirection(metric.trend)}
+          />
         ))}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
         <div className="space-y-6">
-          <TrafficOverviewChart />
-          <RevenueAnalyticsChart />
+          <TrafficOverviewChart data={data?.traffic_chart} />
+          <RevenueAnalyticsChart data={data?.revenue_chart} />
         </div>
         <div className="space-y-6">
-          <RecentArticlesCard />
-          <TopPerformingArticlesCard />
+          <RecentArticlesCard articles={data?.recent_articles} />
+          <TopPerformingArticlesCard articles={data?.top_articles} />
         </div>
       </section>
     </div>

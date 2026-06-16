@@ -1,9 +1,31 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarCard } from "@/components/main-layout/shared/SidebarCard";
 import { Mail } from "lucide-react";
+import toast from "react-hot-toast";
+import { subscribeNewsletter } from "@/services/frontend/newsletter";
 
 export function NewsletterSignup() {
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    setSubmitting(true);
+    try {
+      await subscribeNewsletter({ email: email.trim() });
+      toast.success("Subscription received. Please verify your email.");
+      setEmail("");
+    } catch {
+      toast.error("Unable to subscribe right now. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <SidebarCard className="bg-surface-soft rounded-xs">
       <div className="mb-3">
@@ -17,20 +39,22 @@ export function NewsletterSignup() {
       </div>
       <form
         className="space-y-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-        }}
+        onSubmit={(e) => void handleSubmit(e)}
       >
         <Input
           type="email"
           placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
           className="h-10 rounded-xs border-border bg-input font-inter text-xs text-foreground"
         />
         <Button
           type="submit"
+          disabled={submitting}
           className="w-full rounded-none bg-primary font-inter text-xs font-bold text-primary-foreground hover:bg-bg-primary-500 cursor-pointer"
         >
-          Subscribe Now
+          {submitting ? "Subscribing..." : "Subscribe Now"}
         </Button>
       </form>
     </SidebarCard>

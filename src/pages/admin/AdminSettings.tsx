@@ -42,6 +42,17 @@ export default function AdminSettings() {
     navigate(tab === "general" ? "/admin/settings" : `/admin/settings?tab=${tab}`);
   };
 
+  if (settings.loading) {
+    return (
+      <SettingsPageShell activeTab={settings.activeTab} onTabChange={handleTabChange}>
+        <div className="space-y-4 rounded-lg border border-border bg-card p-6">
+          <div className="h-8 w-56 animate-pulse rounded bg-muted" />
+          <div className="h-40 animate-pulse rounded bg-muted" />
+        </div>
+      </SettingsPageShell>
+    );
+  }
+
   return (
     <SettingsPageShell activeTab={settings.activeTab} onTabChange={handleTabChange}>
       {settings.activeTab === "general" ? (
@@ -58,7 +69,13 @@ export default function AdminSettings() {
         <IntegrationsSettingsTab settings={settings} />
       ) : null}
 
-      <SettingsSaveBar onSave={settings.save} />
+      {settings.activeTab !== "seo" ? (
+        <SettingsSaveBar
+          onSave={settings.save}
+          saving={settings.saving}
+          disabled={settings.loading}
+        />
+      ) : null}
     </SettingsPageShell>
   );
 }

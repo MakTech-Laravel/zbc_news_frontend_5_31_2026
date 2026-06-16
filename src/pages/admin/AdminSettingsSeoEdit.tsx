@@ -11,13 +11,28 @@ export default function AdminSettingsSeoEdit() {
   const navigate = useNavigate();
   const editor = useSeoPageEditor(pageId);
 
-  if (!pageId || !editor.page) {
+  if (!pageId) {
     return <Navigate to="/admin/settings?tab=seo" replace />;
   }
 
-  const handleSave = () => {
-    editor.save();
-    navigate("/admin/settings?tab=seo");
+  if (editor.loading) {
+    return (
+      <SettingsPageShell
+        activeTab="seo"
+        onTabChange={(tab) => navigate(`/admin/settings?tab=${tab}`)}
+      >
+        <div className="h-40 animate-pulse rounded-lg bg-muted" />
+      </SettingsPageShell>
+    );
+  }
+
+  if (!editor.page) {
+    return <Navigate to="/admin/settings?tab=seo" replace />;
+  }
+
+  const handleSave = async () => {
+    const ok = await editor.save();
+    if (ok) navigate("/admin/settings?tab=seo");
   };
 
   return (
@@ -49,7 +64,7 @@ export default function AdminSettingsSeoEdit() {
         onMetaKeywordsChange={editor.setMetaKeywords}
       />
 
-      <SettingsSaveBar onSave={handleSave} />
+      <SettingsSaveBar onSave={handleSave} saving={editor.saving} />
     </SettingsPageShell>
   );
 }

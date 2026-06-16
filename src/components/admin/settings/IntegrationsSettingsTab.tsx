@@ -46,7 +46,7 @@ export function IntegrationsSettingsTab({ settings }: IntegrationsSettingsTabPro
         />
       </AdminFormField> */}
 
-      {/* <AdminFormField label="Disqus Shortname" htmlFor="disqus-shortname">
+      <AdminFormField label="Disqus Shortname" htmlFor="disqus-shortname">
         <input
           id="disqus-shortname"
           type="text"
@@ -55,7 +55,7 @@ export function IntegrationsSettingsTab({ settings }: IntegrationsSettingsTabPro
           placeholder="Shortname"
           className={settingsInputClassName}
         />
-      </AdminFormField> */}
+      </AdminFormField>
 
       {/* <AdminFormField
         label="Slack Webhook URL"

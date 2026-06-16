@@ -1,9 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-const VISITORS = [8200, 9100, 8800, 10200, 11500, 9800, 10800];
-const PAGE_VIEWS = [10000, 12400, 11800, 13800, 15200, 13100, 14500];
+import type { AdminTrafficChart } from "@/services/admin/dashboard";
 
 const CHART_H = 220;
 const PAD = { top: 12, right: 16, bottom: 28, left: 44 };
@@ -13,16 +11,25 @@ const MAX = 16000;
 function toPoints(values: number[], width: number) {
   const innerW = width - PAD.left - PAD.right;
   const innerH = CHART_H - PAD.top - PAD.bottom;
+  if (values.length < 2) return "";
   return values
     .map((v, i) => {
       const x = PAD.left + (i / (values.length - 1)) * innerW;
-      const y = PAD.top + innerH - (v / MAX) * innerH;
+      const y = PAD.top + innerH - (Math.min(v, MAX) / MAX) * innerH;
       return `${x},${y}`;
     })
     .join(" ");
 }
 
-export function TrafficOverviewChart() {
+type TrafficOverviewChartProps = {
+  data?: AdminTrafficChart | null;
+};
+
+export function TrafficOverviewChart({ data }: TrafficOverviewChartProps) {
+  const labels = data?.labels ?? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const visitors = data?.visitors ?? [0, 0, 0, 0, 0, 0, 0];
+  const pageViews = data?.page_views ?? [0, 0, 0, 0, 0, 0, 0];
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
 
@@ -41,8 +48,8 @@ export function TrafficOverviewChart() {
   const innerW = width - PAD.left - PAD.right;
   const innerH = CHART_H - PAD.top - PAD.bottom;
 
-  const visitorsPoints = toPoints(VISITORS, width);
-  const pageViewsPoints = toPoints(PAGE_VIEWS, width);
+  const visitorsPoints = toPoints(visitors, width);
+  const pageViewsPoints = toPoints(pageViews, width);
 
   return (
     <section className="rounded-[10px] border border-border bg-card px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6">
@@ -103,11 +110,11 @@ export function TrafficOverviewChart() {
           />
 
           {/* X axis labels */}
-          {DAYS.map((day, i) => {
-            const x = PAD.left + (i / (DAYS.length - 1)) * innerW;
+          {labels.map((day, i) => {
+            const x = PAD.left + (i / (labels.length - 1)) * innerW;
             return (
               <text
-                key={day}
+                key={`${day}-${i}`}
                 x={x}
                 y={CHART_H - 6}
                 textAnchor="middle"

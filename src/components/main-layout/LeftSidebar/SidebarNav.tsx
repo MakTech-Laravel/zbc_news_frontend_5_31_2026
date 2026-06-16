@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Cloud,
@@ -15,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { sidebarNavItems } from "@/data/dummy/sidebar";
+import { request } from "@/api/request";
 
 const iconMap: Record<string, LucideIcon> = {
   finance: Wallet,
@@ -34,9 +35,37 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function SidebarNav() {
+  const [items, setItems] = useState<Array<{ label: string; href: string; icon: string }>>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    request
+      .get("/categories")
+      .then((response) => {
+        const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+        const mapped = rows
+          .filter((cat: { status?: string }) => cat.status === "active")
+          .map((cat: { title?: string; slug?: string }) => ({
+            label: cat.title ?? "Category",
+            href: cat.slug ? `/${cat.slug}` : "/",
+            icon: (cat.slug ?? "").toLowerCase(),
+          }));
+
+        if (isMounted) setItems(mapped);
+      })
+      .catch(() => {
+        if (isMounted) setItems([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <nav aria-label="Quick links" className="space-y-0.5">
-      {sidebarNavItems.map((item) => {
+      {items.map((item) => {
         const Icon = iconMap[item.icon] ?? Newspaper;
 
         return (

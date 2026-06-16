@@ -9,6 +9,7 @@ export type Article = {
   readTime: string;
   publishedAt: string;
   views?: number;
+  tags?: string[];
 };
 
 export type NavItem = {
