@@ -59,6 +59,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.PLANS.LIST,
   },
   {
+    label: 'Newsletters',
+    path: '/admin/newsletters',
+    segment: 'newsletters',
+    permission: null,
+  },
+  {
     label: 'Settings',
     path: '/admin/settings',
     segment: 'settings',

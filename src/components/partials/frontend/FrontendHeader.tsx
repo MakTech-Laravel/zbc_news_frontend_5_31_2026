@@ -5,9 +5,11 @@ import { BarChart3, Bell, Clock, LogIn, LogOut, Menu, Radio, Search, Settings, S
 import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
+import { fetchQuickLinks, type QuickLink } from "@/services/frontend/navigation";
 
 type NavItem = { id: string; label: string; to: string };
 
@@ -48,12 +50,43 @@ export function useMainNav() {
   return { navItems, loading };
 }
 
-const SUB_NAV = [
-  { label: "Trending", to: "/", icon: TrendingUp },
-  { label: "Most Read", to: "/", icon: BarChart3 },
-  { label: "Live Updates", to: "/", icon: Radio },
-  { label: "Editorial Picks", to: "/", icon: Star },
+const QUICK_LINK_FALLBACK = [
+  { id: 1, label: "Trending", url: "/", icon: "TrendingUp" },
+  { id: 2, label: "Most Read", url: "/", icon: "BarChart3" },
+  { id: 3, label: "Live Updates", url: "/", icon: "Radio" },
+  { id: 4, label: "Editorial Picks", url: "/", icon: "Star" },
 ] as const;
+
+const quickLinkIconMap: Record<string, typeof TrendingUp> = {
+  TrendingUp,
+  BarChart3,
+  Radio,
+  Star,
+};
+
+function useQuickLinks() {
+  const [links, setLinks] = useState<QuickLink[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchQuickLinks()
+      .then((items) => {
+        if (!isMounted) return;
+        setLinks(items.length > 0 ? items : [...QUICK_LINK_FALLBACK]);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setLinks([...QUICK_LINK_FALLBACK]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return links;
+}
 
 const BREAKING_ITEMS = [
   {
@@ -75,7 +108,33 @@ const BREAKING_ITEMS = [
   },
 ];
 
-const logo = "/images/home/logo.png";
+const FALLBACK_LOGO = "/images/home/logo.png";
+
+function BrandLogo({ compact }: { compact?: boolean }) {
+  const { settings } = useSiteSettings();
+  const logoSrc = settings.siteLogo ?? FALLBACK_LOGO;
+  const siteName = settings.siteName || "ZBC News";
+
+  return (
+    <Link
+      to="/"
+      className={cn(
+        "inline-flex shrink-0 items-center",
+        compact ? "min-w-0 max-w-[150px] sm:max-w-[180px]" : "max-w-[220px] xl:max-w-[260px]",
+      )}
+      aria-label={`${siteName} home`}
+    >
+      <img
+        src={logoSrc}
+        alt={`${siteName} Logo`}
+        className={cn(
+          "block h-auto w-full object-contain",
+          compact ? "max-h-8 sm:max-h-10" : "max-h-10 lg:max-h-12 xl:max-h-14",
+        )}
+      />
+    </Link>
+  );
+}
 
 function BreakingNewsTicker() {
   const items = [...BREAKING_ITEMS, ...BREAKING_ITEMS];
@@ -108,18 +167,6 @@ function BreakingNewsTicker() {
         </div>
       </div>
     </div>
-  );
-}
-
-function BrandLogo({ compact }: { compact?: boolean }) {
-  return (
-    <Link
-      to="/"
-      className={cn("inline-flex shrink-0 flex-col", compact && "min-w-0")}
-      aria-label="ZBC News home"
-    >
-      <img src={logo} alt="ZBC News Logo" className="w-full h-full" />
-    </Link>
   );
 }
 
@@ -311,6 +358,8 @@ function MainNavBar() {
 
 /** Sub-nav + datetime (Figma row 3) */
 function SubNavBar() {
+  const quickLinks = useQuickLinks();
+
   return (
     <div
       className="mx-auto container hidden border-t border-border bg-zbc-gray-100 md:block mt-2 p-4"
@@ -325,16 +374,19 @@ function SubNavBar() {
             "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           )}
         >
-          {SUB_NAV.map(({ label, to, icon: Icon }) => (
+          {quickLinks.map(({ id, label, url, icon }) => {
+            const Icon = icon ? (quickLinkIconMap[icon] ?? TrendingUp) : TrendingUp;
+            return (
             <Link
-              key={label}
-              to={to}
+              key={id}
+              to={url || "/"}
               className="inline-flex shrink-0 items-center gap-1.5 font-inter text-base font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <Icon className="size-3.5 shrink-0" aria-hidden />
               {label}
             </Link>
-          ))}
+            );
+          })}
         </nav>
         <LiveDateTime />
       </div>
@@ -345,6 +397,7 @@ function SubNavBar() {
 function MobileMenu() {
   const [open, setOpen] = useState(false);
   const { navItems } = useMainNav();
+  const quickLinks = useQuickLinks();
   const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
 
@@ -426,17 +479,20 @@ function MobileMenu() {
                 className="flex flex-col gap-0.5 border-t border-border pt-3"
                 aria-label="Quick links"
               >
-                {SUB_NAV.map(({ label, to, icon: Icon }) => (
+                {quickLinks.map(({ id, label, url, icon }) => {
+                  const Icon = icon ? (quickLinkIconMap[icon] ?? TrendingUp) : TrendingUp;
+                  return (
                   <Link
-                    key={label}
-                    to={to}
+                    key={id}
+                    to={url || "/"}
                     onClick={close}
                     className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <Icon className="size-4" aria-hidden />
                     {label}
                   </Link>
-                ))}
+                  );
+                })}
               </nav>
 
               <div className="flex items-center gap-1.5 border-t border-border pt-3 font-sans text-[12px] text-muted-foreground">

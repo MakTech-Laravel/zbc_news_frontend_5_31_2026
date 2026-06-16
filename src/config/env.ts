@@ -83,6 +83,10 @@ export const env = {
   isProd: import.meta.env.PROD,
   // Vite only exposes env vars to the client when prefixed with VITE_
   apiBaseUrl: required('VITE_API_BASE_URL'),
+  /** Public site URL for canonical links and OG tags (optional; defaults to window.location.origin). */
+  siteUrl: optionalViteString('VITE_SITE_URL'),
+  /** Optional Meta app id for Facebook Share Dialog (recommended for reliable sharing). */
+  facebookAppId: optionalViteString('VITE_FACEBOOK_APP_ID'),
   /** Flutterwave public key for client-side checkout (optional). */
   flutterwavePublicKey: (import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY as string | undefined) ?? '',
   /**

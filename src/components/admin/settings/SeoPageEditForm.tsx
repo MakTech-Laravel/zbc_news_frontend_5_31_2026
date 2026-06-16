@@ -3,7 +3,7 @@ import {
   settingsInputClassName,
   settingsTextareaClassName,
 } from "@/components/admin/settings/settingsFormStyles";
-import type { SeoPage } from "@/data/admin/mockSeoPages";
+import type { SeoPage } from "@/types/siteSettings";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 
 type SeoPageEditFormProps = {
@@ -30,16 +30,13 @@ export function SeoPageEditForm({
       <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
         <h2 className="text-xl font-medium text-admin-heading">SEO: {page.name}</h2>
         <p className="mt-1 text-base text-[#2b2a2a]">Page URL: {page.url}</p>
-        <p className="mt-1 text-sm uppercase tracking-wide text-[#2b2a2a]">
-          Admin dashboard &gt; SEO &gt; {page.name}
-        </p>
       </div>
 
       <AdminPanel className="space-y-6">
         <div>
           <h3 className="text-base font-medium text-admin-heading">Meta tags</h3>
           <p className="mt-1 text-base text-admin-heading">
-            Fill what you need. Leave empty to use the site defaults.
+            Fill what you need. Empty fields fall back to the site name and tagline.
           </p>
         </div>
 
@@ -49,7 +46,7 @@ export function SeoPageEditForm({
             type="text"
             value={metaTitle}
             onChange={(e) => onMetaTitleChange(e.target.value)}
-            placeholder="Fill what you need. Leave empty to use the site defaults."
+            placeholder="e.g. Technology News — ZBC News"
             className={settingsInputClassName}
           />
         </AdminFormField>
@@ -59,7 +56,7 @@ export function SeoPageEditForm({
             id="meta-description"
             value={metaDescription}
             onChange={(e) => onMetaDescriptionChange(e.target.value)}
-            placeholder="e.g. Create a legally compliant will online in minutes. Expert checks included."
+            placeholder="e.g. Latest technology news, reviews, and analysis from ZBC News."
             className={settingsTextareaClassName}
             rows={4}
           />
@@ -70,7 +67,7 @@ export function SeoPageEditForm({
             id="meta-keywords"
             value={metaKeywords}
             onChange={(e) => onMetaKeywordsChange(e.target.value)}
-            placeholder="e.g. will writing, online will, lasting power of attorney, probate"
+            placeholder="e.g. technology, news, gadgets, innovation"
             className={settingsTextareaClassName}
             rows={4}
           />

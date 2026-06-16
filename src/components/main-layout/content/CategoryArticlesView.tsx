@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
 import { AdUnit } from "@/components/main-layout/shared/AdUnit";
+import { Button } from "@/components/ui/button";
 import type { Article } from "@/data/dummy/types";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { fetchArticlesByCategory } from "@/services/frontend/articles";
 
 type CategoryArticlesViewProps = {
@@ -13,17 +15,42 @@ type CategoryArticlesViewProps = {
 export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [categoryTitle, setCategoryTitle] = useState("");
+  const [categorySeo, setCategorySeo] = useState({
+    metaTitle: "",
+    metaDescription: "",
+    metaKeywords: "",
+  });
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  useDocumentHead({
+    path: `/${categorySlug}`,
+    title: categorySeo.metaTitle || undefined,
+    description: categorySeo.metaDescription || undefined,
+    keywords: categorySeo.metaKeywords || undefined,
+    replacements: { category: categoryTitle || categorySlug.replace(/-/g, " ") },
+  });
+
+  useEffect(() => {
+    setPage(1);
+  }, [categorySlug]);
+
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(false);
 
-    fetchArticlesByCategory(categorySlug)
-      .then(({ categoryTitle: title, articles: rows }) => {
+    fetchArticlesByCategory(categorySlug, page)
+      .then(({ categoryTitle: title, categorySeo: seo, articles: rows, meta }) => {
         if (cancelled) return;
         setCategoryTitle(title);
+        setCategorySeo(seo);
         setArticles(rows);
+        setLastPage(meta?.last_page ?? 1);
+        setTotal(meta?.total ?? rows.length);
       })
       .catch((err) => {
         console.error("Failed to fetch category articles:", err);
@@ -36,7 +63,7 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
     return () => {
       cancelled = true;
     };
-  }, [categorySlug]);
+  }, [categorySlug, page]);
 
   if (loading) {
     return (
@@ -71,7 +98,7 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
           {categoryTitle}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {articles.length} {articles.length === 1 ? "article" : "articles"}
+          {total} {total === 1 ? "article" : "articles"}
         </p>
       </header>
 
@@ -82,6 +109,30 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
           No articles found in this category yet.
         </p>
       )}
+
+      {lastPage > 1 ? (
+        <div className="flex items-center justify-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {lastPage}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={page >= lastPage}
+            onClick={() => setPage((current) => Math.min(lastPage, current + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      ) : null}
 
       <AdUnit variant="banner" />
       <LatestStories />

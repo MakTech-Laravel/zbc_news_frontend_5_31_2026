@@ -1,82 +1,29 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calendar, Clock, MessageCircle } from "lucide-react";
 
 import { ArticleDetailToolbar } from "@/components/main-layout/NewsDetails/ArticleDetailToolbar";
+import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
+import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
 import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import NotFound from "@/pages/global/NotFound";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/auth/useAuth";
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 import {
   fetchArticleBySlug,
-  recordArticleView,
+  fetchRelatedArticles,
   type ArticleDetail,
 } from "@/services/frontend/articles";
+import type { Article } from "@/data/dummy/types";
 import { AdUnit } from "../shared/AdUnit";
 import { useArticleTracking } from "@/hooks/useArticleTracking";
+import {
+  getArticlePageUrl,
+} from "@/lib/articleShare";
 
-
-type SocialIconProps = { className?: string };
-
-function FacebookIcon({ className }: SocialIconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden
-    >
-      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-    </svg>
-  );
-}
-
-function XIcon({ className }: SocialIconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden
-    >
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  );
-}
-
-function LinkedInIcon({ className }: SocialIconProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden
-    >
-      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-    </svg>
-  );
-}
-
-const SHARE_LINKS = [
-  {
-    label: "Facebook",
-    href: "https://facebook.com",
-    icon: FacebookIcon,
-    className: "bg-[#1877F2] hover:bg-[#166fe5]",
-  },
-  {
-    label: "Twitter",
-    href: "https://x.com",
-    icon: XIcon,
-    className: "bg-[#1DA1F2] hover:bg-[#1a94da]",
-  },
-  {
-    label: "LinkedIn",
-    href: "https://linkedin.com",
-    icon: LinkedInIcon,
-    className: "bg-[#0A66C2] hover:bg-[#0958aa]",
-  },
-] as const;
 
 const articleBodyClassName = cn(
   "article-detail-body space-y-4",
@@ -118,6 +65,31 @@ function DetailsSkeleton() {
 }
 
 function ArticleContent({ article }: { article: ArticleDetail }) {
+  const { settings } = useSiteSettings();
+  const { isAuthenticated } = useAuth();
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
+
+  useDocumentHead({
+    path: `/news-details/${article.slug}`,
+    title: article.metaTitle,
+    description: article.metaDescription,
+    keywords: article.metaKeywords,
+    image: article.shareImageUrl || article.imageUrl,
+    url: getArticlePageUrl(article.slug),
+    type: "article",
+    publishedAt: article.publishedAtIso || undefined,
+  });
+
+  useEffect(() => {
+    if (settings.relatedArticlesCount <= 0) {
+      setRelatedArticles([]);
+      return;
+    }
+
+    fetchRelatedArticles(article.slug)
+      .then(setRelatedArticles)
+      .catch(() => setRelatedArticles([]));
+  }, [article.slug, settings.relatedArticlesCount]);
 
   useArticleTracking(Number(article.id));
 
@@ -128,6 +100,8 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
           articleId={article.id}
           articleTitle={article.title}
           articleSlug={article.slug}
+          articleSummary={article.metaDescription || article.subtitle}
+          articleImageUrl={article.shareImageUrl || article.imageUrl}
         />
 
         <header className="space-y-4 pb-6 pt-6 sm:space-y-5 sm:pb-8">
@@ -246,19 +220,14 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
           >
             Share this article
           </h2>
-          <div className="mt-5 flex items-center justify-center gap-3">
-            {SHARE_LINKS.map(({ label, href, icon: Icon, className }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xs px-3 sm:px-5 font-inter text-sm font-semibold text-white transition-colors sm:max-w-[200px] sm:flex-initial ${className}`}
-              >
-                <Icon className="size-4 shrink-0" />
-                {label}
-              </a>
-            ))}
+          <div className="mt-5 flex justify-center">
+            <ArticleShareButton
+              variant="labeled"
+              slug={article.slug}
+              title={article.metaTitle}
+              excerpt={article.metaDescription || article.subtitle}
+              imageUrl={article.shareImageUrl || article.imageUrl}
+            />
           </div>
         </section>
 
@@ -272,34 +241,51 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
           >
             Related Articles
           </h2>
-          <div className="border-b border-border pb-8" />
+          {relatedArticles.length > 0 ? (
+            <div className="mt-6">
+              <ArticleGrid articles={relatedArticles} />
+            </div>
+          ) : (
+            <div className="border-b border-border pb-8" />
+          )}
         </section>
 
-        <section className="pt-3 sm:pt-5" aria-labelledby="comments-heading">
-          <h2
-            id="comments-heading"
-            className="text-center font-inter text-xl font-bold text-zbc-gray-1000 sm:text-2xl"
-          >
-            Comments
-          </h2>
-          <div className="mt-5 flex flex-col gap-4 rounded-lg border border-border bg-zbc-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5 sm:py-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <MessageCircle
-                className="size-5 shrink-0 text-zbc-gray-400"
-                aria-hidden
-              />
-              <p className="font-inter text-sm text-zbc-gray-700 sm:text-base">
-                Sign In to join the conversation
-              </p>
-            </div>
-            <Link
-              to="/login"
-              className="shrink-0 font-inter text-sm font-semibold text-primary hover:underline sm:text-base"
+        {settings.allowComments ? (
+          <section className="pt-3 sm:pt-5" aria-labelledby="comments-heading">
+            <h2
+              id="comments-heading"
+              className="text-center font-inter text-xl font-bold text-zbc-gray-1000 sm:text-2xl"
             >
-              Sign In
-            </Link>
-          </div>
-        </section>
+              Comments
+            </h2>
+
+            {settings.disqusShortname ? (
+              <div id="disqus_thread" className="mt-5" />
+            ) : settings.requireRegistrationToComment && !isAuthenticated ? (
+              <div className="mt-5 flex flex-col gap-4 rounded-lg border border-border bg-zbc-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <MessageCircle
+                    className="size-5 shrink-0 text-zbc-gray-400"
+                    aria-hidden
+                  />
+                  <p className="font-inter text-sm text-zbc-gray-700 sm:text-base">
+                    Sign In to join the conversation
+                  </p>
+                </div>
+                <Link
+                  to="/login"
+                  className="shrink-0 font-inter text-sm font-semibold text-primary hover:underline sm:text-base"
+                >
+                  Sign In
+                </Link>
+              </div>
+            ) : (
+              <p className="mt-5 rounded-lg border border-border bg-card p-4 text-center text-sm text-muted-foreground">
+                Comments are enabled. A dedicated comments service can be connected from Integrations.
+              </p>
+            )}
+          </section>
+        ) : null}
 
         <div className="mt-3 space-y-6 pb-4 sm:mt-5 sm:space-y-3 sm:pb-3">
           <AdUnit variant="banner" />
@@ -316,8 +302,6 @@ export default function Details() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const hasRecordedView = useRef(false);
-
   useEffect(() => {
     if (!articleSlug) {
       setLoading(false);
@@ -326,11 +310,6 @@ export default function Details() {
     }
 
     let cancelled = false;
-
-    if (!hasRecordedView.current) {
-      hasRecordedView.current = true;
-      recordArticleView(decodeURIComponent(articleSlug));
-    }
 
     fetchArticleBySlug(decodeURIComponent(articleSlug))
       .then((data) => {

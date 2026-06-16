@@ -1,36 +1,12 @@
-import type { ReactNode } from "react";
-import { Clock, Eye, Share2, Flame } from "lucide-react";
+import { Clock, Eye, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { ArticleSaveButton } from "@/components/articles/ArticleSaveButton";
+import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
 import { UserCategoryBadge } from "@/components/user/dashboard/UserCategoryBadge";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
 import { userFeaturedStory } from "@/data/dummy/userDashboard";
 import type { UserFeaturedStoryData } from "@/services/user/tagArticles";
-import { cn } from "@/lib/utils";
-
-function IconActionButton({
-  label,
-  children,
-  className,
-}: {
-  label: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className={cn(
-        "inline-flex size-9 items-center justify-center rounded-lg border border-border bg-card text-admin-label transition-colors hover:bg-muted",
-        className,
-      )}
-    >
-      {children}
-    </button>
-  );
-}
 
 type UserFeaturedStoryProps = {
   story?: UserFeaturedStoryData | null;
@@ -119,9 +95,13 @@ export function UserFeaturedStory({ story, loading = false }: UserFeaturedStoryP
             </div>
             <div className="flex items-center gap-2">
               <ArticleSaveButton articleId={articleId} variant="card" />
-              <IconActionButton label="Share article">
-                <Share2 className="size-4" />
-              </IconActionButton>
+              <ArticleShareButton
+                slug={story?.slug}
+                title={displayStory.title}
+                excerpt={displayStory.excerpt}
+                imageUrl={displayStory.imageUrl}
+                variant="icon"
+              />
             </div>
           </div>
           <Link

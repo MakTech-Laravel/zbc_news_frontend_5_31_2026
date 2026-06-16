@@ -8,6 +8,7 @@ export type UserFeedArticle = {
   publishedAt: string;
   views?: number;
   slug?: string;
+  imageUrl?: string;
   savedRecordId?: string;
   savedAt?: string;
   categorySlug?: string;

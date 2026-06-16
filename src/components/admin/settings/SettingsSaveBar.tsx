@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type SettingsSaveBarProps = {
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
+  saving?: boolean;
+  disabled?: boolean;
 };
 
-export function SettingsSaveBar({ onSave }: SettingsSaveBarProps) {
+export function SettingsSaveBar({ onSave, saving = false, disabled = false }: SettingsSaveBarProps) {
   return (
     <div
       className={cn(
@@ -18,11 +20,12 @@ export function SettingsSaveBar({ onSave }: SettingsSaveBarProps) {
       <div className="flex justify-end">
         <Button
           type="button"
-          onClick={onSave}
+          onClick={() => void onSave()}
+          disabled={disabled || saving}
           className="h-11 w-full gap-2 rounded-[10px] bg-zbc-blue px-6 text-base font-medium hover:bg-zbc-blue/90 sm:h-12 sm:w-auto"
         >
           <Save className="size-5" aria-hidden />
-          Save Changes
+          {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
     </div>

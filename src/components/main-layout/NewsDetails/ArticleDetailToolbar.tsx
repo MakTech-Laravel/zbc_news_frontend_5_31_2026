@@ -1,14 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Share2 } from "lucide-react";
-import toast from "react-hot-toast";
+import { ChevronLeft } from "lucide-react";
 
 import { ArticleSaveButton } from "@/components/articles/ArticleSaveButton";
+import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
 import { cn } from "@/lib/utils";
 
 type ArticleDetailToolbarProps = {
   articleId: string | number;
   articleTitle?: string;
   articleSlug?: string;
+  articleSummary?: string;
+  articleImageUrl?: string;
   className?: string;
 };
 
@@ -16,6 +18,8 @@ export function ArticleDetailToolbar({
   articleId,
   articleTitle,
   articleSlug,
+  articleSummary,
+  articleImageUrl,
   className,
 }: ArticleDetailToolbarProps) {
   const navigate = useNavigate();
@@ -26,30 +30,6 @@ export function ArticleDetailToolbar({
       return;
     }
     navigate("/");
-  }
-
-  async function handleShare() {
-    const url = articleSlug
-      ? `${window.location.origin}/news-details/${encodeURIComponent(articleSlug)}`
-      : window.location.href;
-
-    const title = articleTitle ?? "ZBC News";
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, url });
-        return;
-      } catch (error) {
-        if ((error as Error).name === "AbortError") return;
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied to clipboard");
-    } catch {
-      toast.error("Unable to share article");
-    }
   }
 
   return (
@@ -71,14 +51,13 @@ export function ArticleDetailToolbar({
       <div className="flex items-center gap-4">
         <ArticleSaveButton articleId={articleId} variant="toolbar" />
 
-        <button
-          type="button"
-          onClick={() => void handleShare()}
-          aria-label="Share article"
-          className="inline-flex size-8 items-center justify-center text-zbc-gray-700 transition-colors hover:text-zbc-gray-1000"
-        >
-          <Share2 className="size-[18px]" aria-hidden />
-        </button>
+        <ArticleShareButton
+          slug={articleSlug}
+          title={articleTitle ?? "ZBC News"}
+          excerpt={articleSummary}
+          imageUrl={articleImageUrl}
+          variant="toolbar"
+        />
       </div>
     </div>
   );

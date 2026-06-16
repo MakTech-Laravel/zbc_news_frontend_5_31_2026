@@ -13,9 +13,6 @@ export type AdminSettingsForm = {
   tagline: string;
   timezone: string;
   language: string;
-  metaTitle: string;
-  metaDescription: string;
-  metaKeywords: string;
   defaultCategory: string;
   defaultPostFormat: string;
   enableAutoSave: boolean;
@@ -38,10 +35,7 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettingsForm = {
   tagline: "Breaking news and analysis from around the world",
   timezone: "America/New_York",
   language: "en",
-  metaTitle: "",
-  metaDescription: "",
-  metaKeywords: "",
-  defaultCategory: "Politics",
+  defaultCategory: "",
   defaultPostFormat: "Standard",
   enableAutoSave: true,
   requireFeaturedImage: false,
@@ -79,14 +73,7 @@ export const LANGUAGE_OPTIONS = [
   { value: "ar", label: "Arabic" },
 ] as const;
 
-export const CATEGORY_OPTIONS = [
-  { value: "Politics", label: "Politics" },
-  { value: "Technology", label: "Technology" },
-  { value: "Sports", label: "Sports" },
-  { value: "Health", label: "Health" },
-  { value: "Business", label: "Business" },
-  { value: "Lifestyle", label: "Lifestyle" },
-] as const;
+export const CATEGORY_OPTIONS = [] as const;
 
 export const POST_FORMAT_OPTIONS = [
   { value: "Standard", label: "Standard" },

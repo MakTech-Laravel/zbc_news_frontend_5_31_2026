@@ -20,7 +20,6 @@ const UserBreakingNews = lazy(() => import("@/pages/user/UserBreakingNews"));
 const UserWorld = lazy(() => import("@/pages/user/UserWorld"));
 const UserEditorial = lazy(() => import("@/pages/user/UserEditorial"));
 const UserLongReads = lazy(() => import("@/pages/user/UserLongReads"));
-const UserSettings = lazy(() => import("@/pages/user/UserSettings"));
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminArticles = lazy(() => import("@/pages/admin/AdminArticles"));
 const AdminArticlesCreate = lazy(() => import("@/pages/admin/AdminArticlesCreate"));
@@ -31,6 +30,7 @@ const AdminUserArticleActivities = lazy(
 const AdminCategories = lazy(() => import("@/pages/admin/AdminCategories"));
 const AdminMedia = lazy(() => import("@/pages/admin/AdminMedia"));
 const AdminMonetization = lazy(() => import("@/pages/admin/AdminMonetization"));
+const AdminNewsletters = lazy(() => import("@/pages/admin/AdminNewsletters"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazy(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminArticlesEdit = lazy(() => import("@/pages/admin/AdminArticlesEdit"));
@@ -72,7 +72,6 @@ export const router = createBrowserRouter([
           { path: "world", element: suspensePage(UserWorld) },
           { path: "editorial", element: suspensePage(UserEditorial) },
           { path: "long-reads", element: suspensePage(UserLongReads) },
-          { path: "settings", element: suspensePage(UserSettings) },
         ],
       },
       {
@@ -139,6 +138,10 @@ export const router = createBrowserRouter([
           {
             path: "monetization",
             element: suspensePage(AdminMonetization),
+          },
+          {
+            path: "newsletters",
+            element: suspensePage(AdminNewsletters),
           },
           {
             path: "settings",

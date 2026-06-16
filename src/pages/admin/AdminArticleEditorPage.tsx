@@ -9,9 +9,11 @@ import { request } from "@/api/request";
 import { ArticleRichTextEditor } from "@/components/admin/articles/ArticleRichTextEditor";
 import { ArticleTagInput } from "@/components/admin/articles/ArticleTagInput";
 import {
+  buildArticleSeoDefaults,
   countWords,
   EXCERPT_MAX_LENGTH,
   META_DESCRIPTION_MAX_LENGTH,
+  META_KEYWORDS_MAX_LENGTH,
   META_TITLE_MAX_LENGTH,
   stripHtml,
 } from "@/components/admin/articles/articleEditorUtils";
@@ -30,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/select";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   ARTICLE_STATUS_LABELS,
   ARTICLE_WORKFLOW_STATUSES,
@@ -97,6 +100,12 @@ const articleFormSchema = z
       .max(
         META_DESCRIPTION_MAX_LENGTH,
         `Meta description must be ${META_DESCRIPTION_MAX_LENGTH} characters or less`,
+      ),
+    meta_keywords: z
+      .string()
+      .max(
+        META_KEYWORDS_MAX_LENGTH,
+        `Meta keywords must be ${META_KEYWORDS_MAX_LENGTH} characters or less`,
       ),
     slug: z.string().min(1, "Slug is required"),
     scheduled_publishing: z.string(),
@@ -245,6 +254,8 @@ function mapArticleToFormValues(raw: unknown): ArticleFormInputValues {
             : "",
     meta_description:
       typeof record.meta_description === "string" ? record.meta_description : "",
+    meta_keywords:
+      typeof record.meta_keywords === "string" ? record.meta_keywords : "",
     slug: typeof record.slug === "string" ? record.slug : "",
     scheduled_publishing: toDatetimeLocalValue(
       record.scheduled_publishing ?? record.scheduledAt ?? record.publish_at,
@@ -298,7 +309,7 @@ function buildArticlePayload(
     excerpt: data.excerpt,
     meta_title: data.meta_title,
     meta_description: data.meta_description,
-    // author_id: data.author_id,
+    meta_keywords: data.meta_keywords,
     tags: data.tags,
     ...(data.scheduled_publishing
       ? { scheduled_publishing: toApiDatetimeValue(data.scheduled_publishing) }
@@ -377,6 +388,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       excerpt: "",
       meta_title: "",
       meta_description: "",
+      meta_keywords: "",
       slug: "",
       scheduled_publishing: "",
       // author_id: "",
@@ -465,6 +477,23 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     [watchedContent],
   );
 
+  const applySeoFromArticle = React.useCallback(() => {
+    const values = getValues();
+    const categoryTitle =
+      categories.find((category) => String(category.id) === values.article_category_id)
+        ?.title ?? "";
+    const seoDefaults = buildArticleSeoDefaults({
+      title: values.title,
+      excerpt: values.excerpt,
+      articleDescription: values.article_description,
+      tags: values.tags,
+      categoryTitle,
+    });
+    setValue("meta_title", seoDefaults.meta_title, { shouldDirty: true });
+    setValue("meta_description", seoDefaults.meta_description, { shouldDirty: true });
+    setValue("meta_keywords", seoDefaults.meta_keywords, { shouldDirty: true });
+  }, [categories, getValues, setValue]);
+
   // ── API: POST — form submit ────────────────────────────────────────────────
 
   const onSubmit = async (data: ArticleFormInputValues) => {
@@ -473,7 +502,26 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         ? resolveStatusAfterPublish(data.scheduled_publishing)
         : (data.status as ArticleStatus);
 
-    const payload = buildArticlePayload(data, nextStatus);
+    const categoryTitle =
+      categories.find((category) => String(category.id) === data.article_category_id)
+        ?.title ?? "";
+
+    const seoDefaults = buildArticleSeoDefaults({
+      title: data.title,
+      excerpt: data.excerpt,
+      articleDescription: data.article_description,
+      tags: data.tags,
+      categoryTitle,
+    });
+
+    const enriched: ArticleFormInputValues = {
+      ...data,
+      meta_title: data.meta_title.trim() || seoDefaults.meta_title,
+      meta_description: data.meta_description.trim() || seoDefaults.meta_description,
+      meta_keywords: data.meta_keywords.trim() || seoDefaults.meta_keywords,
+    };
+
+    const payload = buildArticlePayload(enriched, nextStatus);
 
     try {
       const hasImageUpload = Boolean(featuredImageFile || openGraphImageFile);
@@ -504,7 +552,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       }
 
       setLastSavedAt(new Date().toISOString());
-      reset({ ...data, status: nextStatus }, { keepDirty: false });
+      reset({ ...enriched, status: nextStatus }, { keepDirty: false });
       setFeaturedImageFile(null);
       setOpenGraphImageFile(null);
       skipUnsavedPromptRef.current = true;
@@ -835,12 +883,23 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="article-seo-title" className={fieldLabelClassName}>
-                  Meta Title
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="article-seo-title" className={fieldLabelClassName}>
+                    Meta Title
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={applySeoFromArticle}
+                  >
+                    Generate from article
+                  </Button>
+                </div>
                 <Input
                   id="article-meta-title"
-                  placeholder="Custom title for search engines"
+                  placeholder="Leave empty to auto-fill from title on save"
                   maxLength={META_TITLE_MAX_LENGTH}
                   {...register("meta_title")}
                 />
@@ -869,6 +928,27 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                   characters
                 </p>
                 <InputError message={errors.meta_description?.message} />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="article-meta-keywords" className={fieldLabelClassName}>
+                  Meta Keywords
+                </label>
+                <textarea
+                  id="article-meta-keywords"
+                  {...register("meta_keywords")}
+                  rows={3}
+                  maxLength={META_KEYWORDS_MAX_LENGTH}
+                  placeholder="Comma-separated keywords (auto-filled from tags if empty)"
+                  className={cn(
+                    "flex min-h-[72px] w-full resize-none rounded-md border border-zbc-gray-200/50 bg-zbc-gray-200/50 px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:border-zbc-blue-200/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zbc-blue-200/50 md:text-sm",
+                  )}
+                />
+                <p className="text-xs text-admin-trend-muted">
+                  {(watchedValues.meta_keywords ?? "").length}/{META_KEYWORDS_MAX_LENGTH}{" "}
+                  characters
+                </p>
+                <InputError message={errors.meta_keywords?.message} />
               </div>
 
               <div className="space-y-1">

@@ -7,7 +7,7 @@ export function RightSidebar() {
   return (
     <aside className="space-y-5" aria-label="Right sidebar">
       <MostReadCard />
-      <AdUnit variant="square" />
+      <AdUnit variant="square" slotKey="right_sidebar_primary" />
       <TrendingNowCard />
     </aside>
   );

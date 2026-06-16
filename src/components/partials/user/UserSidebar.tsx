@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   LogOut,
   Newspaper,
-  Settings,
   TrendingUp,
   User,
 } from "lucide-react";
@@ -223,31 +222,13 @@ export function UserSidebar({ collapsed = false, onNavigate }: UserSidebarProps)
         </div>
       </nav>
 
-      {/* Settings + logout */}
+      {/* Footer actions */}
       <div
         className={cn(
           "shrink-0 border-t border-admin-sidebar-border p-3",
           collapsed ? "flex flex-col items-center gap-2" : "space-y-1",
         )}
       >
-        <NavLink
-          to="/user/settings"
-          onClick={onNavigate}
-          title={collapsed ? "Settings" : undefined}
-          className={({ isActive }) =>
-            cn(
-              "flex h-10 w-full items-center rounded-lg text-base transition-colors",
-              collapsed ? "justify-center px-0" : "gap-3 px-3",
-              isActive
-                ? "bg-zbc-blue text-white"
-                : "text-admin-nav-muted hover:bg-admin-sidebar-border/40 hover:text-white",
-            )
-          }
-        >
-          <Settings className="size-5 shrink-0 stroke-[1.5]" aria-hidden />
-          {!collapsed && "Settings"}
-        </NavLink>
-
         <button
           type="button"
           onClick={() => void handleLogout()}

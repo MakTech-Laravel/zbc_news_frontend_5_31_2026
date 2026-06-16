@@ -6,6 +6,7 @@ import {
   useArticleEditor,
   type UseArticleEditorOptions,
 } from "@/components/admin/articles/editor/useArticleEditor";
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import {
   formatArticleLastSaved,
   resolveStatusAfterPublish,
@@ -42,6 +43,7 @@ export type UseArticleWorkflowOptions = UseArticleEditorOptions & {
 export function useArticleWorkflow(options: UseArticleWorkflowOptions = {}) {
   const { articleId: initialArticleId, initialStatus = "draft", ...editorOptions } =
     options;
+  const { settings } = useSiteSettings();
 
   const [articleId] = React.useState(
     () => initialArticleId ?? createNewArticleId(),
@@ -143,9 +145,10 @@ export function useArticleWorkflow(options: UseArticleWorkflowOptions = {}) {
   }, [articleId, isDirty]);
 
   React.useEffect(() => {
+    if (!settings.enableAutoSave) return;
     const interval = window.setInterval(runAutoSave, AUTO_SAVE_MS);
     return () => window.clearInterval(interval);
-  }, [runAutoSave]);
+  }, [runAutoSave, settings.enableAutoSave]);
 
   React.useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
