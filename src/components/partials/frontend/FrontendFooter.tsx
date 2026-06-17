@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { NewsletterSignupForm } from "@/components/newsletter/NewsletterSignupForm";
 
 
 type FooterLink = { label: string; to: string };
@@ -106,6 +107,16 @@ export function FrontendFooter() {
           {FOOTER_COLUMNS.map((column) => (
             <FooterColumn key={column.title} title={column.title} links={column.links} />
           ))}
+        </div>
+
+        <div className="mt-10 rounded-lg border border-[#1e293b] bg-[#0f172a] p-6">
+          <NewsletterSignupForm
+            variant="footer"
+            source="footer"
+            showCategories
+            title="Stay in the loop"
+            description="Subscribe for daily headlines and category updates tailored to your interests."
+          />
         </div>
 
         <div className="mt-10 border-t border-[#1e293b] pt-6 sm:mt-12 sm:pt-7">
