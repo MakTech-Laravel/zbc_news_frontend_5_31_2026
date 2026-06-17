@@ -13,6 +13,7 @@ export const WorldNews = lazy(() => import("@/pages/frontend/WorldNews"));
 export const VideoMedia = lazy(() => import("@/pages/frontend/VideoMedia"));
 export const NewsDetails = lazy(() => import("@/pages/frontend/NewsDetails"));
 export const AboutUs = lazy(() => import("@/pages/frontend/AboutUs"));
+export const Contact = lazy(() => import("@/pages/frontend/Contact"));
 
 
 // Backend

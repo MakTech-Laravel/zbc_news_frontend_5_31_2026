@@ -4,7 +4,7 @@ import type { RouteObject } from "react-router-dom";
 import { FrontendLayout } from "@/layouts/frontend/FrontendLayout";
 import { MainLayout } from "@/layouts/main/MainLayout";
 import { suspensePage } from "@/routes/routeUtils";
-import { AboutUs, Home, NewsDetails } from "./dynamicImport";
+import { AboutUs, Contact, Home, NewsDetails } from "./dynamicImport";
 // import { Test, Politics, Business, Entertainment, Technology, Sports, WorldNews, VideoMedia } from "./dynamicImport";
 
 
@@ -12,6 +12,7 @@ export const publicRoutes: RouteObject = {
   element: <FrontendLayout />,
   children: [
     { path: "/about", element: suspensePage(AboutUs) },
+    { path: "/contact", element: suspensePage(Contact) },
     {
       element: <MainLayout />,
       children: [
