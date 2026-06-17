@@ -6,6 +6,7 @@ import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
+import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
@@ -170,7 +171,13 @@ function BreakingNewsTicker() {
   );
 }
 
-function SearchField({ className }: { className?: string }) {
+function SearchField({
+  className,
+  onOpen,
+}: {
+  className?: string;
+  onOpen: () => void;
+}) {
   return (
     <div className={cn("relative min-w-0", className)}>
       <Search
@@ -179,8 +186,12 @@ function SearchField({ className }: { className?: string }) {
       />
       <Input
         type="search"
+        readOnly
         placeholder="Search news, topics..."
-        className="h-10 w-full rounded-full border-border bg-muted pl-10 font-sans text-[13px] text-foreground shadow-none placeholder:text-zbc-gray-400 focus-visible:border-zbc-gray-200 focus-visible:ring-2 focus-visible:ring-primary/30"
+        onClick={onOpen}
+        onFocus={onOpen}
+        className="h-10 w-full cursor-pointer rounded-full border-border bg-muted pl-10 font-sans text-[13px] text-foreground shadow-none placeholder:text-zbc-gray-400 focus-visible:border-zbc-gray-200 focus-visible:ring-2 focus-visible:ring-primary/30"
+        aria-label="Open search"
       />
     </div>
   );
@@ -570,11 +581,14 @@ function LiveDateTimeMobile() {
 }
 
 export function FrontendHeader() {
+  const [searchOpen, setSearchOpen] = useState(false);
+
   return (
     <header
       className="sticky top-0 z-50 border-b border-border bg-background shadow-sm [--header-mobile-offset:9rem] md:[--header-mobile-offset:10.5rem]"
       id="site-header"
     >
+      <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <BreakingNewsTicker />
 
       {/* Row 1: logo · search · actions */}
@@ -591,7 +605,7 @@ export function FrontendHeader() {
 
           <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
           <div className="hidden min-w-0 flex-1 md:mx-4 md:block lg:mx-6">
-            <SearchField className="mx-auto max-w-2xl" />
+            <SearchField className="mx-auto max-w-2xl" onOpen={() => setSearchOpen(true)} />
           </div>
             <div className="hidden md:flex">
               <AccountActions />
@@ -605,7 +619,7 @@ export function FrontendHeader() {
 
         {/* Mobile search below logo row */}
         <div className="mb-2 p-0 md:p-3 md:hidden">
-          <SearchField />
+          <SearchField onOpen={() => setSearchOpen(true)} />
         </div>
       </div>
 
