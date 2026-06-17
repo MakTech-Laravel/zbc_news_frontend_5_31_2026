@@ -36,9 +36,9 @@ const FOOTER_COLUMNS: { title: string; links: readonly FooterLink[] }[] = [
     title: "Legal",
     links: [
       { label: "Privacy Policy", to: "/privacy-policy" },
-      { label: "Terms of Service", to: "/terms" },
+      { label: "Terms of Service", to: "/terms-of-service" },
       { label: "Cookie Policy", to: "/cookie-policy" },
-      { label: "Accessibility", to: "/accessibility" },
+      { label: "Accessibility", to: "/accessibility-statement" },
     ],
   },
 ];
