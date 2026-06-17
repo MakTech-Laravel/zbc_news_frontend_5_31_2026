@@ -3,6 +3,7 @@ import { Bell, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucid
 import { Link } from "react-router-dom";
 
 import { useAuth } from "@/auth/useAuth";
+import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
 import { Input } from "@/components/ui/input";
 import { useUserNotifications } from "@/hooks/useUserNotifications";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ export function UserHeader({
   const { logout } = useAuth();
   const { unreadCount } = useUserNotifications();
   const [loggingOut, setLoggingOut] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -41,6 +43,7 @@ export function UserHeader({
         className,
       )}
     >
+      <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <button
           type="button"
@@ -71,8 +74,12 @@ export function UserHeader({
           />
           <Input
             type="search"
+            readOnly
             placeholder="Search articles, topics, authors..."
-            className="h-9 w-full rounded-lg border-admin-input-border pl-10 text-sm placeholder:text-admin-label/70"
+            onClick={() => setSearchOpen(true)}
+            onFocus={() => setSearchOpen(true)}
+            className="h-9 w-full cursor-pointer rounded-lg border-admin-input-border pl-10 text-sm placeholder:text-admin-label/70"
+            aria-label="Open search"
           />
         </div>
       </div>
@@ -81,6 +88,7 @@ export function UserHeader({
         type="button"
         className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-admin-label hover:bg-muted sm:hidden"
         aria-label="Search"
+        onClick={() => setSearchOpen(true)}
       >
         <Search className="size-4" aria-hidden />
       </button>
