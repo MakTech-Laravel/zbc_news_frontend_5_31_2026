@@ -155,6 +155,18 @@ export async function deleteNewsletterSubscriber(id: number): Promise<void> {
   await request.delete(`/admin/newsletter/subscribers/${id}`);
 }
 
+export async function updateNewsletterSubscriberStatus(
+  id: number,
+  status: NewsletterSubscriber["status"],
+): Promise<NewsletterSubscriber> {
+  const response = await request.post(`/admin/newsletter/subscribers/update/${id}`, { status });
+  return extractData<NewsletterSubscriber>(response.data);
+}
+
+export async function resendNewsletterVerification(id: number): Promise<void> {
+  await request.post(`/admin/newsletter/subscribers/resend-verification/${id}`);
+}
+
 export async function fetchNewsletterCampaigns(): Promise<NewsletterCampaign[]> {
   const response = await request.get("/admin/newsletter/campaigns");
   return extractPaginatedRows(response.data) as NewsletterCampaign[];

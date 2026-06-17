@@ -12,9 +12,11 @@ import {
   fetchNewsletterCategories,
   fetchNewsletterSubscribers,
   getNewsletterApiError,
+  resendNewsletterVerification,
   scheduleNewsletterCampaign,
   sendNewsletterCampaign,
   updateNewsletterCampaign,
+  updateNewsletterSubscriberStatus,
   type NewsletterAnalytics,
   type NewsletterCampaign,
   type NewsletterCategory,
@@ -186,6 +188,28 @@ export default function AdminNewsletters() {
       await loadData();
     } catch {
       toast.error("Failed to remove subscriber");
+    }
+  }
+
+  async function handleSubscriberStatusChange(
+    id: number,
+    status: NewsletterSubscriber["status"],
+  ) {
+    try {
+      await updateNewsletterSubscriberStatus(id, status);
+      toast.success("Subscriber status updated");
+      await loadData();
+    } catch {
+      toast.error("Failed to update subscriber status");
+    }
+  }
+
+  async function handleResendVerification(id: number) {
+    try {
+      await resendNewsletterVerification(id);
+      toast.success("Verification email sent");
+    } catch {
+      toast.error("Failed to send verification email");
     }
   }
 
@@ -460,7 +484,22 @@ export default function AdminNewsletters() {
                 {subscribers.map((subscriber) => (
                   <tr key={subscriber.id} className="border-b border-border/70">
                     <td className="py-2 pr-4">{subscriber.email}</td>
-                    <td className="py-2 pr-4 capitalize">{subscriber.status}</td>
+                    <td className="py-2 pr-4">
+                      <select
+                        value={subscriber.status}
+                        onChange={(e) =>
+                          void handleSubscriberStatusChange(
+                            subscriber.id,
+                            e.target.value as NewsletterSubscriber["status"],
+                          )
+                        }
+                        className="rounded-md border border-border px-2 py-1 text-sm capitalize"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="verified">Verified</option>
+                        <option value="unsubscribed">Unsubscribed</option>
+                      </select>
+                    </td>
                     <td className="py-2 pr-4">{subscriber.source ?? "—"}</td>
                     <td className="py-2 pr-4">
                       {subscriber.preferences?.categories?.join(", ") || "All"}
@@ -471,13 +510,24 @@ export default function AdminNewsletters() {
                         : "—"}
                     </td>
                     <td className="py-2 pr-4">
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteSubscriber(subscriber.id)}
-                        className="text-xs font-medium text-red-600"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {subscriber.status === "pending" ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleResendVerification(subscriber.id)}
+                            className="text-xs font-medium text-zbc-gray-700"
+                          >
+                            Resend email
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteSubscriber(subscriber.id)}
+                          className="text-xs font-medium text-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
