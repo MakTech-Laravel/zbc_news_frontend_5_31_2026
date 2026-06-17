@@ -1,5 +1,6 @@
 import { api } from "@/api/client";
 import { toggleArticleSave } from "@/services/user/articleSave";
+import { resolveReadTime } from "@/lib/readTime";
 import type { SavedArticlesQuery, UserCategoryFilter, UserFeedArticle } from "@/types/user";
 
 export const savedQuickFilters = [
@@ -133,9 +134,11 @@ function mapToUserFeedArticle(
       (typeof article.excerpt === "string" && article.excerpt) ||
       "",
     author: resolveAuthor(article),
-    readTime:
-      (typeof article.read_time === "string" && article.read_time.trim()) ||
-      "5 min read",
+    readTime: resolveReadTime(
+      article.read_time,
+      typeof article.article_description === "string" ? article.article_description : undefined,
+      typeof article.excerpt === "string" ? article.excerpt : undefined,
+    ),
     publishedAt: formatPublishedAt(
       article.published_at ?? article.created_at ?? savedAt,
     ),

@@ -1,5 +1,6 @@
 import type { Article } from "@/data/dummy/types";
 import type { UserFeedArticle } from "@/data/dummy/userDashboard";
+import { resolveReadTime } from "@/lib/readTime";
 import {
   fetchArticlesByTag,
   fetchGridArticles,
@@ -37,7 +38,7 @@ export function mapArticleToUserFeed(article: Article): UserFeedArticle {
     title: article.title,
     excerpt: article.excerpt || "No summary available.",
     author: article.author || "Editorial Team",
-    readTime: article.readTime || "5 min read",
+    readTime: resolveReadTime(article.readTime, article.excerpt),
     publishedAt: article.publishedAt || "Recently",
     views: article.views,
     imageUrl: article.imageUrl,

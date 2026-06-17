@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { getPublicSiteOrigin } from "@/lib/appOrigins";
 import { toAbsoluteUrl } from "@/lib/articleShare";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import type { SeoPage } from "@/types/siteSettings";
@@ -107,7 +108,12 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
         : "");
 
     const pageTitle = titleTemplate.trim() || settings.siteName;
-    const canonicalUrl = options.url?.trim() || window.location.href.split("#")[0];
+    const siteOrigin = getPublicSiteOrigin();
+    const canonicalUrl =
+      options.url?.trim() ||
+      (siteOrigin && options.path
+        ? `${siteOrigin}${options.path.startsWith("/") ? options.path : `/${options.path}`}`
+        : window.location.href.split("#")[0]);
     const imageUrl = options.image ? toAbsoluteUrl(options.image) : "";
     const ogType = options.type?.trim() || "website";
     const twitterCard = imageUrl ? "summary_large_image" : "summary";

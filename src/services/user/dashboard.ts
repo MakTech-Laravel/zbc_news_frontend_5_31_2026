@@ -1,5 +1,6 @@
 import { request } from "@/api/request";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveReadTime } from "@/lib/readTime";
 import type { UserFeedArticle } from "@/types/user";
 
 export type UserFeaturedStory = {
@@ -58,7 +59,7 @@ function mapFeedArticle(raw: Record<string, unknown>): UserFeedArticle {
     imageUrl: resolveMediaUrl((raw.imageUrl as string) ?? ""),
     category: (raw.category as string) ?? "General",
     categorySlug: (raw.categorySlug as string) ?? "general",
-    readTime: (raw.readTime as string) ?? "3 min read",
+    readTime: resolveReadTime(raw.readTime),
     views: (raw.views as number) ?? 0,
     publishedAt: (raw.publishedAt as string) ?? "",
     author: (raw.author as string) ?? "",

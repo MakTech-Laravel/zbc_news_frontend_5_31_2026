@@ -1,5 +1,6 @@
 import { request } from "@/api/request";
 import { resolveArticleImageUrl } from "@/lib/mediaUrl";
+import { resolveReadTime } from "@/lib/readTime";
 import { getSearchSessionHeaders } from "@/lib/searchSession";
 
 export type SearchResultItem = {
@@ -40,13 +41,6 @@ function formatPublishedAt(value: unknown): string {
   });
 }
 
-function estimateReadTime(content: unknown): string {
-  if (typeof content !== "string" || !content.trim()) return "3 min read";
-  const words = content.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
-  const minutes = Math.max(1, Math.round(words / 200));
-  return `${minutes} min read`;
-}
-
 function mapSearchResult(raw: unknown): SearchResultItem | null {
   if (!raw || typeof raw !== "object") return null;
   const record = raw as Record<string, unknown>;
@@ -67,7 +61,11 @@ function mapSearchResult(raw: unknown): SearchResultItem | null {
     category: resolveCategoryLabel(record),
     imageUrl: resolveArticleImageUrl(record),
     publishedAt: formatPublishedAt(record.published_at ?? record.created_at),
-    readTime: estimateReadTime(record.article_description),
+    readTime: resolveReadTime(
+      record.read_time,
+      typeof record.article_description === "string" ? record.article_description : undefined,
+      typeof record.excerpt === "string" ? record.excerpt : undefined,
+    ),
   };
 }
 

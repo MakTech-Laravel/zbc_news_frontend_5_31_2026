@@ -30,6 +30,8 @@ export type SiteSettingsApi = {
   disqus_shortname: string | null;
   slack_webhook_url: string | null;
   enable_comments: boolean;
+  frontend_url?: string | null;
+  api_url?: string | null;
 };
 
 export type PublicSiteSettings = {
@@ -50,6 +52,8 @@ export type PublicSiteSettings = {
   googleAnalyticsId: string;
   facebookPixelId: string;
   disqusShortname: string;
+  frontendUrl: string | null;
+  apiUrl: string | null;
 };
 
 export type SeoPageApi = {
@@ -136,5 +140,7 @@ export function mapPublicSiteSettings(raw: SiteSettingsApi): PublicSiteSettings 
     googleAnalyticsId: raw.google_analytics_id ?? "",
     facebookPixelId: raw.facebook_pixel_id ?? "",
     disqusShortname: raw.disqus_shortname ?? "",
+    frontendUrl: raw.frontend_url ?? null,
+    apiUrl: raw.api_url ?? null,
   };
 }
