@@ -52,6 +52,16 @@
   --color-zbc-gray-700: var(--zbc-gray-700);
   --color-zbc-gray-900: var(--zbc-gray-900);
   --color-zbc-gray-1000: var(--zbc-gray-1000);
+  --color-zbc-hero-navy: var(--zbc-hero-navy);
+  --color-zbc-blue-light: var(--zbc-blue-light);
+  --color-zbc-blue-border: var(--zbc-blue-border);
+  --color-zbc-blue-muted: var(--zbc-blue-muted);
+  --color-zbc-blue-deep: var(--zbc-blue-deep);
+  --color-zbc-blue-accent: var(--zbc-blue-accent);
+  --color-zbc-red-accent: var(--zbc-red-accent);
+  --color-zbc-nav-muted: var(--zbc-nav-muted);
+  --color-zbc-text-slate: var(--zbc-text-slate);
+  --color-zbc-content-dark: var(--zbc-content-dark);
 
   /* Legacy aliases (auth / dashboard – map to Figma tokens) */
   --color-brand: var(--brand);
@@ -143,6 +153,16 @@
     --zbc-gray-700: #374151;
     --zbc-gray-900: #111827;
     --zbc-gray-1000: #101828;
+    --zbc-hero-navy: #1c398e;
+    --zbc-blue-light: #dbeafe;
+    --zbc-blue-border: #bedbff;
+    --zbc-blue-muted: #8ec5ff;
+    --zbc-blue-deep: #1447e6;
+    --zbc-blue-accent: #193cb8;
+    --zbc-red-accent: #e7000b;
+    --zbc-nav-muted: #99a1af;
+    --zbc-text-slate: #364153;
+    --zbc-content-dark: #1e2939;
 
     /* shadcn → Figma */
     --background: var(--zbc-white);
