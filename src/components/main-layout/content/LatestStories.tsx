@@ -5,6 +5,7 @@ import { ArticleListItem } from "./ArticleListItem";
 import { request } from "@/api/request";
 import { useEffect, useState } from "react";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveReadTime } from "@/lib/readTime";
 
 type LatestStoriesProps = {
   // articles: Article[];
@@ -29,7 +30,11 @@ export function LatestStories({  className }: LatestStoriesProps) {
           imageUrl:    resolveMediaUrl(article.featured_image),
           category:    article.category?.title ?? "News",
           author:      article.user?.name ?? "ZBC News",
-          readTime:    article.read_time ?? "5 min read",
+          readTime: resolveReadTime(
+            article.read_time,
+            article.article_description,
+            article.excerpt,
+          ),
           publishedAt: article.published_at ?? "",
         })));
       } catch (error) {

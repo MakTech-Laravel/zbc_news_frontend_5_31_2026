@@ -1,5 +1,6 @@
 import { api } from "@/api/client";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveReadTime } from "@/lib/readTime";
 import type { UserFeedArticle } from "@/types/user";
 
 export const BREAKING_NEWS_TAG_SLUG = "breaking-news";
@@ -124,10 +125,11 @@ function mapToUserFeedArticle(raw: Record<string, unknown>): UserFeedArticle | n
     title,
     excerpt: resolveExcerpt(raw),
     author: resolveAuthorName(raw),
-    readTime:
-      typeof raw.read_time === "string" && raw.read_time.trim()
-        ? raw.read_time
-        : "5 min read",
+    readTime: resolveReadTime(
+      raw.read_time,
+      typeof raw.article_description === "string" ? raw.article_description : undefined,
+      resolveExcerpt(raw),
+    ),
     publishedAt: formatPublishedAt(raw.published_at ?? raw.created_at),
     views: Number(raw.views ?? raw.view_count ?? 0) || undefined,
   };

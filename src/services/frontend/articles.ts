@@ -1,6 +1,7 @@
 import { request } from "@/api/request";
 import type { Article } from "@/data/dummy/types";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveReadTime } from "@/lib/readTime";
 
 export type ArticleDetail = {
   id: string;
@@ -139,10 +140,7 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     authorInitials: toInitials(authorName),
     publishedAt: published.label,
     publishedAtIso: published.iso,
-    readTime:
-      typeof record.read_time === "string" && record.read_time.trim()
-        ? record.read_time
-        : "5 min read",
+    readTime: resolveReadTime(record.read_time, articleDescription, record.excerpt as string),
     tags: parseTags(record.tags),
     metaTitle:
       typeof record.meta_title === "string" && record.meta_title.trim()
@@ -250,6 +248,8 @@ function mapApiArticleListItem(raw: unknown): Article | null {
   if (id == null || typeof title !== "string" || !title.trim()) return null;
 
   const published = formatPublishedAt(record.published_at ?? record.created_at);
+  const description =
+    typeof record.article_description === "string" ? record.article_description : undefined;
 
   return {
     id: String(id),
@@ -265,10 +265,11 @@ function mapApiArticleListItem(raw: unknown): Article | null {
     ),
     category: resolveCategoryLabel(record),
     author: resolveAuthorName(record),
-    readTime:
-      typeof record.read_time === "string" && record.read_time.trim()
-        ? record.read_time
-        : "5 min read",
+    readTime: resolveReadTime(
+      record.read_time,
+      description,
+      typeof record.excerpt === "string" ? record.excerpt : undefined,
+    ),
     publishedAt: published.label,
     views: Number(record.views ?? record.view_count ?? 0) || undefined,
     tags: parseTags(record.tags),

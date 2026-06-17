@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { setRuntimePublicUrls } from "@/lib/appOrigins";
 import { fetchPublicSeoPages } from "@/services/admin/seoPages";
 import { fetchPublicSiteSettings } from "@/services/frontend/siteSettings";
 import type { PublicSiteSettings, SeoPage } from "@/types/siteSettings";
@@ -30,6 +31,8 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
   googleAnalyticsId: "",
   facebookPixelId: "",
   disqusShortname: "",
+  frontendUrl: null,
+  apiUrl: null,
 };
 
 const SiteSettingsContext = React.createContext<SiteSettingsContextValue>({
@@ -60,6 +63,11 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
       queryClient.invalidateQueries({ queryKey: ["public-seo-pages"] }),
     ]);
   }, [queryClient]);
+
+  React.useEffect(() => {
+    if (!settingsQuery.data) return;
+    setRuntimePublicUrls(settingsQuery.data.frontendUrl, settingsQuery.data.apiUrl);
+  }, [settingsQuery.data]);
 
   const value = React.useMemo<SiteSettingsContextValue>(
     () => ({

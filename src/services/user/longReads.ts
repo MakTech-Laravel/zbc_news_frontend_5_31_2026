@@ -1,5 +1,6 @@
 import { api } from "@/api/client";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveReadTime } from "@/lib/readTime";
 import type {
   LongReadArticle,
   LongReadCollection,
@@ -90,10 +91,11 @@ function mapToLongReadArticle(raw: Record<string, unknown>): LongReadArticle | n
     title,
     description: resolveDescription(raw),
     author: resolveAuthorName(raw),
-    readTime:
-      typeof raw.read_time === "string" && raw.read_time.trim()
-        ? raw.read_time
-        : "20 min read",
+    readTime: resolveReadTime(
+      raw.read_time,
+      typeof raw.article_description === "string" ? raw.article_description : undefined,
+      typeof raw.excerpt === "string" ? raw.excerpt : undefined,
+    ),
     views: Number(raw.views ?? raw.view_count ?? 0) || 0,
     imageUrl: resolveImageUrl(raw),
   };
