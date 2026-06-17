@@ -1,6 +1,6 @@
 import { isSpatieSuperAdmin } from '@/auth/adminSpatie'
 import { type AuthUser } from '@/auth/types'
-import { ROLES } from '@/types/roles'
+import { READER_ROLES } from '@/types/roles'
 
 export type Role = string
 
@@ -27,7 +27,7 @@ export function getPrimaryRouteRole(user: AuthUser | null): string | null {
 export function isUserPanelUser(user: AuthUser | null): boolean {
   if (!user) return false
   const primary = getPrimaryRouteRole(user)
-  return primary === ROLES.USER || primary === null
+  return (READER_ROLES as readonly string[]).includes(primary ?? '') || primary === null
 }
 
 /**

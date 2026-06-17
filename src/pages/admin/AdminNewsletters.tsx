@@ -6,10 +6,12 @@ import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import {
   createNewsletterCampaign,
   deleteNewsletterSubscriber,
+  EMPTY_ANALYTICS,
   fetchNewsletterAnalytics,
   fetchNewsletterCampaigns,
   fetchNewsletterCategories,
   fetchNewsletterSubscribers,
+  getNewsletterApiError,
   scheduleNewsletterCampaign,
   sendNewsletterCampaign,
   updateNewsletterCampaign,
@@ -29,11 +31,13 @@ const TABS: { id: TabId; label: string }[] = [
 
 export default function AdminNewsletters() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [analytics, setAnalytics] = useState<NewsletterAnalytics | null>(null);
+  const [analytics, setAnalytics] = useState<NewsletterAnalytics>(EMPTY_ANALYTICS);
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [campaigns, setCampaigns] = useState<NewsletterCampaign[]>([]);
   const [categories, setCategories] = useState<NewsletterCategory[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
@@ -45,16 +49,50 @@ export default function AdminNewsletters() {
   const [scheduledAt, setScheduledAt] = useState("");
 
   async function loadData() {
-    const [analyticsData, subs, camps, cats] = await Promise.all([
+    setLoading(true);
+    setLoadError(null);
+
+    const results = await Promise.allSettled([
       fetchNewsletterAnalytics(),
       fetchNewsletterSubscribers(statusFilter || undefined),
       fetchNewsletterCampaigns(),
       fetchNewsletterCategories(),
     ]);
-    setAnalytics(analyticsData);
-    setSubscribers(subs);
-    setCampaigns(camps);
-    setCategories(cats);
+
+    const errors: string[] = [];
+
+    if (results[0].status === "fulfilled") {
+      setAnalytics(results[0].value);
+    } else {
+      setAnalytics(EMPTY_ANALYTICS);
+      errors.push(getNewsletterApiError(results[0].reason, "Unable to load analytics"));
+    }
+
+    if (results[1].status === "fulfilled") {
+      setSubscribers(results[1].value);
+    } else {
+      setSubscribers([]);
+      errors.push(getNewsletterApiError(results[1].reason, "Unable to load subscribers"));
+    }
+
+    if (results[2].status === "fulfilled") {
+      setCampaigns(results[2].value);
+    } else {
+      setCampaigns([]);
+      errors.push(getNewsletterApiError(results[2].reason, "Unable to load campaigns"));
+    }
+
+    if (results[3].status === "fulfilled") {
+      setCategories(results[3].value);
+    } else {
+      setCategories([]);
+    }
+
+    if (errors.length > 0) {
+      setLoadError(errors[0]);
+    }
+
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -86,7 +124,11 @@ export default function AdminNewsletters() {
 
   async function handleSaveCampaign(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!title.trim() || !subject.trim() || !contentHtml.trim()) return;
+    const plainContent = contentHtml.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+    if (!title.trim() || !subject.trim() || !plainContent) {
+      toast.error("Add a title, subject, and campaign content.");
+      return;
+    }
 
     const payload = {
       title: title.trim(),
@@ -107,8 +149,8 @@ export default function AdminNewsletters() {
       }
       resetEditor();
       await loadData();
-    } catch {
-      toast.error("Failed to save campaign");
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to save campaign"));
     }
   }
 
@@ -177,7 +219,18 @@ export default function AdminNewsletters() {
         ))}
       </div>
 
-      {activeTab === "overview" && analytics ? (
+      {loadError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}. Deploy the latest backend and run database migrations if this is a new
+          release.
+        </div>
+      ) : null}
+
+      {loading ? (
+        <p className="text-sm text-zbc-gray-500">Loading newsletter data…</p>
+      ) : null}
+
+      {activeTab === "overview" ? (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Verified subscribers" value={analytics.subscribers.verified} />
           <MetricCard label="Pending verification" value={analytics.subscribers.pending} />
@@ -186,7 +239,7 @@ export default function AdminNewsletters() {
         </section>
       ) : null}
 
-      {activeTab === "overview" && analytics ? (
+      {activeTab === "overview" ? (
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-xl border border-border bg-background p-4 sm:p-5">
             <h2 className="text-lg font-semibold text-zbc-gray-1000">Subscriber growth (30 days)</h2>

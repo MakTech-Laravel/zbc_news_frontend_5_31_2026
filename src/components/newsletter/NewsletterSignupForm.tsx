@@ -9,6 +9,7 @@ import {
   subscribeNewsletter,
   type NewsletterCategory,
 } from "@/services/frontend/newsletter";
+import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 
 type NewsletterSignupFormProps = {
   source?: string;
@@ -63,8 +64,8 @@ export function NewsletterSignupForm({
       setEmail("");
       setName("");
       setSelectedCategories([]);
-    } catch {
-      toast.error("Unable to subscribe right now. Please try again.");
+    } catch (error) {
+      toast.error(getAuthErrorMessage(error, "Unable to subscribe right now. Please try again."));
     } finally {
       setSubmitting(false);
     }

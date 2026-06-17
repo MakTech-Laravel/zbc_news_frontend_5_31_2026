@@ -9,6 +9,8 @@ import {
   extractRolePermissionNames,
   fetchAdminPermissions,
   fetchAdminRole,
+  formatRoleLabel,
+  getRoleApiError,
   updateAdminRole,
   type AdminPermission,
 } from "@/services/admin/roles";
@@ -74,6 +76,8 @@ export function useRoleForm({ roleId, onSuccess }: UseRoleFormOptions) {
   const [permissionsError, setPermissionsError] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [notFound, setNotFound] = React.useState(false);
+  const [isProtected, setIsProtected] = React.useState(false);
+  const [roleDisplayName, setRoleDisplayName] = React.useState<string | null>(null);
 
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleFormSchema),
@@ -110,6 +114,9 @@ export function useRoleForm({ roleId, onSuccess }: UseRoleFormOptions) {
           const assigned = extractRolePermissionNames(role);
           const selected = resolveAssignedPermissions(assigned, allPermissions);
 
+          setIsProtected(Boolean(role.is_protected));
+          setRoleDisplayName(formatRoleLabel(role));
+
           form.reset({
             name: role.name,
             permissions: selected,
@@ -121,6 +128,8 @@ export function useRoleForm({ roleId, onSuccess }: UseRoleFormOptions) {
         if (cancelled) return;
 
         setPermissions(allPermissions);
+        setIsProtected(false);
+        setRoleDisplayName(null);
         form.reset({
           name: "",
           permissions: [],
@@ -158,7 +167,7 @@ export function useRoleForm({ roleId, onSuccess }: UseRoleFormOptions) {
     } catch (error) {
       console.error("Failed to save role:", error);
       if (!applyServerErrors(error, form.setError)) {
-        toast.error("Failed to save role");
+        toast.error(getRoleApiError(error, "Failed to save role"));
       }
     }
   });
@@ -170,6 +179,8 @@ export function useRoleForm({ roleId, onSuccess }: UseRoleFormOptions) {
     isEditing,
     isLoading: loading,
     notFound,
+    isProtected,
+    roleDisplayName,
     onSubmit,
   };
 }

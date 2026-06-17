@@ -1,4 +1,5 @@
 import { request } from "@/api/request";
+import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 
 export type NewsletterSubscriber = {
   id: number;
@@ -74,6 +75,20 @@ export type NewsletterCategory = {
   slug: string;
 };
 
+export const EMPTY_ANALYTICS: NewsletterAnalytics = {
+  subscribers: { verified: 0, pending: 0, unsubscribed: 0, total: 0 },
+  growth: [],
+  campaigns: [],
+  recent_events: [],
+  engagement: {
+    emails_sent: 0,
+    opens: 0,
+    clicks: 0,
+    avg_open_rate: 0,
+    avg_click_rate: 0,
+  },
+};
+
 function extractPaginatedRows(body: unknown): unknown[] {
   if (!body || typeof body !== "object") return [];
   const root = body as Record<string, unknown>;
@@ -87,12 +102,46 @@ function extractData<T>(body: unknown): T {
     throw new Error("Invalid API response");
   }
   const root = body as Record<string, unknown>;
+  if (root.success === false) {
+    throw new Error(typeof root.message === "string" ? root.message : "Request failed");
+  }
   return (root.data ?? root) as T;
+}
+
+function normalizeAnalytics(data: unknown): NewsletterAnalytics {
+  if (!data || typeof data !== "object") {
+    return EMPTY_ANALYTICS;
+  }
+
+  const raw = data as Partial<NewsletterAnalytics>;
+
+  return {
+    subscribers: {
+      verified: raw.subscribers?.verified ?? 0,
+      pending: raw.subscribers?.pending ?? 0,
+      unsubscribed: raw.subscribers?.unsubscribed ?? 0,
+      total: raw.subscribers?.total ?? 0,
+    },
+    growth: Array.isArray(raw.growth) ? raw.growth : [],
+    campaigns: Array.isArray(raw.campaigns) ? raw.campaigns : [],
+    recent_events: Array.isArray(raw.recent_events) ? raw.recent_events : [],
+    engagement: {
+      emails_sent: raw.engagement?.emails_sent ?? 0,
+      opens: raw.engagement?.opens ?? 0,
+      clicks: raw.engagement?.clicks ?? 0,
+      avg_open_rate: raw.engagement?.avg_open_rate ?? 0,
+      avg_click_rate: raw.engagement?.avg_click_rate ?? 0,
+    },
+  };
+}
+
+export function getNewsletterApiError(error: unknown, fallback: string): string {
+  return getAuthErrorMessage(error, fallback);
 }
 
 export async function fetchNewsletterAnalytics(): Promise<NewsletterAnalytics> {
   const response = await request.get("/admin/newsletter/analytics");
-  return extractData<NewsletterAnalytics>(response.data);
+  return normalizeAnalytics(extractData(response.data));
 }
 
 export async function fetchNewsletterSubscribers(status?: string): Promise<NewsletterSubscriber[]> {
