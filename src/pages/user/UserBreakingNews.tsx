@@ -20,7 +20,7 @@ export default function UserBreakingNews() {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_min(100%,503px)]">
         <div className="space-y-6">
-          <UserFeaturedStory story={data.featuredStory} loading={loading} />
+          <UserFeaturedStory story={loading ? undefined : data.featuredStory} />
           <UserPersonalizedFeed
             title="Breaking News Feed"
             feeds={data.feeds}
