@@ -25,6 +25,9 @@ function extractData<T>(body: unknown): T {
     throw new Error("Invalid API response");
   }
   const root = body as Record<string, unknown>;
+  if (root.success === false) {
+    throw new Error(typeof root.message === "string" ? root.message : "Request failed");
+  }
   return (root.data ?? root) as T;
 }
 

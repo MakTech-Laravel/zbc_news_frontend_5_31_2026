@@ -16,7 +16,17 @@ type RoleFormProps = {
 };
 
 export function RoleForm({ roleId, onCancel, onSuccess }: RoleFormProps) {
-  const { form, permissions, permissionsError, isEditing, isLoading, notFound, onSubmit } = useRoleForm({
+  const {
+    form,
+    permissions,
+    permissionsError,
+    isEditing,
+    isLoading,
+    notFound,
+    isProtected,
+    roleDisplayName,
+    onSubmit,
+  } = useRoleForm({
     roleId,
     onSuccess,
   });
@@ -49,9 +59,16 @@ export function RoleForm({ roleId, onCancel, onSuccess }: RoleFormProps) {
             <Input
               id="role-name"
               placeholder="Role Name"
-              className="h-10 rounded-md border-admin-input-border bg-card"
+              disabled={isProtected}
+              className="h-10 rounded-md border-admin-input-border bg-card disabled:cursor-not-allowed disabled:opacity-70"
               {...register("name")}
             />
+            {isProtected ? (
+              <p className="text-xs text-admin-label">
+                {roleDisplayName ?? "System role"} is protected and cannot be renamed. You can
+                update its permissions below.
+              </p>
+            ) : null}
             <InputError message={errors.name?.message} />
           </div>
 

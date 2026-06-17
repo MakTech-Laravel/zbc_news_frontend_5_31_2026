@@ -1,9 +1,11 @@
 /**
- * Spatie role names used for panel routing.
- * Roles are dynamic on the backend — these are the known route/panel roles.
+ * Reader-panel Spatie role slugs.
  */
+export const READER_ROLES = ['user', 'subscriber'] as const
+
 export const ROLES = {
   USER: 'user',
+  SUBSCRIBER: 'subscriber',
   SUPER_ADMIN: 'super-admin',
 } as const
 

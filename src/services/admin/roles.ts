@@ -10,10 +10,20 @@ export type AdminPermission = {
 export type AdminRoleRow = {
   id: number;
   name: string;
+  display_name?: string | null;
+  is_protected?: boolean;
   created_by?: string | null;
   created_at: string;
   permissions?: AdminPermission[];
 };
+
+export function formatRoleLabel(role: Pick<AdminRoleRow, "name" | "display_name">): string {
+  if (role.display_name?.trim()) return role.display_name.trim();
+  return role.name
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 export type RoleFormPayload = {
   name: string;
@@ -95,6 +105,17 @@ function unwrapRole(payload: unknown): AdminRoleRow | null {
   return {
     id,
     name: typeof raw.name === "string" ? raw.name : String(raw.name ?? ""),
+    display_name:
+      typeof raw.display_name === "string"
+        ? raw.display_name
+        : typeof raw.displayName === "string"
+          ? raw.displayName
+          : null,
+    is_protected:
+      raw.is_protected === true ||
+      raw.is_protected === 1 ||
+      raw.is_protected === "1" ||
+      raw.isProtected === true,
     created_by: createdBy,
     created_at: typeof raw.created_at === "string" ? raw.created_at : "",
     permissions,
@@ -235,8 +256,14 @@ export async function updateAdminRole(
   await request.post(`/admin/roles/update/${id}`, payload);
 }
 
+import { getAuthErrorMessage } from "@/features/auth/errorMessage";
+
 export async function deleteAdminRole(id: number | string): Promise<void> {
   await request.delete(`/admin/roles/delete/${id}`);
+}
+
+export function getRoleApiError(error: unknown, fallback: string): string {
+  return getAuthErrorMessage(error, fallback);
 }
 
 export function formatRoleCreatedAt(value: string | null | undefined): string {

@@ -13,6 +13,8 @@ import {
   deleteAdminRole,
   fetchAdminRoles,
   formatRoleCreatedAt,
+  formatRoleLabel,
+  getRoleApiError,
   type AdminRoleRow,
 } from "@/services/admin/roles";
 
@@ -40,9 +42,18 @@ const ADMIN_ROLE_TABLE_COLUMNS: DataTableColumn<AdminRoleListRow>[] = [
   {
     id: "name",
     header: "Name",
-    type: "text",
-    accessor: (row) => row.name,
-    className: "min-w-[140px] font-medium text-admin-heading",
+    type: "custom",
+    render: (row) => (
+      <div className="min-w-[140px]">
+        <div className="font-medium text-admin-heading">{formatRoleLabel(row)}</div>
+        {row.is_protected ? (
+          <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+            System role
+          </span>
+        ) : null}
+      </div>
+    ),
+    className: "min-w-[140px]",
   },
 //   {
 //     id: "created_by",
@@ -123,7 +134,7 @@ export default function AdminRole() {
       await fetchRoles();
     } catch (error) {
       console.error("Failed to delete role:", error);
-      toast.error("Failed to delete role");
+      toast.error(getRoleApiError(error, "Failed to delete role"));
     }
   };
 
