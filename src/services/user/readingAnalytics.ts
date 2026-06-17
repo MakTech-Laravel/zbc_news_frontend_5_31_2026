@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import { resolveReadTime } from "@/lib/readTime";
 import type {
   EngagedArticleItem,
   MonthlyTrendItem,
@@ -142,9 +143,10 @@ function parseMostEngaged(raw: unknown): EngagedArticleItem[] {
         slug,
         category:
           (typeof record.category === "string" && record.category) || "News",
-        readTime:
-          (typeof record.read_time === "string" && record.read_time) ||
-          "5 min read",
+        readTime: resolveReadTime(
+          record.read_time,
+          typeof record.article_description === "string" ? record.article_description : undefined,
+        ),
         completionPercent: Number(record.completion ?? 0),
       };
     })

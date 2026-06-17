@@ -1,4 +1,14 @@
 import { env } from "@/config/env";
+import {
+  getApiWebOrigin,
+  getArticlePageUrl,
+  getArticleSharePreviewUrl,
+  getPublicSiteOrigin,
+  getShareableUrl,
+  isLocalEnvironment,
+  setRuntimePublicUrls,
+  toAbsoluteUrl,
+} from "@/lib/appOrigins";
 
 export type SharePlatform = "facebook" | "twitter" | "linkedin" | "whatsapp";
 
@@ -9,74 +19,42 @@ export type ArticleSharePayload = {
   imageUrl?: string;
 };
 
-function getApiWebOrigin(): string {
-  try {
-    return new URL(env.apiBaseUrl).origin;
-  } catch {
-    return typeof window !== "undefined" ? window.location.origin : "";
-  }
-}
-
-function isPrivateHostname(hostname: string): boolean {
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "[::1]" ||
-    hostname.endsWith(".local")
-  );
-}
-
-function isPublicOrigin(origin: string): boolean {
-  try {
-    return !isPrivateHostname(new URL(origin).hostname);
-  } catch {
-    return false;
-  }
-}
-
-/** Public site origin for canonical article URLs (og:url). */
-export function getSiteOrigin(): string {
-  if (env.siteUrl) return env.siteUrl.replace(/\/$/, "");
-  if (typeof window !== "undefined") return window.location.origin;
-  return "";
-}
-
-export function isLocalEnvironment(): boolean {
-  if (typeof window === "undefined") return false;
-  return isPrivateHostname(window.location.hostname);
-}
+export {
+  getArticlePageUrl,
+  getArticleSharePreviewUrl,
+  getPublicSiteOrigin,
+  getShareableUrl,
+  isLocalEnvironment,
+  setRuntimePublicUrls,
+  toAbsoluteUrl,
+};
 
 export function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false;
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-export function getArticlePageUrl(slug: string): string {
-  return `${getSiteOrigin()}/news-details/${encodeURIComponent(slug)}`;
+function isPublicOriginSafe(origin: string): boolean {
+  if (!origin) return false;
+  try {
+    const { hostname } = new URL(origin);
+    return !(
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]" ||
+      hostname.endsWith(".local")
+    );
+  } catch {
+    return false;
+  }
 }
 
-/**
- * Laravel share preview route — server-rendered OG tags for Facebook/LinkedIn crawlers.
- */
-export function getArticleSharePreviewUrl(slug: string): string {
-  return `${getApiWebOrigin()}/share/articles/${encodeURIComponent(slug)}`;
-}
-
-/**
- * URL sent to social networks.
- * Prefer the OG preview page when the API is on a public host (production).
- */
-export function getShareableUrl(slug: string): string {
-  const previewUrl = getArticleSharePreviewUrl(slug);
-  if (isPublicOrigin(getApiWebOrigin())) {
-    return previewUrl;
+/** Facebook uses the OG preview route when the API host is public. */
+export function getFacebookShareUrl(slug: string): string {
+  if (isPublicOriginSafe(getApiWebOrigin())) {
+    return getArticleSharePreviewUrl(slug);
   }
   return getArticlePageUrl(slug);
-}
-
-/** Facebook always uses the OG preview route so title/image meta can be scraped when public. */
-export function getFacebookShareUrl(slug: string): string {
-  return getArticleSharePreviewUrl(slug);
 }
 
 export type SocialShareOptions = {
@@ -107,7 +85,6 @@ export function buildSocialShareUrl(
         );
       }
 
-      // Official Facebook share-button query params (keeps ?u= in the web sharer).
       return (
         `https://www.facebook.com/sharer/sharer.php` +
         `?u=${encodedUrl}` +
@@ -187,12 +164,4 @@ export function buildShareClipboardText(payload: ArticleSharePayload): string {
     return `${payload.title}\n${payload.summary}\n${pageUrl}`;
   }
   return `${payload.title}\n${pageUrl}`;
-}
-
-export function toAbsoluteUrl(url: string): string {
-  if (!url.trim()) return "";
-  if (/^https?:\/\//i.test(url)) return url;
-  const origin = getSiteOrigin() || (typeof window !== "undefined" ? window.location.origin : "");
-  if (!origin) return url;
-  return url.startsWith("/") ? `${origin}${url}` : `${origin}/${url}`;
 }

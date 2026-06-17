@@ -5,6 +5,7 @@ import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import type { Article } from "@/data/dummy/types";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveReadTime } from "@/lib/readTime";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
 
@@ -30,7 +31,11 @@ export function HeroSection({ className }: HeroSectionProps) {
           imageUrl:    resolveMediaUrl(data.featured_image),
           category:    data.category?.title ?? "News",
           author:      data.user?.name ?? "ZBC News",
-          readTime:    data.read_time ?? "5 min read",
+          readTime: resolveReadTime(
+            data.read_time,
+            data.article_description,
+            data.excerpt,
+          ),
           publishedAt: data.published_at ?? "",
         });
       } catch (error) {
