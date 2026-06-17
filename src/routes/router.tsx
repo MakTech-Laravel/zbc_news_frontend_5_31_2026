@@ -31,6 +31,9 @@ const AdminCategories = lazy(() => import("@/pages/admin/AdminCategories"));
 const AdminMedia = lazy(() => import("@/pages/admin/AdminMedia"));
 const AdminMonetization = lazy(() => import("@/pages/admin/AdminMonetization"));
 const AdminNewsletters = lazy(() => import("@/pages/admin/AdminNewsletters"));
+const NewsletterVerifyPage = lazy(() => import("@/pages/newsletter/NewsletterVerifyPage"));
+const NewsletterUnsubscribePage = lazy(() => import("@/pages/newsletter/NewsletterUnsubscribePage"));
+const NewsletterPreferencesPage = lazy(() => import("@/pages/newsletter/NewsletterPreferencesPage"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazy(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminArticlesEdit = lazy(() => import("@/pages/admin/AdminArticlesEdit"));
@@ -51,6 +54,9 @@ export const router = createBrowserRouter([
       authRoutes,
       
       { path: "/unauthorized", element: suspensePage(Unauthorized) },
+      { path: "/newsletter/verify", element: suspensePage(NewsletterVerifyPage) },
+      { path: "/newsletter/unsubscribe", element: suspensePage(NewsletterUnsubscribePage) },
+      { path: "/newsletter/preferences", element: suspensePage(NewsletterPreferencesPage) },
       { path: "/dashboard", element: redirect("/user/dashboard") },
       // { path: "/user/dashboard", element: <ProtectedRoute>{suspensePage(UserDashboard)}</ProtectedRoute> },
       {

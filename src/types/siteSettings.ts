@@ -21,6 +21,12 @@ export type SiteSettingsApi = {
   google_analytics_id: string | null;
   facebook_pixel_id: string | null;
   mailchimp_api_key: string | null;
+  newsletter_provider: string | null;
+  newsletter_from_email: string | null;
+  newsletter_from_name: string | null;
+  resend_api_key: string | null;
+  brevo_api_key: string | null;
+  mailchimp_list_id: string | null;
   disqus_shortname: string | null;
   slack_webhook_url: string | null;
   enable_comments: boolean;
@@ -100,6 +106,12 @@ export function mapSiteSettingsToForm(raw: SiteSettingsApi) {
     googleAnalyticsId: raw.google_analytics_id ?? "",
     facebookPixelId: raw.facebook_pixel_id ?? "",
     mailchimpApiKey: raw.mailchimp_api_key ?? "",
+    newsletterProvider: raw.newsletter_provider ?? "smtp",
+    newsletterFromEmail: raw.newsletter_from_email ?? "",
+    newsletterFromName: raw.newsletter_from_name ?? "",
+    resendApiKey: raw.resend_api_key ?? "",
+    brevoApiKey: raw.brevo_api_key ?? "",
+    mailchimpListId: raw.mailchimp_list_id ?? "",
     disqusShortname: raw.disqus_shortname ?? "",
     slackWebhookUrl: raw.slack_webhook_url ?? "",
   };

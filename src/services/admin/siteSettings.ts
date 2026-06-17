@@ -59,6 +59,12 @@ export async function updateAdminSiteSettings(
   formData.append("google_analytics_id", form.googleAnalyticsId);
   formData.append("facebook_pixel_id", form.facebookPixelId);
   formData.append("mailchimp_api_key", form.mailchimpApiKey);
+  formData.append("newsletter_provider", form.newsletterProvider);
+  formData.append("newsletter_from_email", form.newsletterFromEmail);
+  formData.append("newsletter_from_name", form.newsletterFromName);
+  formData.append("resend_api_key", form.resendApiKey);
+  formData.append("brevo_api_key", form.brevoApiKey);
+  formData.append("mailchimp_list_id", form.mailchimpListId);
   formData.append("disqus_shortname", form.disqusShortname);
   formData.append("slack_webhook_url", form.slackWebhookUrl);
 

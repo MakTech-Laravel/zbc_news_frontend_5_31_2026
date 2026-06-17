@@ -1,62 +1,10 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SidebarCard } from "@/components/main-layout/shared/SidebarCard";
-import { Mail } from "lucide-react";
-import toast from "react-hot-toast";
-import { subscribeNewsletter } from "@/services/frontend/newsletter";
+import { NewsletterSignupForm } from "@/components/newsletter/NewsletterSignupForm";
 
 export function NewsletterSignup() {
-  const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    setSubmitting(true);
-    try {
-      await subscribeNewsletter({ email: email.trim() });
-      toast.success("Subscription received. Please verify your email.");
-      setEmail("");
-    } catch {
-      toast.error("Unable to subscribe right now. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   return (
-    <SidebarCard className="bg-surface-soft rounded-xs">
-      <div className="mb-3">
-        <div className="flex items-center gap-2 mb-3">
-          <Mail className="size-5 text-primary" />
-          <h2 className="font-inter text-sm font-bold text-zbc-gray-1000">Daily Newsletter</h2>
-        </div>
-        <p className="mb-3 font-inter text-xs text-zbc-gray-700">
-          Get the top stories delivered to your inbox every morning.
-        </p>
-      </div>
-      <form
-        className="space-y-2"
-        onSubmit={(e) => void handleSubmit(e)}
-      >
-        <Input
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="h-10 rounded-xs border-border bg-input font-inter text-xs text-foreground"
-        />
-        <Button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-none bg-primary font-inter text-xs font-bold text-primary-foreground hover:bg-bg-primary-500 cursor-pointer"
-        >
-          {submitting ? "Subscribing..." : "Subscribe Now"}
-        </Button>
-      </form>
+    <SidebarCard className="rounded-xs bg-surface-soft">
+      <NewsletterSignupForm source="sidebar" showCategories />
     </SidebarCard>
   );
 }

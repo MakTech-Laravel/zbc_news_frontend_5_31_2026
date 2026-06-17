@@ -26,6 +26,12 @@ export type AdminSettingsForm = {
   googleAnalyticsId: string;
   facebookPixelId: string;
   mailchimpApiKey: string;
+  newsletterProvider: string;
+  newsletterFromEmail: string;
+  newsletterFromName: string;
+  resendApiKey: string;
+  brevoApiKey: string;
+  mailchimpListId: string;
   disqusShortname: string;
   slackWebhookUrl: string;
 };
@@ -48,6 +54,12 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettingsForm = {
   googleAnalyticsId: "",
   facebookPixelId: "",
   mailchimpApiKey: "",
+  newsletterProvider: "smtp",
+  newsletterFromEmail: "",
+  newsletterFromName: "",
+  resendApiKey: "",
+  brevoApiKey: "",
+  mailchimpListId: "",
   disqusShortname: "",
   slackWebhookUrl: "",
 };
