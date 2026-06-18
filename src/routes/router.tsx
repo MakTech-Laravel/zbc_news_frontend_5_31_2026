@@ -34,6 +34,7 @@ const AdminNewsletters = lazy(() => import("@/pages/admin/AdminNewsletters"));
 const NewsletterVerifyPage = lazy(() => import("@/pages/newsletter/NewsletterVerifyPage"));
 const NewsletterUnsubscribePage = lazy(() => import("@/pages/newsletter/NewsletterUnsubscribePage"));
 const NewsletterPreferencesPage = lazy(() => import("@/pages/newsletter/NewsletterPreferencesPage"));
+const AdminComments = lazy(() => import("@/pages/admin/AdminComments"));
 const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazy(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminArticlesEdit = lazy(() => import("@/pages/admin/AdminArticlesEdit"));
@@ -148,6 +149,10 @@ export const router = createBrowserRouter([
           {
             path: "newsletters",
             element: suspensePage(AdminNewsletters),
+          },
+          {
+            path: "comments",
+            element: suspensePage(AdminComments),
           },
           {
             path: "settings",

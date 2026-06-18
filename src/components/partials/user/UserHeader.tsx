@@ -1,13 +1,11 @@
 import * as React from "react";
-import { Bell, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
-import { Link } from "react-router-dom";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
 import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
+import { UserNotificationsDropdown } from "@/components/user/shared/UserNotificationsDropdown";
 import { Input } from "@/components/ui/input";
-import { useUserNotifications } from "@/hooks/useUserNotifications";
 import { cn } from "@/lib/utils";
-
 type UserHeaderProps = {
   onMenuClick?: () => void;
   onToggleSidebar?: () => void;
@@ -22,9 +20,13 @@ export function UserHeader({
   className,
 }: UserHeaderProps) {
   const { logout } = useAuth();
-  const { unreadCount } = useUserNotifications();
   const [loggingOut, setLoggingOut] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+
+  function openSearch() {
+    setSearchOpen(true);
+  }
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -43,7 +45,14 @@ export function UserHeader({
         className,
       )}
     >
-      <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
+      <GlobalSearchModal
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        seedQuery={searchQuery}
+        onQueryChange={setSearchQuery}
+        title="Search Articles"
+        description="Search published articles, topics, and categories"
+      />
       <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <button
           type="button"
@@ -74,12 +83,16 @@ export function UserHeader({
           />
           <Input
             type="search"
-            readOnly
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setSearchOpen(true);
+            }}
+            onFocus={openSearch}
+            onClick={openSearch}
             placeholder="Search articles, topics, authors..."
-            onClick={() => setSearchOpen(true)}
-            onFocus={() => setSearchOpen(true)}
-            className="h-9 w-full cursor-pointer rounded-lg border-admin-input-border pl-10 text-sm placeholder:text-admin-label/70"
-            aria-label="Open search"
+            className="h-9 w-full cursor-text rounded-lg border-admin-input-border pl-10 text-sm placeholder:text-admin-label/70"
+            aria-label="Search articles"
           />
         </div>
       </div>
@@ -88,28 +101,13 @@ export function UserHeader({
         type="button"
         className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-admin-label hover:bg-muted sm:hidden"
         aria-label="Search"
-        onClick={() => setSearchOpen(true)}
+        onClick={openSearch}
       >
         <Search className="size-4" aria-hidden />
       </button>
 
       <div className="flex shrink-0 items-center gap-1">
-        <Link
-          to="/user/notifications"
-          className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-admin-label hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={
-            unreadCount > 0
-              ? `Notifications, ${unreadCount} unread`
-              : "Notifications"
-          }
-        >
-          <Bell className="size-4" aria-hidden />
-          {unreadCount > 0 ? (
-            <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-admin-notification px-1 text-[10px] font-semibold text-white">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          ) : null}
-        </Link>
+        <UserNotificationsDropdown />
 
         <button
           type="button"

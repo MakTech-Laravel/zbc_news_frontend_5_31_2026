@@ -168,9 +168,22 @@ export default function OTPVerification() {
       return;
     }
 
-    // Existing forgot-password flow still uses this screen without register context.
+    // Password reset: store OTP and continue to reset screen.
+    if (purpose === "reset") {
+      if (!email) {
+        setError("Missing email. Please go back and try again.");
+        return;
+      }
+
+      sessionStorage.setItem("password_reset_otp", otpCode);
+      navigate(`/reset-password?email=${encodeURIComponent(email.toLowerCase())}`, {
+        replace: true,
+      });
+      return;
+    }
+
     if (purpose !== "register") {
-      navigate("/reset-password", { replace: true });
+      setError("Unsupported verification flow.");
       return;
     }
 

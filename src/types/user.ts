@@ -1,13 +1,12 @@
 /** Shared user-portal domain types (API-ready). */
 
 export type {
-  UserCategoryFilter,
   UserNotification,
   UserNotificationIcon,
   UserNotificationTab,
-  MembershipPlan,
-  MembershipPlanId,
-} from "@/data/dummy/userPages";
+} from "@/types/notifications";
+
+export type { UserCategoryFilter, MembershipPlan, MembershipPlanId } from "@/data/dummy/userPages";
 
 export type { UserFeedArticle } from "@/data/dummy/userDashboard";
 

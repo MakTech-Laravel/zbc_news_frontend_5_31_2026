@@ -18,6 +18,10 @@ export function RevenueAnalyticsChart({ title = "Revenue Analytics", data }: Rev
   const adRevenue = data?.ad_revenue ?? [0, 0, 0, 0, 0, 0];
   const subscriptions = data?.subscriptions ?? [0, 0, 0, 0, 0, 0];
 
+  const maxValue = Math.max(...adRevenue, ...subscriptions, 1);
+  const max = Math.ceil(maxValue / 1000) * 1000 || 1000;
+  const yTicks = [0, max * 0.25, max * 0.5, max * 0.75, max].map((value) => Math.round(value));
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
 
@@ -31,12 +35,10 @@ export function RevenueAnalyticsChart({ title = "Revenue Analytics", data }: Rev
     return () => observer.disconnect();
   }, []);
 
-  const max = 32000;
   const innerW = width - PAD.left - PAD.right;
   const innerH = CHART_H - PAD.top - PAD.bottom;
   const groupW = innerW / months.length;
   const barW = (groupW - GROUP_GAP) / 2 - BAR_GAP / 2;
-  const yTicks = [0, 8000, 16000, 24000, 32000];
 
   return (
     <section className="rounded-[10px] border border-border bg-card px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6">
@@ -70,7 +72,7 @@ export function RevenueAnalyticsChart({ title = "Revenue Analytics", data }: Rev
                     fontSize={11}
                     fill="var(--admin-trend-muted)"
                   >
-                    {tick === 0 ? "0" : `${tick / 1000}k`}
+                    {tick === 0 ? "0" : tick >= 1000 ? `${tick / 1000}k` : String(tick)}
                   </text>
                 </g>
               );

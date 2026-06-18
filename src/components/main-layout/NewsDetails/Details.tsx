@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { Calendar, Clock, MessageCircle } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Calendar, Clock } from "lucide-react";
 
+import { ArticleComments } from "@/components/main-layout/NewsDetails/ArticleComments";
 import { ArticleDetailToolbar } from "@/components/main-layout/NewsDetails/ArticleDetailToolbar";
 import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
 import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
@@ -9,7 +10,6 @@ import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import NotFound from "@/pages/global/NotFound";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/auth/useAuth";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { useDocumentHead } from "@/hooks/useDocumentHead";
 import {
@@ -66,7 +66,6 @@ function DetailsSkeleton() {
 
 function ArticleContent({ article }: { article: ArticleDetail }) {
   const { settings } = useSiteSettings();
-  const { isAuthenticated } = useAuth();
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
 
   useDocumentHead({
@@ -250,42 +249,11 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
           )}
         </section>
 
-        {settings.allowComments ? (
-          <section className="pt-3 sm:pt-5" aria-labelledby="comments-heading">
-            <h2
-              id="comments-heading"
-              className="text-center font-inter text-xl font-bold text-zbc-gray-1000 sm:text-2xl"
-            >
-              Comments
-            </h2>
-
-            {settings.disqusShortname ? (
-              <div id="disqus_thread" className="mt-5" />
-            ) : settings.requireRegistrationToComment && !isAuthenticated ? (
-              <div className="mt-5 flex flex-col gap-4 rounded-lg border border-border bg-zbc-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5 sm:py-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <MessageCircle
-                    className="size-5 shrink-0 text-zbc-gray-400"
-                    aria-hidden
-                  />
-                  <p className="font-inter text-sm text-zbc-gray-700 sm:text-base">
-                    Sign In to join the conversation
-                  </p>
-                </div>
-                <Link
-                  to="/login"
-                  className="shrink-0 font-inter text-sm font-semibold text-primary hover:underline sm:text-base"
-                >
-                  Sign In
-                </Link>
-              </div>
-            ) : (
-              <p className="mt-5 rounded-lg border border-border bg-card p-4 text-center text-sm text-muted-foreground">
-                Comments are enabled. A dedicated comments service can be connected from Integrations.
-              </p>
-            )}
-          </section>
-        ) : null}
+        <ArticleComments
+          articleSlug={article.slug}
+          allowComments={settings.allowComments && !settings.disqusShortname}
+          requireRegistration={settings.requireRegistrationToComment}
+        />
 
         <div className="mt-3 space-y-6 pb-4 sm:mt-5 sm:space-y-3 sm:pb-3">
           <AdUnit variant="banner" />

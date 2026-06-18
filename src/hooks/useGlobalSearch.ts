@@ -12,13 +12,25 @@ import {
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 350;
 
-export function useGlobalSearch(open: boolean) {
-  const [query, setQuery] = React.useState("");
+type UseGlobalSearchOptions = {
+  onQueryChange?: (query: string) => void;
+};
+
+export function useGlobalSearch(open: boolean, options?: UseGlobalSearchOptions) {
+  const [query, setQueryState] = React.useState("");
   const [results, setResults] = React.useState<SearchResultItem[]>([]);
   const [history, setHistory] = React.useState<SearchHistoryItem[]>([]);
   const [searching, setSearching] = React.useState(false);
   const [historyLoading, setHistoryLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const setQuery = React.useCallback(
+    (value: string) => {
+      setQueryState(value);
+      options?.onQueryChange?.(value);
+    },
+    [options],
+  );
 
   const loadHistory = React.useCallback(async () => {
     setHistoryLoading(true);
@@ -34,7 +46,6 @@ export function useGlobalSearch(open: boolean) {
 
   React.useEffect(() => {
     if (!open) {
-      setQuery("");
       setResults([]);
       setError(null);
       setSearching(false);
