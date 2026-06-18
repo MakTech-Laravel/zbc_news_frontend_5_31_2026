@@ -11,7 +11,10 @@ export type AdminArticle = {
   status: ArticleStatus;
   visibility: ArticleVisibility;
   views: number;
+  /** Published date & time shown to readers */
   date: string;
+  /** Last editorial update timestamp (internal) */
+  updatedAt?: string;
   /** ISO timestamp of the last manual or auto-save */
   lastSavedAt?: string | null;
   /** True when the editor has unsaved changes (dummy local flag) */

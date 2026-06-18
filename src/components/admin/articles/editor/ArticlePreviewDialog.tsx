@@ -1,4 +1,4 @@
-import { Calendar, Tag } from "lucide-react";
+import { Calendar, Clock, Tag } from "lucide-react";
 
 import { AdminStatusBadge } from "@/components/admin/shared/AdminStatusBadge";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { ARTICLE_STATUS_LABELS } from "@/data/admin/articleWorkflow";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
+import { formatPublishDate } from "@/lib/publishDate";
 import { cn } from "@/lib/utils";
 
 export type ArticlePreviewData = {
@@ -20,6 +21,7 @@ export type ArticlePreviewData = {
   authorName: string;
   featuredImageUrl: string | null;
   status: ArticleStatus;
+  publishDisplayAt?: string;
 };
 
 type ArticlePreviewDialogProps = {
@@ -43,11 +45,9 @@ export function ArticlePreviewDialog({
   const displayExcerpt = (preview.excerpt ?? "").trim();
   const displayDescription = (preview.article_description ?? "").trim();
   const displayTags = preview.tags ?? [];
-  const publishedLabel = new Date().toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const publishParts = formatPublishDate(
+    preview.publishDisplayAt ?? new Date().toISOString(),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,10 +105,18 @@ export function ArticlePreviewDialog({
                   <span className="font-medium text-zbc-gray-1000">
                     {preview.authorName || "Unknown author"}
                   </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Calendar className="size-4 shrink-0" aria-hidden />
-                    <time dateTime={new Date().toISOString()}>{publishedLabel}</time>
-                  </span>
+                  {publishParts.date ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Calendar className="size-4 shrink-0" aria-hidden />
+                      <time dateTime={publishParts.iso}>{publishParts.date}</time>
+                    </span>
+                  ) : null}
+                  {publishParts.time ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock className="size-4 shrink-0" aria-hidden />
+                      <time dateTime={publishParts.iso}>{publishParts.time}</time>
+                    </span>
+                  ) : null}
                 </div>
               </header>
 

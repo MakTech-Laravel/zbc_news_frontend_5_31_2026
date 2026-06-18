@@ -1,6 +1,7 @@
 import { request } from "@/api/request";
 import { normalizeArticleVisibility } from "@/data/admin/articleVisibility";
 import type { AdminArticle, ArticleStatus } from "@/data/admin/mockArticles";
+import { formatPublishDateTime } from "@/lib/publishDate";
 
 export type AdminArticleApiCategory = {
   id?: number | string;
@@ -35,14 +36,7 @@ function normalizeArticleStatus(value: unknown): ArticleStatus {
 }
 
 function formatArticleDate(value: unknown): string {
-  if (typeof value !== "string" || !value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatPublishDateTime(value);
 }
 
 function resolveCategoryLabel(raw: Record<string, unknown>): string {
@@ -87,7 +81,8 @@ function mapApiArticle(raw: unknown): AdminArticle | null {
     status: normalizeArticleStatus(record.status),
     visibility: normalizeArticleVisibility(record.visibility),
     views: Number(record.views ?? record.view_count ?? 0),
-    date: formatArticleDate(record.date ?? record.created_at ?? record.published_at),
+    date: formatArticleDate(record.published_at ?? record.created_at),
+    updatedAt: formatArticleDate(record.updated_at),
     lastSavedAt:
       typeof record.last_saved_at === "string"
         ? record.last_saved_at

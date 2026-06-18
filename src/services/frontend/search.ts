@@ -1,5 +1,6 @@
 import { request } from "@/api/request";
 import { resolveArticleImageUrl } from "@/lib/mediaUrl";
+import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 import { getSearchSessionHeaders } from "@/lib/searchSession";
 
@@ -31,14 +32,8 @@ function resolveCategoryLabel(raw: Record<string, unknown>): string {
 }
 
 function formatPublishedAt(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const parts = formatPublishDate(value);
+  return parts.combined || "";
 }
 
 function mapSearchResult(raw: unknown): SearchResultItem | null {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Timer } from "lucide-react";
 
 import { ArticleComments } from "@/components/main-layout/NewsDetails/ArticleComments";
 import { ArticleDetailToolbar } from "@/components/main-layout/NewsDetails/ArticleDetailToolbar";
@@ -138,13 +138,20 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
                     className="size-4 shrink-0 text-zbc-gray-400"
                     aria-hidden
                   />
-                  <time dateTime={article.publishedAtIso}>
-                    {article.publishedAt}
-                  </time>
+                  <time dateTime={article.publishedAtIso}>{article.publishedAt}</time>
+                </span>
+              ) : null}
+              {article.publishedTime ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock
+                    className="size-4 shrink-0 text-zbc-gray-400"
+                    aria-hidden
+                  />
+                  <time dateTime={article.publishedAtIso}>{article.publishedTime}</time>
                 </span>
               ) : null}
               <span className="inline-flex items-center gap-1.5">
-                <Clock
+                <Timer
                   className="size-4 shrink-0 text-zbc-gray-400"
                   aria-hidden
                 />
