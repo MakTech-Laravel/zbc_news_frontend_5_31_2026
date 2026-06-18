@@ -164,13 +164,23 @@ export function ArticleSettingsPanel({
           />
         </AdminFormField>
 
-        <AdminFormField label="Schedule Publishing" htmlFor="article-schedule">
+        <AdminFormField
+          label="Scheduled publishing date & time"
+          htmlFor="article-schedule"
+          hint={
+            status === "scheduled"
+              ? "The article will go live automatically at this date and time."
+              : undefined
+          }
+        >
           <input
             id="article-schedule"
             type="datetime-local"
+            step={60}
             value={form.scheduledAt}
             onChange={(e) => setField("scheduledAt", e.target.value)}
-            className={inputClassName}
+            disabled={status !== "scheduled"}
+            className={cn(inputClassName, status !== "scheduled" && "opacity-60")}
           />
         </AdminFormField>
 

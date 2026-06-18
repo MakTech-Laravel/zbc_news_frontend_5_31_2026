@@ -72,11 +72,19 @@ const ARTICLES_COLUMNS: DataTableColumn<AdminArticle>[] = [
   },
   {
     id: "date",
-    header: "Date",
+    header: "Published",
     hideOnMobile: true,
     type: "text",
     accessor: (row) => row.date,
     className: "whitespace-nowrap text-admin-trend-muted",
+  },
+  {
+    id: "updatedAt",
+    header: "Updated",
+    hideOnMobile: true,
+    type: "text",
+    accessor: (row) => row.updatedAt ?? "—",
+    className: "whitespace-nowrap text-admin-trend-muted text-xs",
   },
 ];
 

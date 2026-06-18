@@ -1,6 +1,7 @@
 import { request } from "@/api/request";
 import type { Article } from "@/data/dummy/types";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 
 export type ArticleDetail = {
@@ -14,6 +15,7 @@ export type ArticleDetail = {
   authorName: string;
   authorInitials: string;
   publishedAt: string;
+  publishedTime: string;
   publishedAtIso: string;
   readTime: string;
   tags: string[];
@@ -23,24 +25,13 @@ export type ArticleDetail = {
   shareImageUrl: string;
 };
 
-function formatPublishedAt(value: unknown): { label: string; iso: string } {
-  if (typeof value !== "string" || !value.trim()) {
-    return { label: "", iso: "" };
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return { label: value, iso: value };
-  }
-
-  return {
-    label: date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }),
-    iso: date.toISOString(),
-  };
+function formatPublishedAt(value: unknown): {
+  date: string;
+  time: string;
+  iso: string;
+} {
+  const parts = formatPublishDate(value);
+  return { date: parts.date, time: parts.time, iso: parts.iso };
 }
 
 function resolveAuthorName(raw: Record<string, unknown>): string {
@@ -138,7 +129,8 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     ),
     authorName,
     authorInitials: toInitials(authorName),
-    publishedAt: published.label,
+    publishedAt: published.date,
+    publishedTime: published.time,
     publishedAtIso: published.iso,
     readTime: resolveReadTime(record.read_time, articleDescription, record.excerpt as string),
     tags: parseTags(record.tags),
@@ -270,7 +262,7 @@ function mapApiArticleListItem(raw: unknown): Article | null {
       description,
       typeof record.excerpt === "string" ? record.excerpt : undefined,
     ),
-    publishedAt: published.label,
+    publishedAt: published.date && published.time ? `${published.date} · ${published.time}` : published.date,
     views: Number(record.views ?? record.view_count ?? 0) || undefined,
     tags: parseTags(record.tags),
   };

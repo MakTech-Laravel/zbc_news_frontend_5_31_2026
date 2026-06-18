@@ -47,6 +47,7 @@ import {
 } from "@/data/admin/articleVisibility";
 import { slugifyCategoryName } from "@/data/admin/categoryStore";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
+import { isFutureDatetimeLocal, toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 
@@ -109,13 +110,27 @@ const articleFormSchema = z
       ),
     slug: z.string().min(1, "Slug is required"),
     scheduled_publishing: z.string(),
+    published_at: z.string(),
     // author_id: z.string().min(1, "Author is required"),
   })
   .superRefine((data, ctx) => {
     if (data.status === "scheduled" && !data.scheduled_publishing.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Schedule date is required when status is scheduled",
+        message: "Scheduled publishing date and time are required when status is scheduled",
+        path: ["scheduled_publishing"],
+      });
+      return;
+    }
+
+    if (
+      data.status === "scheduled" &&
+      data.scheduled_publishing.trim() &&
+      !isFutureDatetimeLocal(data.scheduled_publishing)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Scheduled publishing must be a future date and time",
         path: ["scheduled_publishing"],
       });
     }
@@ -148,38 +163,6 @@ function parseTags(raw: unknown): string[] {
     return raw.split(",").map((tag) => tag.trim()).filter(Boolean);
   }
   return [];
-}
-
-function toDatetimeLocalValue(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "";
-
-  const apiMatch = value.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})(:\d{2})?$/);
-  if (apiMatch) {
-    return `${apiMatch[1]}T${apiMatch[2]}`;
-  }
-
-  const normalized = value.includes(" ") ? value.replace(" ", "T") : value;
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return "";
-
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60_000);
-  return local.toISOString().slice(0, 16);
-}
-
-function toApiDatetimeValue(value: string): string {
-  if (!value.trim()) return "";
-
-  const localMatch = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(:\d{2})?$/);
-  if (localMatch) {
-    const seconds = localMatch[3] ?? ":00";
-    return `${localMatch[1]} ${localMatch[2]}${seconds}`;
-  }
-
-  const apiMatch = value.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/);
-  if (apiMatch) return value;
-
-  return value;
 }
 
 function resolveCategoryId(raw: Record<string, unknown>): string {
@@ -260,6 +243,7 @@ function mapArticleToFormValues(raw: unknown): ArticleFormInputValues {
     scheduled_publishing: toDatetimeLocalValue(
       record.scheduled_publishing ?? record.scheduledAt ?? record.publish_at,
     ),
+    published_at: toDatetimeLocalValue(record.published_at),
     // author_id: resolveAuthorId(record),
   };
 }
@@ -299,7 +283,7 @@ function buildArticlePayload(
   data: ArticleFormInputValues,
   status: ArticleStatus,
 ): Record<string, unknown> {
-  return {
+  const payload: Record<string, unknown> = {
     title: data.title,
     article_description: data.article_description,
     slug: data.slug,
@@ -311,10 +295,17 @@ function buildArticlePayload(
     meta_description: data.meta_description,
     meta_keywords: data.meta_keywords,
     tags: data.tags,
-    ...(data.scheduled_publishing
-      ? { scheduled_publishing: toApiDatetimeValue(data.scheduled_publishing) }
-      : {}),
   };
+
+  if (status === "scheduled" && data.scheduled_publishing.trim()) {
+    payload.scheduled_publishing = toApiDatetimeValue(data.scheduled_publishing);
+  }
+
+  if (status === "published" && data.published_at.trim()) {
+    payload.published_at = toApiDatetimeValue(data.published_at);
+  }
+
+  return payload;
 }
 
 function appendPayloadToFormData(
@@ -391,6 +382,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       meta_keywords: "",
       slug: "",
       scheduled_publishing: "",
+      published_at: "",
       // author_id: "",
     },
   });
@@ -670,6 +662,13 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     );
   }
 
+  const previewPublishSource =
+    watchedStatus === "scheduled"
+      ? watchedValues.scheduled_publishing
+      : watchedStatus === "published"
+        ? watchedValues.published_at
+        : "";
+
   const previewData = {
     title: watchedValues.title ?? "",
     article_description: watchedValues.article_description ?? "",
@@ -682,6 +681,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     authorName: "",
     featuredImageUrl: featuredImagePreview,
     status: (watchedStatus || "draft") as ArticleStatus,
+    publishDisplayAt: previewPublishSource
+      ? toApiDatetimeValue(previewPublishSource) || previewPublishSource
+      : undefined,
   };
 
   const displayStatus: ArticleStatus | "" =
@@ -794,14 +796,37 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
               {watchedStatus === "scheduled" ? (
                 <div className="space-y-1">
                   <label htmlFor="article-schedule" className={fieldLabelClassName}>
-                    Schedule Publishing
+                    Scheduled publishing date &amp; time
                   </label>
                   <Input
                     id="article-schedule"
                     type="datetime-local"
+                    step={60}
                     {...register("scheduled_publishing")}
                   />
+                  <p className="text-xs text-admin-label">
+                    The article will go live automatically at this date and time.
+                  </p>
                   <InputError message={errors.scheduled_publishing?.message} />
+                </div>
+              ) : null}
+
+              {watchedStatus === "published" ? (
+                <div className="space-y-1">
+                  <label htmlFor="article-published-at" className={fieldLabelClassName}>
+                    Published date &amp; time
+                  </label>
+                  <Input
+                    id="article-published-at"
+                    type="datetime-local"
+                    step={60}
+                    {...register("published_at")}
+                  />
+                  <p className="text-xs text-admin-label">
+                    Shown to readers on the article page. Leave blank to use the current time when
+                    first published.
+                  </p>
+                  <InputError message={errors.published_at?.message} />
                 </div>
               ) : null}
 
