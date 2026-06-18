@@ -65,6 +65,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: null,
   },
   {
+    label: 'Comments',
+    path: '/admin/comments',
+    segment: 'comments',
+    permission: PERMISSIONS.COMMENTS.LIST,
+  },
+  {
     label: 'Settings',
     path: '/admin/settings',
     segment: 'settings',

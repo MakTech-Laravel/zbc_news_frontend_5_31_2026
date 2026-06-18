@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { BarChart3, Bell, Clock, LogIn, LogOut, Menu, Radio, Search, Settings, Star, TrendingUp, User, X, Zap } from "lucide-react";
+import { BarChart3, Clock, LogIn, LogOut, Menu, Radio, Search, Settings, Star, TrendingUp, User, X, Zap } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
+import { UserNotificationsDropdown } from "@/components/user/shared/UserNotificationsDropdown";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
@@ -197,45 +198,26 @@ function SearchField({
   );
 }
 
-function NotificationButton({ className }: { className?: string }) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "relative flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-        className,
-      )}
-      aria-label="Notifications"
-    >
-      <Bell className="size-[18px] stroke-[1.75]" aria-hidden />
-      <span className="absolute right-2 top-2 size-2 rounded-full bg-zbc-red ring-2 ring-background" />
-    </button>
-  );
-}
-
 function AccountActions({ showLabel = true }: { showLabel?: boolean }) {
   const { isAuthenticated, logout, user } = useAuth();
 
   if (!isAuthenticated) {
     return (
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        <NotificationButton className="hidden md:block" />
-        <Button
-          asChild
-          type="button"
-          variant="outline"
-          className="h-9 gap-2 rounded-lg border-border bg-muted px-3 font-sans text-[13px] font-medium text-zbc-gray-700 shadow-none hover:bg-zbc-gray-200"
-        >
-          <Link to="/login">
-            <User className="size-4 shrink-0" aria-hidden />
-            {showLabel ? (
-              <span className="hidden sm:inline">My Account</span>
-            ) : (
-              <span className="sr-only">My Account</span>
-            )}
-          </Link>
-        </Button>
-      </div>
+      <Button
+        asChild
+        type="button"
+        variant="outline"
+        className="h-9 gap-2 rounded-lg border-border bg-muted px-3 font-sans text-[13px] font-medium text-zbc-gray-700 shadow-none hover:bg-zbc-gray-200"
+      >
+        <Link to="/login">
+          <User className="size-4 shrink-0" aria-hidden />
+          {showLabel ? (
+            <span className="hidden sm:inline">My Account</span>
+          ) : (
+            <span className="sr-only">My Account</span>
+          )}
+        </Link>
+      </Button>
     );
   }
 
@@ -250,6 +232,7 @@ function AccountActions({ showLabel = true }: { showLabel?: boolean }) {
 
   return (
     <div className="flex items-center gap-1.5 sm:gap-2">
+      <UserNotificationsDropdown className="rounded-full text-muted-foreground hover:bg-muted hover:text-foreground" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -514,9 +497,12 @@ function MobileMenu() {
               <div className="border-t border-border pt-3">
                 {isAuthenticated ? (
                   <div className="space-y-2">
-                    <p className="px-1 text-[11px] uppercase tracking-wide text-zbc-gray-400">
-                      Signed in as {user?.email ?? user?.name}
-                    </p>
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[11px] uppercase tracking-wide text-zbc-gray-400">
+                        Signed in as {user?.email ?? user?.name}
+                      </p>
+                      <UserNotificationsDropdown className="rounded-full text-muted-foreground hover:bg-muted" />
+                    </div>
                     <Button asChild variant="outline" className="w-full justify-start gap-2" onClick={close}>
                       <Link to="/dashboard">
                         <Settings className="size-4" />

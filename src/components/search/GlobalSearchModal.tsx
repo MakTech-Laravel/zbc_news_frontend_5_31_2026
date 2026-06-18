@@ -17,9 +17,20 @@ import { cn } from "@/lib/utils";
 type GlobalSearchModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  seedQuery?: string;
+  onQueryChange?: (query: string) => void;
+  title?: string;
+  description?: string;
 };
 
-export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps) {
+export function GlobalSearchModal({
+  open,
+  onOpenChange,
+  seedQuery = "",
+  onQueryChange,
+  title = "Search News",
+  description = "Search articles, topics, and categories across ZBC News",
+}: GlobalSearchModalProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const {
     query,
@@ -32,7 +43,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
     recordSearch,
     clearHistory,
     minQueryLength,
-  } = useGlobalSearch(open);
+  } = useGlobalSearch(open, { onQueryChange });
 
   const trimmedQuery = query.trim();
   const showResults = trimmedQuery.length >= minQueryLength;
@@ -40,9 +51,10 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
 
   React.useEffect(() => {
     if (!open) return;
+    setQuery(seedQuery);
     const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
     return () => window.clearTimeout(timer);
-  }, [open]);
+  }, [open, seedQuery, setQuery]);
 
   function close() {
     onOpenChange(false);
@@ -62,11 +74,9 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
       <DialogContent className="max-h-[min(85vh,720px)] gap-0 overflow-hidden border-border p-0 sm:max-w-2xl">
         <DialogHeader className="space-y-0 border-b border-border px-4 pb-4 pt-5 sm:px-6">
           <DialogTitle className="font-inter text-lg font-semibold text-foreground">
-            Search News
+            {title}
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Search articles, topics, and categories across ZBC News
-          </DialogDescription>
+          <DialogDescription className="sr-only">{description}</DialogDescription>
 
           <div className="relative mt-4">
             <Search

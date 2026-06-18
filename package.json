@@ -22,7 +22,9 @@
     "axios": "^1.14.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "laravel-echo": "^2.3.7",
     "lucide-react": "^1.7.0",
+    "pusher-js": "^8.5.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-error-boundary": "^6.1.1",
@@ -54,7 +56,7 @@
     "vite": "^8.0.4"
   },
   "optionalDependencies": {
-  "lightningcss-linux-x64-musl": "*",
-  "@tailwindcss/oxide-linux-x64-musl": "*"
-}
+    "@tailwindcss/oxide-linux-x64-musl": "*",
+    "lightningcss-linux-x64-musl": "*"
+  }
 }

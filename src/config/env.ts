@@ -122,4 +122,10 @@ export const env = {
   refreshTokenBodyKey: refreshTokenEnv.bodyKey,
   /** Google Maps JS API key (Places + map). Optional until admin location map is used. */
   googleMapsApiKey: optionalViteString('VITE_GOOGLE_MAPS_API_KEY'),
+  reverbAppKey: optionalViteString('VITE_REVERB_APP_KEY'),
+  reverbHost: optionalViteString('VITE_REVERB_HOST'),
+  reverbPort: optionalViteString('VITE_REVERB_PORT')
+    ? Number(optionalViteString('VITE_REVERB_PORT'))
+    : undefined,
+  reverbScheme: (optionalViteString('VITE_REVERB_SCHEME') ?? 'http') as 'http' | 'https',
 }

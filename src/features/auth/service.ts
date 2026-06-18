@@ -167,6 +167,17 @@ export async function requestPasswordResetOtp(payload: PasswordResetOtpPayload) 
   logOtpFromResponse(res.data, 'password reset')
 }
 
+export type ResetPasswordPayload = {
+  email: string
+  otp: string
+  password: string
+  password_confirmation: string
+}
+
+export async function resetPassword(payload: ResetPasswordPayload) {
+  await request.post<unknown>('/auth/reset-password', payload)
+}
+
 export async function resendRegistrationOtp(payload: PasswordResetOtpPayload) {
   const res = await request.post<unknown>('/auth/otp/resend', payload)
   logOtpFromResponse(res.data, 'register resend')

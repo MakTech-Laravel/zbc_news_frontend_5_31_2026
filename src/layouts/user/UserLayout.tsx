@@ -6,7 +6,6 @@ import { useAuth } from "@/auth/useAuth";
 import { UserHeader } from "@/components/partials/user/UserHeader";
 import { UserSidebar } from "@/components/partials/user/UserSidebar";
 import { UserOutletTransition } from "@/components/user/shared/UserOutletTransition";
-import { UserNotificationsProvider } from "@/contexts/UserNotificationsContext";
 import { cn } from "@/lib/utils";
 
 export function UserLayout() {
@@ -27,7 +26,6 @@ export function UserLayout() {
   }
 
   return (
-    <UserNotificationsProvider>
     <div className="flex h-dvh overflow-hidden bg-admin-surface">
       {/* Mobile overlay */}
       <div
@@ -65,6 +63,5 @@ export function UserLayout() {
         </main>
       </div>
     </div>
-    </UserNotificationsProvider>
   );
 }

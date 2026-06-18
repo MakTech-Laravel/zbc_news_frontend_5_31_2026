@@ -6,6 +6,7 @@ import {
   Image,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Settings,
   ShieldCheck,
   Users,
@@ -28,6 +29,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/rabc": ShieldCheck,
   "/admin/users": Users,
   "/admin/monetization": CreditCard,
+  "/admin/comments": MessageSquare,
   "/admin/settings": Settings,
 };
 
