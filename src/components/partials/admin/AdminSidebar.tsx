@@ -89,13 +89,7 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-admin-sidebar text-white">
       <div className={cn("shrink-0 py-2 transition-all duration-300", collapsed ? "px-0 flex justify-center" : "px-6")}>
-        {collapsed ? (
-          <div className="size-9 rounded-md bg-zbc-blue flex items-center justify-center text-xs font-bold">
-            ZB
-          </div>
-        ) : (
-          <ZbcAdminLogo />
-        )}
+        <ZbcAdminLogo collapsed={collapsed} />
       </div>
 
       <nav
