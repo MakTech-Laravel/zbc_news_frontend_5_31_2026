@@ -14,6 +14,8 @@ import {
 } from "@/services/frontend/comments";
 import type { ArticleComment } from "@/types/comments";
 
+const MAX_COMMENT_LENGTH = 5000;
+
 type ArticleCommentsProps = {
   articleSlug: string;
   allowComments: boolean;
@@ -30,6 +32,33 @@ type CommentFormProps = {
   compact?: boolean;
 };
 
+function CommentAuthorAvatar({
+  name,
+  avatar,
+  className,
+}: {
+  name: string;
+  avatar?: string | null;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "relative inline-flex size-9 shrink-0 overflow-hidden rounded-full bg-primary/10",
+        className,
+      )}
+    >
+      {avatar ? (
+        <HeaderAvatar src={avatar} alt={name} className="size-9 rounded-full" />
+      ) : (
+        <span className="inline-flex size-full items-center justify-center font-inter text-xs font-bold text-primary">
+          {name.slice(0, 2).toUpperCase()}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function CommentForm({
   articleSlug,
   parentId,
@@ -45,18 +74,27 @@ function CommentForm({
   const [guestEmail, setGuestEmail] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
+  const loginHref = `/login?next=${encodeURIComponent(`/news-details/${articleSlug}`)}`;
+
   if (requireRegistration && !isAuthenticated) {
     return (
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-zbc-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-zbc-gray-100/70 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <MessageCircle className="size-5 shrink-0 text-zbc-gray-400" aria-hidden />
-          <p className="font-inter text-sm text-zbc-gray-700 sm:text-base">
-            Sign in to join the conversation
-          </p>
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+            <MessageCircle className="size-5 text-primary" aria-hidden />
+          </span>
+          <div className="min-w-0 text-left">
+            <p className="font-inter text-sm font-semibold text-zbc-gray-1000">
+              Sign in to comment
+            </p>
+            <p className="mt-0.5 font-inter text-sm text-zbc-gray-500">
+              Join the conversation on this article.
+            </p>
+          </div>
         </div>
         <Link
-          to="/login"
-          className="shrink-0 font-inter text-sm font-semibold text-primary hover:underline"
+          to={loginHref}
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-primary px-4 font-inter text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Sign In
         </Link>
@@ -68,6 +106,11 @@ function CommentForm({
     event.preventDefault();
     if (!body.trim()) {
       toast.error("Please enter a comment.");
+      return;
+    }
+
+    if (body.trim().length > MAX_COMMENT_LENGTH) {
+      toast.error(`Comments must be ${MAX_COMMENT_LENGTH} characters or fewer.`);
       return;
     }
 
@@ -98,43 +141,40 @@ function CommentForm({
     }
   }
 
+  const displayName = user?.name ?? user?.email ?? "You";
+  const remainingChars = MAX_COMMENT_LENGTH - body.length;
+
   return (
-    <form onSubmit={(event) => void handleSubmit(event)} className="space-y-3">
+    <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
       {!isAuthenticated ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <Input
             value={guestName}
             onChange={(event) => setGuestName(event.target.value)}
             placeholder="Your name"
-            className="h-10 rounded-lg border-admin-input-border"
+            className="h-10 rounded-lg border-admin-input-border bg-white font-inter text-sm"
             required
+            autoComplete="name"
           />
           <Input
             type="email"
             value={guestEmail}
             onChange={(event) => setGuestEmail(event.target.value)}
             placeholder="Your email"
-            className="h-10 rounded-lg border-admin-input-border"
+            className="h-10 rounded-lg border-admin-input-border bg-white font-inter text-sm"
             required
+            autoComplete="email"
           />
         </div>
       ) : null}
 
       <div className="flex gap-3">
         {isAuthenticated ? (
-          <span className="relative mt-1 inline-flex size-9 shrink-0 overflow-hidden rounded-full bg-muted">
-            {user?.avatar ? (
-              <HeaderAvatar
-                src={user.avatar}
-                alt={user?.name ?? user?.email ?? "You"}
-                className="size-9 rounded-full"
-              />
-            ) : (
-              <span className="inline-flex size-full items-center justify-center text-xs font-semibold text-admin-heading">
-                {(user?.name ?? user?.email ?? "U").slice(0, 2).toUpperCase()}
-              </span>
-            )}
-          </span>
+          <CommentAuthorAvatar
+            name={displayName}
+            avatar={user?.avatar}
+            className="mt-1"
+          />
         ) : null}
         <div className="min-w-0 flex-1 space-y-3">
           <textarea
@@ -142,6 +182,7 @@ function CommentForm({
             onChange={(event) => setBody(event.target.value)}
             placeholder={placeholder}
             rows={compact ? 3 : 4}
+            maxLength={MAX_COMMENT_LENGTH}
             className={cn(
               "w-full resize-y rounded-lg border border-admin-input-border bg-white px-4 py-3",
               "font-inter text-sm text-zbc-gray-900 placeholder:text-zbc-gray-500/80",
@@ -149,29 +190,39 @@ function CommentForm({
             )}
             required
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="h-9 gap-2 rounded-lg px-4 text-sm"
-            >
-              {submitting ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <Send className="size-4" aria-hidden />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p
+              className={cn(
+                "font-inter text-xs text-zbc-gray-500",
+                remainingChars < 100 && "text-amber-600",
               )}
-              {parentId ? "Post Reply" : "Post Comment"}
-            </Button>
-            {onCancel ? (
+            >
+              {remainingChars} characters remaining
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {onCancel ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 rounded-lg px-4 font-inter text-sm"
+                  onClick={onCancel}
+                >
+                  Cancel
+                </Button>
+              ) : null}
               <Button
-                type="button"
-                variant="outline"
-                className="h-9 rounded-lg px-4 text-sm"
-                onClick={onCancel}
+                type="submit"
+                disabled={submitting}
+                className="h-9 gap-2 rounded-lg px-4 font-inter text-sm"
               >
-                Cancel
+                {submitting ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Send className="size-4" aria-hidden />
+                )}
+                {parentId ? "Post Reply" : "Post Comment"}
               </Button>
-            ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -197,35 +248,23 @@ function CommentThread({
   return (
     <article
       className={cn(
-        "rounded-xl border border-border bg-card p-4 shadow-sm",
-        depth > 0 && "ml-4 border-l-4 border-l-brand-deep/30 sm:ml-8",
+        "rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5",
+        depth > 0 && "ml-4 border-l-4 border-l-primary/30 sm:ml-8",
       )}
     >
       <div className="flex items-start gap-3">
-        <span className="relative inline-flex size-9 shrink-0 overflow-hidden rounded-full bg-muted">
-          {comment.authorAvatar ? (
-            <HeaderAvatar
-              src={comment.authorAvatar}
-              alt={comment.authorName}
-              className="size-9 rounded-full"
-            />
-          ) : (
-            <span className="inline-flex size-full items-center justify-center text-xs font-semibold text-admin-heading">
-              {comment.authorName.slice(0, 2).toUpperCase()}
-            </span>
-          )}
-        </span>
+        <CommentAuthorAvatar name={comment.authorName} avatar={comment.authorAvatar} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-inter text-sm font-semibold text-zbc-gray-1000">
               {comment.authorName}
             </p>
             {comment.isOwn ? (
-              <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-medium text-brand-deep">
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-inter text-[10px] font-medium text-primary">
                 You
               </span>
             ) : null}
-            <time className="text-xs text-admin-label">{comment.time}</time>
+            <time className="font-inter text-xs text-zbc-gray-500">{comment.time}</time>
           </div>
           <p className="mt-2 whitespace-pre-wrap font-inter text-sm leading-6 text-zbc-gray-700">
             {comment.body}
@@ -234,10 +273,10 @@ function CommentThread({
             <button
               type="button"
               onClick={() => setReplyOpen((open) => !open)}
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+              className="mt-3 inline-flex items-center gap-1.5 font-inter text-xs font-medium text-primary hover:underline"
             >
               <Reply className="size-3.5" aria-hidden />
-              Reply
+              {replyOpen ? "Hide reply" : "Reply"}
             </button>
           ) : null}
         </div>
@@ -280,6 +319,7 @@ export function ArticleComments({
   allowComments,
   requireRegistration,
 }: ArticleCommentsProps) {
+  const { isAuthenticated } = useAuth();
   const [comments, setComments] = React.useState<ArticleComment[]>([]);
   const [count, setCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
@@ -308,20 +348,36 @@ export function ArticleComments({
   }
 
   return (
-    <section className="pt-3 sm:pt-5" aria-labelledby="comments-heading">
-      <div className="flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
+    <section
+      className="border-t border-border pt-8 sm:pt-10"
+      aria-labelledby="comments-heading"
+    >
+      <div className="text-center sm:text-left">
         <h2
           id="comments-heading"
           className="font-inter text-xl font-bold text-zbc-gray-1000 sm:text-2xl"
         >
           Comments
         </h2>
-        <p className="font-inter text-sm text-admin-label">
+        <p className="mt-2 font-inter text-sm text-zbc-gray-500">
           {count} {count === 1 ? "comment" : "comments"}
+          {!requireRegistration ? " · Guests and signed-in readers can participate" : null}
         </p>
       </div>
 
-      <div className="mt-5 rounded-xl border border-border bg-zbc-gray-100/70 p-4 sm:p-5">
+      <div className="mt-6 rounded-xl border border-border bg-zbc-gray-100/70 p-4 sm:p-5">
+        {!requireRegistration && !isAuthenticated ? (
+          <p className="mb-4 font-inter text-sm text-zbc-gray-700">
+            Commenting as a guest.{" "}
+            <Link
+              to={`/login?next=${encodeURIComponent(`/news-details/${articleSlug}`)}`}
+              className="font-medium text-primary hover:underline"
+            >
+              Sign in
+            </Link>{" "}
+            to use your account profile.
+          </p>
+        ) : null}
         <CommentForm
           articleSlug={articleSlug}
           requireRegistration={requireRegistration}
@@ -329,14 +385,15 @@ export function ArticleComments({
         />
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-6 space-y-3">
         {loading ? (
-          <p className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-admin-label">
-            Loading comments…
-          </p>
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-10">
+            <Loader2 className="size-5 animate-spin text-primary" aria-hidden />
+            <p className="font-inter text-sm text-zbc-gray-500">Loading comments…</p>
+          </div>
         ) : comments.length === 0 ? (
-          <p className="rounded-lg border border-border bg-card px-4 py-8 text-center text-sm text-admin-label">
-            No comments yet. Start the conversation.
+          <p className="rounded-xl border border-border bg-card px-4 py-10 text-center font-inter text-sm text-zbc-gray-500">
+            No comments yet. Be the first to share your thoughts.
           </p>
         ) : (
           comments.map((comment) => (

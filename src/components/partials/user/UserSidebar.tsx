@@ -129,13 +129,7 @@ export function UserSidebar({ collapsed = false, onNavigate }: UserSidebarProps)
           collapsed ? "flex justify-center px-0" : "px-6",
         )}
       >
-        {collapsed ? (
-          <div className="size-9 rounded-md bg-zbc-blue flex items-center justify-center text-xs font-bold">
-            ZB
-          </div>
-        ) : (
-          <ZbcAdminLogo to="/user/dashboard" aria-label="ZBC News home" />
-        )}
+        <ZbcAdminLogo collapsed={collapsed} />
       </div>
 
       {/* User card */}

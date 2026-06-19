@@ -133,8 +133,9 @@ export function mapPublicSiteSettings(raw: SiteSettingsApi): PublicSiteSettings 
     enableAutoSave: raw.enable_auto_save ?? true,
     requireFeaturedImage: raw.require_featured_image ?? false,
     postsPerPage: raw.posts_per_page ?? 10,
-    allowComments: Boolean(raw.allow_comments && raw.enable_comments),
-    requireRegistrationToComment: raw.authenticate_comment_only ?? true,
+    // Public API already combines allow_comments with enable_comments.
+    allowComments: raw.allow_comments ?? true,
+    requireRegistrationToComment: raw.authenticate_comment_only ?? false,
     autoApproveKnownUsers: raw.auto_approve_known_users ?? false,
     relatedArticlesCount: raw.related_article ?? 3,
     googleAnalyticsId: raw.google_analytics_id ?? "",

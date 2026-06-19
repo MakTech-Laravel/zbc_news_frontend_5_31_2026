@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
   requireFeaturedImage: false,
   postsPerPage: 10,
   allowComments: true,
-  requireRegistrationToComment: true,
+  requireRegistrationToComment: false,
   autoApproveKnownUsers: false,
   relatedArticlesCount: 3,
   googleAnalyticsId: "",
