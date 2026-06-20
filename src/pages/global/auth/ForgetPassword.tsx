@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 import { requestPasswordResetOtp } from "@/features/auth/service";
+import { toast } from "react-hot-toast";
 
 export default function ForgetPassword() {
   const navigate = useNavigate();
@@ -18,11 +19,15 @@ export default function ForgetPassword() {
     setLoading(true);
     try {
       await requestPasswordResetOtp({ email });
+
+      toast.success("Reset code sent to your email");
+      setLoading(false);
       navigate(`/otp-verification?purpose=reset&email=${encodeURIComponent(email)}`, {
         replace: true,
       });
     } catch (err) {
       setError(getAuthErrorMessage(err, "Failed to send reset code. Please try again."));
+      toast.error(getAuthErrorMessage(err, "Failed to send reset code. Please try again."));
     } finally {
       setLoading(false);
     }
