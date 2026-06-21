@@ -5,7 +5,7 @@ import { getArticleEditorCategoryOptions } from "@/data/admin/categoryStore";
 import type { UseArticleWorkflowReturn } from "@/components/admin/articles/editor/useArticleWorkflow";
 import { ARTICLE_STATUS_LABELS, ARTICLE_WORKFLOW_STATUSES } from "@/data/admin/articleWorkflow";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
-import { FeaturedImageUpload } from "@/components/admin/articles/editor/FeaturedImageUpload";
+import { MediaImageField } from "@/components/admin/media/MediaImageField";
 import { AdminFormField } from "@/components/admin/forms/AdminFormField";
 import { AdminFormSelect } from "@/components/admin/forms/AdminFormSelect";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
@@ -74,9 +74,10 @@ export function ArticleSettingsPanel({
           </Button>
         ) : null}
         <AdminFormField label="Featured Image">
-          <FeaturedImageUpload
-            previewUrl={form.featuredImagePreview}
-            onFileSelect={setFeaturedImage}
+          <MediaImageField
+            value={form.featuredImagePreview}
+            onChange={(url) => setFeaturedImage(url as unknown as File | null)}
+            uploadLabel="Select featured image"
           />
         </AdminFormField>
 

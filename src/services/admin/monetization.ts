@@ -29,31 +29,13 @@ export async function fetchAdminAdSlots(): Promise<AdminAdSlot[]> {
   return Array.isArray(response.data?.data) ? response.data.data : [];
 }
 
-export type AdminAdSlotUpdatePayload = Partial<AdminAdSlot> & {
-  manual_image?: File;
-};
+export type AdminAdSlotUpdatePayload = Partial<AdminAdSlot>;
 
 export async function updateAdminAdSlot(
   id: number,
   payload: AdminAdSlotUpdatePayload,
 ): Promise<void> {
-  const { manual_image, ...rest } = payload;
-
-  if (manual_image) {
-    const formData = new FormData();
-    Object.entries(rest).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, typeof value === "boolean" ? (value ? "1" : "0") : String(value));
-      }
-    });
-    formData.append("manual_image", manual_image);
-    await request.post(`/admin/ad-slots/update/${id}`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return;
-  }
-
-  await request.post(`/admin/ad-slots/update/${id}`, rest);
+  await request.post(`/admin/ad-slots/update/${id}`, payload);
 }
 
 export async function fetchAdminNavigationLinks(location?: string): Promise<AdminNavigationLink[]> {
