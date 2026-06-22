@@ -1,5 +1,9 @@
+import { Layout } from "@/components/Layout";
+
 export default function NewDemo() {
   return (
-    <div>NewDemo</div>
-  )
+    <Layout>
+      <div>NewDemo</div>
+    </Layout>
+  );
 }
