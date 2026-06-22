@@ -1,27 +1,30 @@
-// src/hooks/useNotifications.ts
-import { useEffect } from 'react';
-import echo from '@/lib/echo';
-import toast from 'react-hot-toast';
+import { useEffect } from "react";
+import { getEcho } from "@/lib/echo";
+import toast from "react-hot-toast";
 
 interface Notification {
-    message: string;
-    type: 'info' | 'success' | 'warning' | 'error';
-    link?: string;
+  message: string;
+  type: "info" | "success" | "warning" | "error";
+  link?: string;
 }
 
 export function useNotifications(userId: number | undefined) {
-    useEffect(() => {
-        if (!userId) return;
+  useEffect(() => {
+    if (!userId) return;
 
-        // Echo automatically prefixes 'private-' to the channel name
-        const channel = echo.private(`notifications.${userId}`);
+    const echo = getEcho();
+    if (!echo) return;
 
-        channel.listen('.NotificationSent', (event: Notification) => {
-            toast(event.message, { icon: event.type === 'success' ? '✅' : '🔔' });
-        });
+    const channel = echo.private(`notifications.${userId}`);
 
-        return () => {
-            echo.leaveChannel(`private-notifications.${userId}`);
-        };
-    }, [userId]);
+    channel.listen(".NotificationSent", (event: Notification) => {
+      toast(event.message, {
+        icon: event.type === "success" ? "✅" : "🔔",
+      });
+    });
+
+    return () => {
+      echo.leaveChannel(`private-notifications.${userId}`);
+    };
+  }, [userId]);
 }
