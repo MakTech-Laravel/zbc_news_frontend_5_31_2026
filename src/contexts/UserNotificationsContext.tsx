@@ -1,4 +1,5 @@
 import * as React from "react";
+import toast from "react-hot-toast";
 
 import { useAuth } from "@/auth/useAuth";
 import {
@@ -95,6 +96,10 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
       });
       if (incoming.unread) {
         setUnreadCount((count) => count + 1);
+        toast(incoming.title, {
+          icon: "🔔",
+          duration: 5000,
+        });
       }
     });
 

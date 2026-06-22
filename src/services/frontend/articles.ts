@@ -17,6 +17,11 @@ export type ArticleDetail = {
   publishedAt: string;
   publishedTime: string;
   publishedAtIso: string;
+  updatedAt: string;
+  updatedTime: string;
+  updatedAtIso: string;
+  showUpdated: boolean;
+  scheduledAtIso: string;
   readTime: string;
   tags: string[];
   metaTitle: string;
@@ -107,6 +112,11 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     "";
 
   const published = formatPublishedAt(record.published_at ?? record.created_at);
+  const updated = formatPublishedAt(record.updated_at);
+  const scheduled = formatPublishedAt(record.scheduled_publishing);
+  const showUpdated =
+    Boolean(updated.iso && published.iso) &&
+    new Date(updated.iso).getTime() > new Date(published.iso).getTime() + 60_000;
   const authorName = resolveAuthorName(record);
   const seo =
     record.seo && typeof record.seo === "object"
@@ -132,6 +142,11 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     publishedAt: published.date,
     publishedTime: published.time,
     publishedAtIso: published.iso,
+    updatedAt: updated.date,
+    updatedTime: updated.time,
+    updatedAtIso: updated.iso,
+    showUpdated,
+    scheduledAtIso: scheduled.iso,
     readTime: resolveReadTime(record.read_time, articleDescription, record.excerpt as string),
     tags: parseTags(record.tags),
     metaTitle:
