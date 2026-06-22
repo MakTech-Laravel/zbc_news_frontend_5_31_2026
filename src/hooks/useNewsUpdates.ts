@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getEcho } from "@/lib/echo";
-import { toast } from "react-hot-toast";
 
 export function useNewsUpdates() {
   const queryClient = useQueryClient();
