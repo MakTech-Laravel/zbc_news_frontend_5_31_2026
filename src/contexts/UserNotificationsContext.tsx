@@ -86,7 +86,7 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
       return undefined;
     }
 
-    const unsubscribe = subscribeToUserNotifications(user.id, (payload) => {
+    const unsubscribe = subscribeToUserNotifications(user.id as number, (payload) => {
       const incoming = mapRealtimeNotification(payload);
       setNotifications((prev) => {
         if (prev.some((item) => item.id === incoming.id)) {

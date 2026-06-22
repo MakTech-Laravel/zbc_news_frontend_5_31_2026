@@ -127,5 +127,5 @@ export const env = {
   reverbPort: optionalViteString('VITE_REVERB_PORT')
     ? Number(optionalViteString('VITE_REVERB_PORT'))
     : undefined,
-  reverbScheme: (optionalViteString('VITE_REVERB_SCHEME') ?? 'http') as 'http' | 'https',
+    reverbScheme: (optionalViteString('VITE_REVERB_SCHEME') ?? 'http') as 'http' | 'https' | 'wss' | 'ws',
 }
