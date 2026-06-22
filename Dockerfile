@@ -20,13 +20,13 @@ ENV VITE_AUTH_ME_PATH=$VITE_AUTH_ME_PATH
 ENV VITE_AUTH_LOGOUT_PATH=$VITE_AUTH_LOGOUT_PATH
 
 # Install dependencies
-COPY package.json package-lock.json ./
+COPY package.json ./
 # RUN npm ci --ignore-scripts
-RUN npm ci --ignore-scripts && npm rebuild lightningcss @tailwindcss/oxide
+RUN pnpm ci --ignore-scripts && pnpm rebuild lightningcss @tailwindcss/oxide
 
 # Copy source and build
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # ─── Stage 2: Serve ──────────────────────────────────────────────────────────
 FROM nginx:1.27-alpine AS runner
