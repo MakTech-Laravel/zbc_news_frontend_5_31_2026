@@ -26,7 +26,6 @@ export function useNewsUpdates() {
     );
 
     console.log("News updates channel connected");
-    toast.success("News updates channel connected");
     return () => {
       echo.leaveChannel("news-updates");
 
