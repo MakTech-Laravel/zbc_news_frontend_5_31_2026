@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getEcho } from "@/lib/echo";
+import { toast } from "react-hot-toast";
 
 export function useNewsUpdates() {
   const queryClient = useQueryClient();
@@ -24,8 +25,11 @@ export function useNewsUpdates() {
       },
     );
 
+    console.log("News updates channel connected");
+    toast.success("News updates channel connected");
     return () => {
       echo.leaveChannel("news-updates");
+
     };
   }, [queryClient]);
 }

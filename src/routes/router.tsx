@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { publicRoutes } from "@/routes/publicRoutes";
 import { ScrollToTopLayout, suspensePage } from "@/routes/routeUtils";
 import { UserLayout } from "@/layouts/user/UserLayout";
+import NewDemo from "@/pages/demo/NewDemo";
 
 const Unauthorized = lazy(() => import("@/pages/global/Unauthorized"));
 const NotFound = lazy(() => import("@/pages/global/NotFound"));
@@ -43,7 +44,7 @@ const AdminArticlesTrash = lazy(() => import("@/pages/admin/AdminArticlesTrash")
 const AdminRole = lazy(() => import("@/pages/admin/AdminRole"));
 const AdminRoleCreate = lazy(() => import("@/pages/admin/AdminRoleCreate"));
 const AdminRoleEdit = lazy(() => import("@/pages/admin/AdminRoleEdit"));
-const NewDemo = lazy(() => import("@/pages/demo/NewDemo"));
+
 
 const redirect = (to: string) => <Navigate to={to} replace />;
 
@@ -168,5 +169,5 @@ export const router = createBrowserRouter([
       { path: "*", element: suspensePage(NotFound) },
     ],
   },
-  { path: "/demo/new", element: suspensePage(NewDemo) },
+  { path: "/demo/new", element: <NewDemo></NewDemo> },
 ]);
