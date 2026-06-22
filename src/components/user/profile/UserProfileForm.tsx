@@ -4,25 +4,19 @@ import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
-import { useAuth } from "@/auth/useAuth";
+import { MediaImageField } from "@/components/admin/media/MediaImageField";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
 import { UserSettingSwitch } from "@/components/user/profile/UserSettingSwitch";
 import { UserStatusBadge } from "@/components/user/shared/UserStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { request } from "@/api/request";
 import toast from "react-hot-toast";
 import InputError from "@/components/input-error";
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "JD";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
-}
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -110,14 +104,9 @@ type NotificationPreferences = {
 type NotifKey = keyof NotificationPreferences;
 
 export function UserProfileForm() {
-  const { user } = useAuth();
-  const initials = getInitials(user?.name ?? "John Doe");
-
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   const {
     register,
@@ -142,7 +131,7 @@ export function UserProfileForm() {
           bio: d.user_information?.bio ?? "",
         });
         if (d.user_information?.profile_image) {
-          setImagePreview(d.user_information.profile_image);
+          setProfileImageUrl(resolveMediaUrl(d.user_information.profile_image));
         }
       } catch {
         toast.error("Failed to load profile.");
@@ -153,33 +142,16 @@ export function UserProfileForm() {
     fetchProfile();
   }, [reset]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
-
-  const handleImageRemove = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
   const onSubmit = async (data: ProfileForm) => {
     try {
       setSaving(true);
 
-      const formData = new FormData();
-      formData.append("name", data.name);
-      formData.append("email", data.email);
-      if (data.region) formData.append("region", data.region);
-      if (data.bio) formData.append("bio", data.bio);
-      if (imageFile) formData.append("profile_image", imageFile);
-      formData.append("_method", "PUT");
-
-      await request.post("/admin/users/profile/update", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      await request.put("/admin/users/profile/update", {
+        name: data.name,
+        email: data.email,
+        region: data.region ?? "",
+        bio: data.bio ?? "",
+        profile_image: profileImageUrl ?? "",
       });
 
       toast.success("Profile updated successfully.");
@@ -238,45 +210,14 @@ export function UserProfileForm() {
           />
           <div className="space-y-6 px-6 pb-6">
             {/* Avatar */}
-            <div className="flex flex-wrap items-center gap-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-              />
-              <span className="inline-flex size-20 items-center justify-center overflow-hidden rounded-full bg-zbc-gray-200 text-2xl font-semibold text-zbc-gray-900">
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="Profile"
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  initials
-                )}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Change Photo
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleImageRemove}
-                  disabled={!imagePreview}
-                >
-                  Remove
-                </Button>
-              </div>
-            </div>
+            <MediaImageField
+              variant="avatar"
+              value={profileImageUrl}
+              onChange={setProfileImageUrl}
+              uploadLabel="Select profile photo"
+              previewAlt="Profile photo"
+              urlPlaceholder="Or paste profile image URL"
+            />
 
             <div className="h-px bg-border" />
 
@@ -364,7 +305,7 @@ export function UserProfileForm() {
                     variant="outline"
                     onClick={() => {
                       reset();
-                      handleImageRemove();
+                      setProfileImageUrl(null);
                     }}
                   >
                     Cancel

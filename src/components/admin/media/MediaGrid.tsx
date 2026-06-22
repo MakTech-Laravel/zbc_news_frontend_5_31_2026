@@ -14,6 +14,7 @@ type MediaGridProps = {
   selectedIds?: Set<string>
   onToggleSelect?: (uuid: string) => void
   onPreview?: (item: AdminMediaRow) => void
+  onPick?: (item: AdminMediaRow) => void
   onEdit?: (item: AdminMediaRow) => void
   onDelete?: (item: AdminMediaRow) => void
   canSelect?: boolean
@@ -61,6 +62,7 @@ export function MediaGrid({
   selectedIds,
   onToggleSelect,
   onPreview,
+  onPick,
   onEdit,
   onDelete,
   canSelect = false,
@@ -106,12 +108,18 @@ export function MediaGrid({
             <button
               type="button"
               className="relative aspect-square w-full overflow-hidden bg-muted/30"
-              onClick={() => onPreview?.(item)}
-              disabled={!canPreview || !onPreview}
-              aria-label={`Preview ${item.name}`}
+              onClick={() => (onPick ? onPick(item) : onPreview?.(item))}
+              disabled={onPick ? false : !canPreview || !onPreview}
+              aria-label={onPick ? `Select ${item.name}` : `Preview ${item.name}`}
             >
               <MediaPreview item={item} />
-              {canPreview && onPreview ? (
+              {onPick ? (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/35 group-hover:opacity-100">
+                  <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-foreground shadow">
+                    Select
+                  </span>
+                </span>
+              ) : canPreview && onPreview ? (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/35 group-hover:opacity-100">
                   <Eye className="size-8 text-white drop-shadow" />
                 </span>

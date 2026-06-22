@@ -138,16 +138,28 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
                     className="size-4 shrink-0 text-zbc-gray-400"
                     aria-hidden
                   />
-                  <time dateTime={article.publishedAtIso}>{article.publishedAt}</time>
+                  <span>
+                    Published:{" "}
+                    <time dateTime={article.publishedAtIso}>
+                      {article.publishedAt}
+                      {article.publishedTime ? ` ${article.publishedTime}` : ""}
+                    </time>
+                  </span>
                 </span>
               ) : null}
-              {article.publishedTime ? (
+              {article.showUpdated && article.updatedAt ? (
                 <span className="inline-flex items-center gap-1.5">
                   <Clock
                     className="size-4 shrink-0 text-zbc-gray-400"
                     aria-hidden
                   />
-                  <time dateTime={article.publishedAtIso}>{article.publishedTime}</time>
+                  <span>
+                    Updated:{" "}
+                    <time dateTime={article.updatedAtIso}>
+                      {article.updatedAt}
+                      {article.updatedTime ? ` ${article.updatedTime}` : ""}
+                    </time>
+                  </span>
                 </span>
               ) : null}
               <span className="inline-flex items-center gap-1.5">

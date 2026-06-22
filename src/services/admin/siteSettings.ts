@@ -30,7 +30,7 @@ export async function fetchAdminSiteSettings(): Promise<{
 
 export async function updateAdminSiteSettings(
   form: AdminSettingsForm,
-  logoFile?: File | null,
+  logoUrl?: string | null,
 ): Promise<SiteSettingsApi> {
   const formData = new FormData();
 
@@ -68,8 +68,8 @@ export async function updateAdminSiteSettings(
   formData.append("disqus_shortname", form.disqusShortname);
   formData.append("slack_webhook_url", form.slackWebhookUrl);
 
-  if (logoFile) {
-    formData.append("site_logo", logoFile);
+  if (logoUrl !== undefined) {
+    formData.append("site_logo", logoUrl ?? "");
   }
 
   const response = await request.post("/admin/site-settings/update", formData, {

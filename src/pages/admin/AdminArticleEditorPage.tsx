@@ -21,7 +21,7 @@ import {
 import { ArticleEditorTopBar } from "@/components/admin/articles/editor/ArticleEditorTopBar";
 import { ArticlePreviewDialog } from "@/components/admin/articles/editor/ArticlePreviewDialog";
 import { UnsavedChangesDialog } from "@/components/admin/articles/editor/UnsavedChangesDialog";
-import { FeaturedImageUpload } from "@/components/admin/articles/editor/FeaturedImageUpload";
+import { MediaImageField } from "@/components/admin/media/MediaImageField";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import InputError from "@/components/input-error";
 import {
@@ -308,20 +308,13 @@ function buildArticlePayload(
   return payload;
 }
 
-function appendPayloadToFormData(
-  formData: FormData,
+function appendImageUrlsToPayload(
   payload: Record<string, unknown>,
+  featuredImageUrl: string | null,
+  openGraphImageUrl: string | null,
 ) {
-  Object.entries(payload).forEach(([key, value]) => {
-    if (value == null) return;
-    if (Array.isArray(value)) {
-      value.forEach((item, index) => {
-        formData.append(`${key}[${index}]`, String(item));
-      });
-      return;
-    }
-    formData.append(key, String(value));
-  });
+  payload.featured_image = featuredImageUrl ?? "";
+  payload.open_graph_image = openGraphImageUrl ?? "";
 }
 
 const fieldLabelClassName =
@@ -340,14 +333,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const [loading, setLoading] = React.useState(isEdit);
   const [notFound, setNotFound] = React.useState(false);
   const [categories, setCategories] = React.useState<CategoryRow[]>([]);
-  const [featuredImageFile, setFeaturedImageFile] = React.useState<File | null>(null);
-  const [featuredImagePreview, setFeaturedImagePreview] = React.useState<string | null>(
-    null,
-  );
-  const [openGraphImageFile, setOpenGraphImageFile] = React.useState<File | null>(null);
-  const [openGraphImagePreview, setOpenGraphImagePreview] = React.useState<string | null>(
-    null,
-  );
+  const [featuredImageUrl, setFeaturedImageUrl] = React.useState<string | null>(null);
+  const [openGraphImageUrl, setOpenGraphImageUrl] = React.useState<string | null>(null);
+  const [imagesDirty, setImagesDirty] = React.useState(false);
   const [slugTouched, setSlugTouched] = React.useState(false);
   const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
@@ -431,10 +419,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
       reset(mapArticleToFormValues(article));
       setSlugTouched(true);
-      setFeaturedImagePreview(resolveFeaturedImageUrl(article));
-      setFeaturedImageFile(null);
-      setOpenGraphImagePreview(resolveOpenGraphImageUrl(article));
-      setOpenGraphImageFile(null);
+      setFeaturedImageUrl(resolveFeaturedImageUrl(article));
+      setOpenGraphImageUrl(resolveOpenGraphImageUrl(article));
+      setImagesDirty(false);
       skipUnsavedPromptRef.current = false;
     } catch (error) {
       console.error("Failed to fetch article:", error);
@@ -449,16 +436,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     void fetchArticle();
   }, [articleSlugParam, isEdit]);
 
-  React.useEffect(() => {
-    return () => {
-      if (featuredImagePreview?.startsWith("blob:")) {
-        URL.revokeObjectURL(featuredImagePreview);
-      }
-      if (openGraphImagePreview?.startsWith("blob:")) {
-        URL.revokeObjectURL(openGraphImagePreview);
-      }
-    };
-  }, [featuredImagePreview, openGraphImagePreview]);
+  const hasUnsavedChanges = isDirty || imagesDirty;
 
   const wordCount = React.useMemo(
     () => countWords(watchedContent ?? ""),
@@ -514,28 +492,10 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     };
 
     const payload = buildArticlePayload(enriched, nextStatus);
+    appendImageUrlsToPayload(payload, featuredImageUrl, openGraphImageUrl);
 
     try {
-      const hasImageUpload = Boolean(featuredImageFile || openGraphImageFile);
-
-      if (hasImageUpload) {
-        const formData = new FormData();
-        appendPayloadToFormData(formData, payload);
-        if (featuredImageFile) {
-          formData.append("featured_image", featuredImageFile);
-        }
-        if (openGraphImageFile) {
-          formData.append("open_graph_image", openGraphImageFile);
-        }
-
-        if (isEdit && articleSlugParam) {
-          await request.post(`/admin/articles/update/${articleSlugParam}`, formData);
-          toast.success("Article updated successfully");
-        } else {
-          await request.post("/admin/articles/store", formData);
-          toast.success("Article created successfully");
-        }
-      } else if (isEdit && articleSlugParam) {
+      if (isEdit && articleSlugParam) {
         await request.post(`/admin/articles/update/${articleSlugParam}`, payload);
         toast.success("Article updated successfully");
       } else {
@@ -545,8 +505,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
       setLastSavedAt(new Date().toISOString());
       reset({ ...enriched, status: nextStatus }, { keepDirty: false });
-      setFeaturedImageFile(null);
-      setOpenGraphImageFile(null);
+      setImagesDirty(false);
       skipUnsavedPromptRef.current = true;
       setShowLeaveDialog(false);
       pendingLeaveRef.current = null;
@@ -578,26 +537,20 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     void handleSubmit(onSubmit)();
   };
 
-  const handleFeaturedImageSelect = (file: File | null) => {
-    setFeaturedImageFile(file);
-    setFeaturedImagePreview((current) => {
-      if (current?.startsWith("blob:")) URL.revokeObjectURL(current);
-      return file ? URL.createObjectURL(file) : null;
-    });
+  const handleFeaturedImageChange = (url: string | null) => {
+    setFeaturedImageUrl(url);
+    setImagesDirty(true);
   };
 
-  const handleOpenGraphImageSelect = (file: File | null) => {
-    setOpenGraphImageFile(file);
-    setOpenGraphImagePreview((current) => {
-      if (current?.startsWith("blob:")) URL.revokeObjectURL(current);
-      return file ? URL.createObjectURL(file) : null;
-    });
+  const handleOpenGraphImageChange = (url: string | null) => {
+    setOpenGraphImageUrl(url);
+    setImagesDirty(true);
   };
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       !skipUnsavedPromptRef.current &&
-      isDirty &&
+      hasUnsavedChanges &&
       currentLocation.pathname !== nextLocation.pathname,
   );
 
@@ -608,7 +561,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   }, [blocker.state]);
 
   const requestLeave = (action: () => void) => {
-    if (!isDirty || skipUnsavedPromptRef.current) {
+    if (!hasUnsavedChanges || skipUnsavedPromptRef.current) {
       action();
       return;
     }
@@ -679,7 +632,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       "",
     tags: watchedValues.tags ?? [],
     authorName: "",
-    featuredImageUrl: featuredImagePreview,
+    featuredImageUrl: featuredImageUrl ?? "",
     status: (watchedStatus || "draft") as ArticleStatus,
     publishDisplayAt: previewPublishSource
       ? toApiDatetimeValue(previewPublishSource) || previewPublishSource
@@ -844,9 +797,11 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
               <div className="space-y-1">
                 <label className={fieldLabelClassName}>Featured Image</label>
-                <FeaturedImageUpload
-                  previewUrl={featuredImagePreview}
-                  onFileSelect={handleFeaturedImageSelect}
+                <MediaImageField
+                  value={featuredImageUrl}
+                  onChange={handleFeaturedImageChange}
+                  uploadLabel="Select featured image"
+                  previewAlt="Featured preview"
                 />
               </div>
 
@@ -978,10 +933,10 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
               <div className="space-y-1">
                 <label className={fieldLabelClassName}>Open Graph Image</label>
-                <FeaturedImageUpload
-                  previewUrl={openGraphImagePreview}
-                  onFileSelect={handleOpenGraphImageSelect}
-                  uploadLabel="Upload Open Graph image"
+                <MediaImageField
+                  value={openGraphImageUrl}
+                  onChange={handleOpenGraphImageChange}
+                  uploadLabel="Select Open Graph image"
                   previewAlt="Open Graph preview"
                 />
               </div>

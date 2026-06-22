@@ -1,8 +1,10 @@
 import * as React from "react";
-import { ImagePlus, Loader2 } from "lucide-react";
+import { FolderOpen, ImagePlus, Loader2 } from "lucide-react";
 
+import { MediaPickerDialog } from "@/components/admin/media/MediaPickerDialog";
 import { AdminToggle } from "@/components/admin/monetization/AdminToggle";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
+import { Button } from "@/components/ui/button";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import {
   fetchAdminAdSlots,
@@ -10,13 +12,10 @@ import {
   type AdminAdSlot,
 } from "@/services/admin/monetization";
 
-type SlotDraft = AdminAdSlot & {
-  pendingImage?: File | null;
-  previewUrl?: string | null;
-};
+type SlotDraft = AdminAdSlot;
 
 function toDraft(slot: AdminAdSlot): SlotDraft {
-  return { ...slot, pendingImage: null, previewUrl: null };
+  return { ...slot };
 }
 
 export function AdSlotManagerDynamic() {
@@ -24,6 +23,7 @@ export function AdSlotManagerDynamic() {
   const [loading, setLoading] = React.useState(true);
   const [savingId, setSavingId] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [pickerSlotId, setPickerSlotId] = React.useState<number | null>(null);
 
   const loadSlots = React.useCallback(async () => {
     setLoading(true);
@@ -46,12 +46,6 @@ export function AdSlotManagerDynamic() {
     setSlots((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   };
 
-  const handleImageSelect = (id: number, file: File | null) => {
-    if (!file) return;
-    const previewUrl = URL.createObjectURL(file);
-    updateDraft(id, { pendingImage: file, previewUrl });
-  };
-
   const handleSave = async (slot: SlotDraft) => {
     setSavingId(slot.id);
     setError(null);
@@ -63,7 +57,6 @@ export function AdSlotManagerDynamic() {
         google_ad_slot: slot.google_ad_slot ?? "",
         manual_click_url: slot.manual_click_url ?? "",
         manual_image_url: slot.manual_image_url ?? "",
-        manual_image: slot.pendingImage ?? undefined,
       });
       await loadSlots();
     } catch {
@@ -89,7 +82,8 @@ export function AdSlotManagerDynamic() {
       <div className="border-b border-border px-6 pb-4 pt-6">
         <h2 className="text-lg font-semibold text-admin-heading">Ad Slot Configuration</h2>
         <p className="mt-1 text-sm text-admin-label">
-          Configure which ad area uses Google Ads or manual creative. Upload an image or paste a URL.
+          Configure which ad area uses Google Ads or manual creative. Select an image from the
+          media library or paste a URL.
         </p>
         {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
       </div>
@@ -120,9 +114,9 @@ export function AdSlotManagerDynamic() {
           </thead>
           <tbody>
             {slots.map((slot) => {
-              const imageSrc =
-                slot.previewUrl ||
-                (slot.manual_image_url ? resolveMediaUrl(slot.manual_image_url) : null);
+              const imageSrc = slot.manual_image_url
+                ? resolveMediaUrl(slot.manual_image_url)
+                : null;
 
               return (
                 <tr key={slot.id} className="border-b border-border last:border-b-0 align-top">
@@ -178,17 +172,16 @@ export function AdSlotManagerDynamic() {
                             </div>
                           )}
                           <div className="min-w-0 flex-1 space-y-2">
-                            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zbc-blue hover:text-zbc-blue/90">
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp,image/gif"
-                                className="sr-only"
-                                onChange={(e) =>
-                                  handleImageSelect(slot.id, e.target.files?.[0] ?? null)
-                                }
-                              />
-                              Upload image
-                            </label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-1.5"
+                              onClick={() => setPickerSlotId(slot.id)}
+                            >
+                              <FolderOpen className="size-3.5" aria-hidden />
+                              Select from library
+                            </Button>
                             <input
                               type="text"
                               placeholder="Or paste image URL"
@@ -196,8 +189,6 @@ export function AdSlotManagerDynamic() {
                               onChange={(e) =>
                                 updateDraft(slot.id, {
                                   manual_image_url: e.target.value,
-                                  pendingImage: null,
-                                  previewUrl: null,
                                 })
                               }
                               className="w-full min-w-[180px] rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -245,6 +236,21 @@ export function AdSlotManagerDynamic() {
           </tbody>
         </table>
       </div>
+
+      <MediaPickerDialog
+        open={pickerSlotId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPickerSlotId(null);
+        }}
+        onSelect={(item) => {
+          if (pickerSlotId !== null) {
+            updateDraft(pickerSlotId, { manual_image_url: item.url });
+          }
+          setPickerSlotId(null);
+        }}
+        filter="image"
+        title="Select ad creative"
+      />
     </AdminPanel>
   );
 }
