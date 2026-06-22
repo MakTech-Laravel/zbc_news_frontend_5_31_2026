@@ -43,6 +43,7 @@ const AdminArticlesTrash = lazy(() => import("@/pages/admin/AdminArticlesTrash")
 const AdminRole = lazy(() => import("@/pages/admin/AdminRole"));
 const AdminRoleCreate = lazy(() => import("@/pages/admin/AdminRoleCreate"));
 const AdminRoleEdit = lazy(() => import("@/pages/admin/AdminRoleEdit"));
+const NewDemo = lazy(() => import("@/pages/demo/NewDemo"));
 
 const redirect = (to: string) => <Navigate to={to} replace />;
 
@@ -167,4 +168,5 @@ export const router = createBrowserRouter([
       { path: "*", element: suspensePage(NotFound) },
     ],
   },
+  { path: "/demo/new", element: suspensePage(NewDemo) },
 ]);

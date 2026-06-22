@@ -1,90 +1,80 @@
-import Echo from "laravel-echo";
-import Pusher from "pusher-js";
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 
-import { getAccessToken } from "@/auth/token";
-import { env } from "@/config/env";
+// Required: make Pusher available globally for laravel-echo
+(window as Window & { Pusher: typeof Pusher }).Pusher = Pusher;
 
-declare global {
-  interface Window {
-    Pusher: typeof Pusher;
-    Echo?: Echo<"reverb">;
-  }
+// Import your existing axios instance
+// Adjust the import path to match where your axios instance lives
+import axiosInstance from './axios';
+
+const echo = new Echo({
+    broadcaster: 'reverb',
+
+    // The public WS domain (from env)
+    wsHost: import.meta.env.VITE_REVERB_HOST,
+
+    // Port — 443 in production (Traefik handles SSL)
+    wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
+    wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
+
+    // App key must match backend REVERB_APP_KEY
+    key: import.meta.env.VITE_REVERB_APP_KEY,
+
+    // Force TLS since we're using wss:// in production
+    forceTLS: import.meta.env.VITE_REVERB_SCHEME === 'wss'
+           || import.meta.env.VITE_REVERB_SCHEME === 'https',
+
+    // Only use secure WebSocket transport
+    enabledTransports: ['ws', 'wss'],
+
+    // Disable Pusher stats (not needed for Reverb)
+    disableStats: true,
+
+    /*
+     * CRITICAL for Passport Bearer auth on private channels.
+     *
+     * When Echo tries to subscribe to a private channel, it calls
+     * this authorizer instead of the default fetch-based one.
+     * We reuse your existing axios instance so the Bearer token
+     * from sessionStorage is automatically attached.
+     *
+     * Echo will call: POST /api/v1/broadcasting/auth
+     * with { socket_id, channel_name } in the body.
+     * Your backend validates the Passport token and returns
+     * a signed auth string that Reverb accepts.
+     */
+    authorizer: (channel: { name: string }) => ({
+        authorize: (
+            socketId: string,
+            callback: (error: boolean, data: unknown) => void
+        ) => {
+            axiosInstance
+                .post('/broadcasting/auth', {
+                    socket_id:    socketId,
+                    channel_name: channel.name,
+                })
+                .then((response) => {
+                    callback(false, response.data);
+                })
+                .catch((error) => {
+                    callback(true, error);
+                });
+        },
+    }),
+});
+
+// Optional: connection event logging for debugging
+if (import.meta.env.DEV) {
+    echo.connector.pusher.connection.bind('connected', () => {
+        console.log('[Echo] ✅ Connected to Reverb');
+    });
+    echo.connector.pusher.connection.bind('disconnected', () => {
+        console.warn('[Echo] ❌ Disconnected from Reverb');
+    });
+    echo.connector.pusher.connection.bind('error', (err: unknown) => {
+        console.error('[Echo] Error:', err);
+    });
 }
 
-function resolveBroadcastAuthUrl(apiBaseUrl: string): string {
-  const trimmed = apiBaseUrl.replace(/\/+$/, "");
-  const root = trimmed.replace(/\/api\/v\d+$/i, "");
-
-  return `${root}/broadcasting/auth`;
-}
-
-let echoInstance: Echo<"reverb"> | null = null;
-
-export function isReverbConfigured(): boolean {
-  return Boolean(env.reverbAppKey && env.reverbHost);
-}
-
-export function getEcho(): Echo<"reverb"> | null {
-  if (!isReverbConfigured()) {
-    return null;
-  }
-
-  if (echoInstance) {
-    return echoInstance;
-  }
-
-  window.Pusher = Pusher;
-
-  const useTls = env.reverbScheme === "https";
-  const port = env.reverbPort ?? (useTls ? 443 : 8080);
-
-  echoInstance = new Echo({
-    broadcaster: "reverb",
-    key: env.reverbAppKey!,
-    wsHost: env.reverbHost!,
-    wsPort: port,
-    wssPort: port,
-    forceTLS: useTls,
-    enabledTransports: ["ws", "wss"],
-    authEndpoint: resolveBroadcastAuthUrl(env.apiBaseUrl),
-    auth: {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${getAccessToken() ?? ""}`,
-      },
-    },
-  });
-
-  window.Echo = echoInstance;
-
-  return echoInstance;
-}
-
-export function disconnectEcho(): void {
-  if (echoInstance) {
-    echoInstance.disconnect();
-    echoInstance = null;
-    delete window.Echo;
-  }
-}
-
-export function subscribeToUserNotifications(
-  userId: number | string,
-  onNotification: (payload: Record<string, unknown>) => void,
-): () => void {
-  const echo = getEcho();
-  if (!echo) {
-    return () => undefined;
-  }
-
-  const channelName = `App.Models.User.${userId}`;
-  const channel = echo.private(channelName);
-
-  channel.listen(".notification.created", (payload: Record<string, unknown>) => {
-    onNotification(payload);
-  });
-
-  return () => {
-    echo.leave(channelName);
-  };
-}
+export default echo;
