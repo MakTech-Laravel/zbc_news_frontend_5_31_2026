@@ -9,6 +9,7 @@ import { ScrollToTopLayout, suspensePage } from "@/routes/routeUtils";
 import { UserLayout } from "@/layouts/user/UserLayout";
 import NewDemo from "@/pages/demo/NewDemo";
 
+const WebSocketTest = lazy(() => import("@/pages/dev/WebSocketTest"));
 const Unauthorized = lazy(() => import("@/pages/global/Unauthorized"));
 const NotFound = lazy(() => import("@/pages/global/NotFound"));
 const UserDashboard = lazy(() => import("@/pages/user/UserDashboard"));
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
 
       authRoutes,
       
+      { path: "/ws-test", element: suspensePage(WebSocketTest) },
       { path: "/unauthorized", element: suspensePage(Unauthorized) },
       { path: "/newsletter/verify", element: suspensePage(NewsletterVerifyPage) },
       { path: "/newsletter/unsubscribe", element: suspensePage(NewsletterUnsubscribePage) },
