@@ -1,7 +1,8 @@
-import { lazy } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 
+import { RouteErrorFallback } from "@/components/error/RouteErrorFallback";
 import { AdminLayout } from "@/layouts/admin/AdminLayout";
+import { lazyWithRetry } from "@/routes/lazyWithRetry";
 import { authRoutes } from "@/routes/authRoutes";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { publicRoutes } from "@/routes/publicRoutes";
@@ -9,44 +10,44 @@ import { ScrollToTopLayout, suspensePage } from "@/routes/routeUtils";
 import { UserLayout } from "@/layouts/user/UserLayout";
 import NewDemo from "@/pages/demo/NewDemo";
 
-const WebSocketTest = lazy(() => import("@/pages/dev/WebSocketTest"));
-const Unauthorized = lazy(() => import("@/pages/global/Unauthorized"));
-const NotFound = lazy(() => import("@/pages/global/NotFound"));
-const UserDashboard = lazy(() => import("@/pages/user/UserDashboard"));
-const UserSavedArticles = lazy(() => import("@/pages/user/UserSavedArticles"));
-const UserProfile = lazy(() => import("@/pages/user/UserProfile"));
-const UserNotifications = lazy(() => import("@/pages/user/UserNotifications"));
-const UserMembership = lazy(() => import("@/pages/user/UserMembership"));
-const UserReadingAnalytics = lazy(() => import("@/pages/user/UserReadingAnalytics"));
-const UserBreakingNews = lazy(() => import("@/pages/user/UserBreakingNews"));
-const UserWorld = lazy(() => import("@/pages/user/UserWorld"));
-const UserEditorial = lazy(() => import("@/pages/user/UserEditorial"));
-const UserLongReads = lazy(() => import("@/pages/user/UserLongReads"));
-const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
-const AdminArticles = lazy(() => import("@/pages/admin/AdminArticles"));
-const AdminArticlesCreate = lazy(() => import("@/pages/admin/AdminArticlesCreate"));
-const AdminUser = lazy(() => import("@/pages/admin/AdminUser"));
-const AdminUserArticleActivities = lazy(
+const WebSocketTest = lazyWithRetry(() => import("@/pages/dev/WebSocketTest"));
+const Unauthorized = lazyWithRetry(() => import("@/pages/global/Unauthorized"));
+const NotFound = lazyWithRetry(() => import("@/pages/global/NotFound"));
+const UserDashboard = lazyWithRetry(() => import("@/pages/user/UserDashboard"));
+const UserSavedArticles = lazyWithRetry(() => import("@/pages/user/UserSavedArticles"));
+const UserProfile = lazyWithRetry(() => import("@/pages/user/UserProfile"));
+const UserNotifications = lazyWithRetry(() => import("@/pages/user/UserNotifications"));
+const UserMembership = lazyWithRetry(() => import("@/pages/user/UserMembership"));
+const UserReadingAnalytics = lazyWithRetry(() => import("@/pages/user/UserReadingAnalytics"));
+const UserBreakingNews = lazyWithRetry(() => import("@/pages/user/UserBreakingNews"));
+const UserWorld = lazyWithRetry(() => import("@/pages/user/UserWorld"));
+const UserEditorial = lazyWithRetry(() => import("@/pages/user/UserEditorial"));
+const UserLongReads = lazyWithRetry(() => import("@/pages/user/UserLongReads"));
+const AdminDashboard = lazyWithRetry(() => import("@/pages/admin/AdminDashboard"));
+const AdminArticles = lazyWithRetry(() => import("@/pages/admin/AdminArticles"));
+const AdminArticlesCreate = lazyWithRetry(() => import("@/pages/admin/AdminArticlesCreate"));
+const AdminUser = lazyWithRetry(() => import("@/pages/admin/AdminUser"));
+const AdminUserArticleActivities = lazyWithRetry(
   () => import("@/pages/admin/AdminUserArticleActivities"),
 );
-const AdminCategories = lazy(() => import("@/pages/admin/AdminCategories"));
-const AdminMedia = lazy(() => import("@/pages/admin/AdminMedia"));
-const AdminMonetization = lazy(() => import("@/pages/admin/AdminMonetization"));
-const AdminNewsletters = lazy(() => import("@/pages/admin/AdminNewsletters"));
-const AdminAnnouncements = lazy(() => import("@/pages/admin/AdminAnnouncements"));
-const AdminNotifications = lazy(() => import("@/pages/admin/AdminNotifications"));
-const NewsletterVerifyPage = lazy(() => import("@/pages/newsletter/NewsletterVerifyPage"));
-const NewsletterUnsubscribePage = lazy(() => import("@/pages/newsletter/NewsletterUnsubscribePage"));
-const NewsletterPreferencesPage = lazy(() => import("@/pages/newsletter/NewsletterPreferencesPage"));
-const AdminComments = lazy(() => import("@/pages/admin/AdminComments"));
-const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
-const AdminSettingsSeoEdit = lazy(() => import("@/pages/admin/AdminSettingsSeoEdit"));
-const AdminArticlesEdit = lazy(() => import("@/pages/admin/AdminArticlesEdit"));
-const AdminArticleActivities = lazy(() => import("@/pages/admin/AdminArticleActivities"));
-const AdminArticlesTrash = lazy(() => import("@/pages/admin/AdminArticlesTrash"));
-const AdminRole = lazy(() => import("@/pages/admin/AdminRole"));
-const AdminRoleCreate = lazy(() => import("@/pages/admin/AdminRoleCreate"));
-const AdminRoleEdit = lazy(() => import("@/pages/admin/AdminRoleEdit"));
+const AdminCategories = lazyWithRetry(() => import("@/pages/admin/AdminCategories"));
+const AdminMedia = lazyWithRetry(() => import("@/pages/admin/AdminMedia"));
+const AdminMonetization = lazyWithRetry(() => import("@/pages/admin/AdminMonetization"));
+const AdminNewsletters = lazyWithRetry(() => import("@/pages/admin/AdminNewsletters"));
+const AdminAnnouncements = lazyWithRetry(() => import("@/pages/admin/AdminAnnouncements"));
+const AdminNotifications = lazyWithRetry(() => import("@/pages/admin/AdminNotifications"));
+const NewsletterVerifyPage = lazyWithRetry(() => import("@/pages/newsletter/NewsletterVerifyPage"));
+const NewsletterUnsubscribePage = lazyWithRetry(() => import("@/pages/newsletter/NewsletterUnsubscribePage"));
+const NewsletterPreferencesPage = lazyWithRetry(() => import("@/pages/newsletter/NewsletterPreferencesPage"));
+const AdminComments = lazyWithRetry(() => import("@/pages/admin/AdminComments"));
+const AdminSettings = lazyWithRetry(() => import("@/pages/admin/AdminSettings"));
+const AdminSettingsSeoEdit = lazyWithRetry(() => import("@/pages/admin/AdminSettingsSeoEdit"));
+const AdminArticlesEdit = lazyWithRetry(() => import("@/pages/admin/AdminArticlesEdit"));
+const AdminArticleActivities = lazyWithRetry(() => import("@/pages/admin/AdminArticleActivities"));
+const AdminArticlesTrash = lazyWithRetry(() => import("@/pages/admin/AdminArticlesTrash"));
+const AdminRole = lazyWithRetry(() => import("@/pages/admin/AdminRole"));
+const AdminRoleCreate = lazyWithRetry(() => import("@/pages/admin/AdminRoleCreate"));
+const AdminRoleEdit = lazyWithRetry(() => import("@/pages/admin/AdminRoleEdit"));
 
 
 const redirect = (to: string) => <Navigate to={to} replace />;
@@ -54,6 +55,7 @@ const redirect = (to: string) => <Navigate to={to} replace />;
 export const router = createBrowserRouter([
   {
     element: <ScrollToTopLayout />,
+    errorElement: <RouteErrorFallback />,
     children: [
       publicRoutes,
 

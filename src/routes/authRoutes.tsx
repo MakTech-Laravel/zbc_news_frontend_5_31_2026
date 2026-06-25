@@ -1,15 +1,15 @@
-import { lazy } from "react";
+import { lazyWithRetry } from "@/routes/lazyWithRetry";
 import type { RouteObject } from "react-router-dom";
 
 import { AuthLayout } from "@/layouts/auth/AuthLayout";
 import { GuestGate } from "@/routes/GuestGate";
 import { suspensePage } from "@/routes/routeUtils";
 
-const LoginEmail = lazy(() => import("@/pages/global/auth/LoginEmail"));
-const ForgetPassword = lazy(() => import("@/pages/global/auth/ForgetPassword"));
-const OTPVerification = lazy(() => import("@/pages/global/auth/OTPVerification"));
-const ResetPassword = lazy(() => import("@/pages/global/auth/ResetPassword"));
-const Register = lazy(() => import("@/pages/global/auth/Register"));
+const LoginEmail = lazyWithRetry(() => import("@/pages/global/auth/LoginEmail"));
+const ForgetPassword = lazyWithRetry(() => import("@/pages/global/auth/ForgetPassword"));
+const OTPVerification = lazyWithRetry(() => import("@/pages/global/auth/OTPVerification"));
+const ResetPassword = lazyWithRetry(() => import("@/pages/global/auth/ResetPassword"));
+const Register = lazyWithRetry(() => import("@/pages/global/auth/Register"));
 
 /** Guest-only auth screens (wrapped with GuestGate). */
 export const authRoutes: RouteObject = {
