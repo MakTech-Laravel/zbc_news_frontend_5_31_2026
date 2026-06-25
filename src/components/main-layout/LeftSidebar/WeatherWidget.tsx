@@ -26,21 +26,22 @@ const NYC_TIMEZONE = "America/New_York";
 
 const FALLBACK_WEATHER: WeatherState = {
   location: { city: "New York", state: "NY" },
-  temperature: 72,
+  temperature: 22,
   condition: "Partly Cloudy",
   icon: "cloud",
   forecast: [
-    { label: "Mon", high: 74, low: 62, icon: "sun" },
-    { label: "Tue", high: 71, low: 60, icon: "cloud" },
-    { label: "Wed", high: 68, low: 58, icon: "rain" },
+    { label: "Mon", high: 23, low: 17, icon: "sun" },
+    { label: "Tue", high: 22, low: 16, icon: "cloud" },
+    { label: "Wed", high: 20, low: 14, icon: "rain" },
   ],
 };
 
 function readStoredTemperatureUnit(): TemperatureUnit {
-  if (typeof window === "undefined") return "fahrenheit";
+  if (typeof window === "undefined") return "celsius";
 
   const stored = window.localStorage.getItem(TEMPERATURE_UNIT_STORAGE_KEY);
-  return stored === "celsius" ? "celsius" : "fahrenheit";
+  if (stored === "fahrenheit") return "fahrenheit";
+  return "celsius";
 }
 
 function formatForecastDayLabel(isoDate: string): string {
