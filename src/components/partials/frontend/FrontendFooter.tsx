@@ -1,28 +1,11 @@
 import { Link } from "react-router-dom";
 import { NewsletterSignupForm } from "@/components/newsletter/NewsletterSignupForm";
+import { useCategoryLinks } from "@/hooks/useCategoryLinks";
 
 
 type FooterLink = { label: string; to: string };
 
-const FOOTER_COLUMNS: { title: string; links: readonly FooterLink[] }[] = [
-  {
-    title: "Sections",
-    links: [
-      { label: "Latest News", to: "/" },
-      { label: "Politics", to: "/politics" },
-      { label: "Business", to: "/business" },
-      { label: "Sports", to: "/sports" },
-    ],
-  },
-  {
-    title: "More",
-    links: [
-      { label: "Entertainment", to: "/entertainment" },
-      { label: "Technology", to: "/technology" },
-      { label: "World News", to: "/world" },
-      { label: "Video/Media", to: "/video" },
-    ],
-  },
+const FOOTER_STATIC_COLUMNS: { title: string; links: readonly FooterLink[] }[] = [
   {
     title: "Company",
     links: [
@@ -99,12 +82,21 @@ function FooterColumn({ title, links }: { title: string; links: readonly FooterL
 
 export function FrontendFooter() {
   const year = new Date().getFullYear();
+  const categoryLinks = useCategoryLinks();
+
+  const footerColumns = [
+    {
+      title: "Sections",
+      links: [{ label: "Latest News", to: "/" }, ...categoryLinks],
+    },
+    ...FOOTER_STATIC_COLUMNS,
+  ];
 
   return (
     <footer className="mt-auto bg-zbc-footer text-[#cbd5e1]">
       <div className="mx-auto w-full container px-4 py-12 sm:py-14">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 md:grid-cols-4 md:gap-10 lg:gap-12">
-          {FOOTER_COLUMNS.map((column) => (
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 md:grid-cols-3 md:gap-10 lg:gap-12">
+          {footerColumns.map((column) => (
             <FooterColumn key={column.title} title={column.title} links={column.links} />
           ))}
         </div>

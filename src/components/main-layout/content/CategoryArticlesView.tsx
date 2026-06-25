@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 
 import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
@@ -6,6 +7,7 @@ import { AdUnit } from "@/components/main-layout/shared/AdUnit";
 import { Button } from "@/components/ui/button";
 import type { Article } from "@/data/dummy/types";
 import { useDocumentHead } from "@/hooks/useDocumentHead";
+import NotFound from "@/pages/global/NotFound";
 import { fetchArticlesByCategory } from "@/services/frontend/articles";
 
 type CategoryArticlesViewProps = {
@@ -25,6 +27,7 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useDocumentHead({
     path: `/${categorySlug}`,
@@ -42,6 +45,7 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
     let cancelled = false;
     setLoading(true);
     setError(false);
+    setNotFound(false);
 
     fetchArticlesByCategory(categorySlug, page)
       .then(({ categoryTitle: title, categorySeo: seo, articles: rows, meta }) => {
@@ -54,7 +58,12 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
       })
       .catch((err) => {
         console.error("Failed to fetch category articles:", err);
-        if (!cancelled) setError(true);
+        if (cancelled) return;
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
+          setNotFound(true);
+          return;
+        }
+        setError(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -64,6 +73,10 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
       cancelled = true;
     };
   }, [categorySlug, page]);
+
+  if (notFound) {
+    return <NotFound />;
+  }
 
   if (loading) {
     return (
