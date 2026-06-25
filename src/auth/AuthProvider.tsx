@@ -1,13 +1,21 @@
 import * as React from 'react'
 
 import { api } from '@/api/client'
+import {
+  AUTH_STORAGE_KEYS,
+  publishAuthSync,
+  subscribeAuthSync,
+  type AuthSyncMessage,
+} from '@/auth/authSync'
 import { AuthContext, type AuthContextValue } from '@/auth/context'
 import { fetchCurrentUser } from '@/auth/session'
 import {
   clearAccessToken,
   getAccessToken,
+  getRefreshToken,
   getStoredAuthUser,
   setAccessToken,
+  setRefreshToken,
   setStoredAuthUser,
 } from '@/auth/token'
 import { type AuthUser } from '@/auth/types'
@@ -37,6 +45,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isUserLoading, setIsUserLoading] = React.useState(() => {
     return env.authStrategy === 'bearer_memory' && Boolean(initialToken)
   })
+  /** Prevents broadcast loops when applying auth state from another tab. */
+  const isRemoteSyncRef = React.useRef(false)
+  const prevAuthenticatedRef = React.useRef<boolean | null>(null)
 
   const setUser = React.useCallback((nextUser: AuthUser | null) => {
     userRef.current = nextUser
@@ -133,6 +144,119 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     void refreshSession()
   }, [refreshSession])
+
+  const applyRemoteLogin = React.useCallback(
+    (message: Extract<AuthSyncMessage, { type: 'login' }>) => {
+      isRemoteSyncRef.current = true
+      try {
+        if (env.authStrategy === 'http_only_cookie') {
+          void refreshSession()
+          return
+        }
+
+        if (message.token) {
+          setAccessToken(message.token)
+          setAccessTokenState(message.token)
+        }
+        if (message.refreshToken) {
+          setRefreshToken(message.refreshToken)
+        }
+        if (message.user) {
+          setUser(message.user)
+        }
+        setIsUserLoading(false)
+        prevAuthenticatedRef.current = true
+      } finally {
+        isRemoteSyncRef.current = false
+      }
+    },
+    [refreshSession, setUser],
+  )
+
+  const applyRemoteLogout = React.useCallback(() => {
+    isRemoteSyncRef.current = true
+    try {
+      clearAccessToken()
+      setAccessTokenState(null)
+      setUser(null)
+      setIsUserLoading(false)
+      prevAuthenticatedRef.current = false
+    } finally {
+      isRemoteSyncRef.current = false
+    }
+  }, [setUser])
+
+  React.useEffect(() => {
+    return subscribeAuthSync((message) => {
+      if (message.type === 'login') {
+        applyRemoteLogin(message)
+        return
+      }
+      applyRemoteLogout()
+    })
+  }, [applyRemoteLogin, applyRemoteLogout])
+
+  React.useEffect(() => {
+    if (env.bearerTokenPersistence !== 'local') return
+
+    const onStorage = (event: StorageEvent) => {
+      if (isRemoteSyncRef.current) return
+      if (
+        event.key !== AUTH_STORAGE_KEYS.access &&
+        event.key !== AUTH_STORAGE_KEYS.user &&
+        event.key !== AUTH_STORAGE_KEYS.refresh
+      ) {
+        return
+      }
+
+      const token = getAccessToken()
+      const storedUser = getStoredAuthUser()
+      if (token && storedUser) {
+        applyRemoteLogin({
+          type: 'login',
+          token,
+          refreshToken: getRefreshToken(),
+          user: storedUser,
+        })
+        return
+      }
+
+      if (!token) {
+        applyRemoteLogout()
+      }
+    }
+
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [applyRemoteLogin, applyRemoteLogout])
+
+  React.useEffect(() => {
+    if (isRemoteSyncRef.current) return
+
+    const isAuthenticated =
+      env.authStrategy === 'http_only_cookie'
+        ? Boolean(user)
+        : Boolean(accessTokenState) && Boolean(user)
+
+    const prev = prevAuthenticatedRef.current
+    prevAuthenticatedRef.current = isAuthenticated
+
+    if (prev === null) return
+
+    if (isAuthenticated && !prev) {
+      publishAuthSync({
+        type: 'login',
+        token: accessTokenState ?? undefined,
+        refreshToken: getRefreshToken(),
+        user,
+      })
+      return
+    }
+
+    if (!isAuthenticated && prev) {
+      publishAuthSync({ type: 'logout' })
+    }
+  }, [accessTokenState, user])
 
   const setToken = React.useCallback((token: string) => {
     setAccessToken(token)

@@ -1,9 +1,11 @@
 import { env, type BearerTokenPersistence } from '@/config/env'
 import { type AuthUser } from '@/auth/types'
 
-const STORAGE_KEY_ACCESS = 'react-vite-laravel.bearer_token'
-const STORAGE_KEY_REFRESH = 'react-vite-laravel.refresh_token'
-const STORAGE_KEY_USER = 'react-vite-laravel.auth_user'
+import { AUTH_STORAGE_KEYS } from '@/auth/authSync'
+
+const STORAGE_KEY_ACCESS = AUTH_STORAGE_KEYS.access
+const STORAGE_KEY_REFRESH = AUTH_STORAGE_KEYS.refresh
+const STORAGE_KEY_USER = AUTH_STORAGE_KEYS.user
 
 /** In-RAM only — lost on full reload. */
 let memoryAccessToken: string | null = null

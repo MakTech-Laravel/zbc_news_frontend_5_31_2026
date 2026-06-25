@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useLocation } from "react-router-dom";
 
 import { getPublicSiteOrigin } from "@/lib/appOrigins";
 import { toAbsoluteUrl } from "@/lib/articleShare";
@@ -29,11 +30,61 @@ function applyReplacements(value: string, replacements: Record<string, string>) 
   );
 }
 
+const RESERVED_SINGLE_SEGMENT_PATHS = new Set([
+  "login",
+  "register",
+  "forget-password",
+  "otp-verification",
+  "reset-password",
+  "unauthorized",
+  "dashboard",
+  "ws-test",
+  "about",
+  "contact",
+  "privacy-policy",
+  "terms-of-service",
+  "cookie-policy",
+  "accessibility-statement",
+  "advertise",
+  "careers",
+  "news-details",
+  "admin",
+  "user",
+]);
+
+const STATIC_PAGE_TITLES: Record<string, string> = {
+  "/login": "Login",
+  "/login/email": "Login",
+  "/register": "Sign Up",
+  "/forget-password": "Forgot Password",
+  "/otp-verification": "Verify Code",
+  "/reset-password": "Reset Password",
+  "/unauthorized": "Unauthorized",
+};
+
+function hasUnresolvedPlaceholders(value: string) {
+  return /\{[a-zA-Z_]+\}/.test(value);
+}
+
+function normalizePath(path: string) {
+  return path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
+}
+
+function resolveStaticPageTitle(path: string, siteName: string) {
+  const normalized = normalizePath(path);
+  const label = STATIC_PAGE_TITLES[normalized];
+  return label ? `${label} — ${siteName}` : "";
+}
+
 function resolveSeoPage(seoPages: SeoPage[], path: string): SeoPage | undefined {
-  const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
+  const normalized = normalizePath(path);
 
   const exact = seoPages.find((page) => !page.isTemplate && page.url === normalized);
   if (exact) return exact;
+
+  if (/^\/(user|admin)(\/|$)/.test(normalized) || normalized.startsWith("/newsletter/")) {
+    return undefined;
+  }
 
   if (/^\/news-details\/[^/]+$/.test(normalized)) {
     return seoPages.find((page) => page.pageKey === "article-detail");
@@ -44,6 +95,11 @@ function resolveSeoPage(seoPages: SeoPage[], path: string): SeoPage | undefined 
   }
 
   if (/^\/[^/]+$/.test(normalized)) {
+    const segment = normalized.slice(1);
+    if (RESERVED_SINGLE_SEGMENT_PATHS.has(segment)) {
+      return undefined;
+    }
+
     const categoryPage = seoPages.find(
       (page) => !page.isTemplate && page.url === normalized,
     );
@@ -93,9 +149,10 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
     const replacements = options.replacements ?? {};
 
     const titleTemplate = options.title
-      ?? (seoPage?.metaTitle
-        ? applyReplacements(seoPage.metaTitle, replacements)
-        : settings.siteName);
+      ?? (resolveStaticPageTitle(path, settings.siteName)
+        || (seoPage?.metaTitle
+          ? applyReplacements(seoPage.metaTitle, replacements)
+          : settings.siteName));
 
     const description = options.description
       ?? (seoPage?.metaDescription
@@ -107,7 +164,10 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
         ? applyReplacements(seoPage.metaKeywords, replacements)
         : "");
 
-    const pageTitle = titleTemplate.trim() || settings.siteName;
+    const resolvedTitle = hasUnresolvedPlaceholders(titleTemplate)
+      ? (resolveStaticPageTitle(path, settings.siteName) || settings.siteName)
+      : titleTemplate;
+    const pageTitle = resolvedTitle.trim() || settings.siteName;
     const siteOrigin = getPublicSiteOrigin();
     const canonicalUrl =
       options.url?.trim() ||
@@ -158,4 +218,10 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
     seoPages,
     settings,
   ]);
+}
+
+/** Default document head for routes that do not set their own SEO metadata. */
+export function useRouteDocumentHead() {
+  const { pathname } = useLocation();
+  useDocumentHead({ path: pathname });
 }
