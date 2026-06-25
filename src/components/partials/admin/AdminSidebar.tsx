@@ -1,11 +1,13 @@
 import * as React from "react";
 import {
+  Bell,
   CreditCard,
   FileText,
   FolderTree,
   Image,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   MessageSquare,
   Settings,
   ShieldCheck,
@@ -29,6 +31,8 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/rabc": ShieldCheck,
   "/admin/users": Users,
   "/admin/monetization": CreditCard,
+  "/admin/newsletters": Megaphone,
+  "/admin/announcements": Bell,
   "/admin/comments": MessageSquare,
   "/admin/settings": Settings,
 };

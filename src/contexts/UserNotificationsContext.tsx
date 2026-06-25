@@ -2,18 +2,21 @@ import * as React from "react";
 import toast from "react-hot-toast";
 
 import { useAuth } from "@/auth/useAuth";
+import { env } from "@/config/env";
 import {
   fetchUserNotifications,
   getUnreadCount,
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/services/user/notifications";
-import { disconnectEcho, subscribeToUserNotifications } from "@/lib/echo";
+import { subscribeToUserNotifications } from "@/lib/echo";
 import type { UserNotification } from "@/types/notifications";
 
 type UserNotificationsContextValue = {
   notifications: UserNotification[];
   unreadCount: number;
+  activeCategory: string;
+  setActiveCategory: (category: string) => void;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   filterByTab: (tabId: string) => UserNotification[];
@@ -40,14 +43,26 @@ function mapRealtimeNotification(payload: Record<string, unknown>): UserNotifica
   };
 }
 
+function tabToCategory(tabId: string): string | undefined {
+  if (tabId === "all" || tabId === "unread") return tabId;
+  if (tabId === "breaking") return "breaking";
+  if (tabId === "topics") return "topic";
+  if (tabId === "social") return "social";
+  if (tabId === "saved") return "saved";
+  if (tabId === "system") return "system";
+  return undefined;
+}
+
 export function UserNotificationsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = React.useState<UserNotification[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [activeCategory, setActiveCategory] = React.useState("all");
 
-  const refresh = React.useCallback(async () => {
-    const data = await fetchUserNotifications();
+  const refresh = React.useCallback(async (category = "all") => {
+    const apiCategory = tabToCategory(category);
+    const data = await fetchUserNotifications(apiCategory);
     setNotifications(data.notifications);
     setUnreadCount(data.unreadCount);
   }, []);
@@ -63,7 +78,7 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
     let cancelled = false;
     setLoading(true);
 
-    refresh()
+    refresh(activeCategory)
       .catch(() => {
         if (!cancelled) {
           setNotifications([]);
@@ -79,7 +94,7 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
     return () => {
       cancelled = true;
     };
-  }, [user?.id, refresh]);
+  }, [user?.id, activeCategory, refresh]);
 
   React.useEffect(() => {
     if (!user?.id) {
@@ -88,25 +103,32 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
 
     const unsubscribe = subscribeToUserNotifications(user.id as number, (payload) => {
       const incoming = mapRealtimeNotification(payload);
+
+      if (env.isDev) {
+        console.debug("[notifications] realtime event received", incoming);
+      }
+
       setNotifications((prev) => {
         if (prev.some((item) => item.id === incoming.id)) {
           return prev;
         }
         return [incoming, ...prev];
       });
+
       if (incoming.unread) {
         setUnreadCount((count) => count + 1);
-        toast(incoming.title, {
-          icon: "🔔",
+        toast(incoming.body ? `${incoming.title}\n${incoming.body}` : incoming.title, {
+          icon: incoming.tab === "breaking" ? "🚨" : "🔔",
           duration: 5000,
         });
       }
     });
 
-    return () => {
-      unsubscribe();
-      disconnectEcho();
-    };
+    if (env.isDev) {
+      console.debug("[notifications] subscribed to private user channel", user.id);
+    }
+
+    return unsubscribe;
   }, [user?.id]);
 
   const markAsRead = React.useCallback(async (id: string) => {
@@ -123,9 +145,9 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
       const nextCount = await markNotificationRead(id);
       setUnreadCount(nextCount);
     } catch {
-      await refresh();
+      await refresh(activeCategory);
     }
-  }, [refresh]);
+  }, [activeCategory, refresh]);
 
   const markAllAsRead = React.useCallback(async () => {
     setNotifications((prev) =>
@@ -141,15 +163,18 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
     try {
       await markAllNotificationsRead();
     } catch {
-      await refresh();
+      await refresh(activeCategory);
     }
-  }, [refresh]);
+  }, [activeCategory, refresh]);
 
   const filterByTab = React.useCallback(
     (tabId: string) => {
       if (tabId === "unread") return notifications.filter((n) => n.unread);
       if (tabId === "breaking") return notifications.filter((n) => n.tab === "breaking");
       if (tabId === "topics") return notifications.filter((n) => n.tab === "topic");
+      if (tabId === "social") return notifications.filter((n) => n.tab === "social");
+      if (tabId === "saved") return notifications.filter((n) => n.tab === "saved");
+      if (tabId === "system") return notifications.filter((n) => n.tab === "system");
       return notifications;
     },
     [notifications],
@@ -159,13 +184,24 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
     () => ({
       notifications,
       unreadCount: unreadCount || getUnreadCount(notifications),
+      activeCategory,
+      setActiveCategory,
+      markAsRead,
+      markAllAsRead,
+      filterByTab,
+      loading,
+      refresh: () => refresh(activeCategory),
+    }),
+    [
+      notifications,
+      unreadCount,
+      activeCategory,
       markAsRead,
       markAllAsRead,
       filterByTab,
       loading,
       refresh,
-    }),
-    [notifications, unreadCount, markAsRead, markAllAsRead, filterByTab, loading, refresh],
+    ],
   );
 
   return (

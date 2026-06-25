@@ -3,6 +3,7 @@ import {
   Bookmark,
   Check,
   Flame,
+  Megaphone,
   MessageSquare,
   MoreHorizontal,
   TrendingUp,
@@ -23,6 +24,7 @@ const NOTIFICATION_ICONS: Record<
   reply: { Icon: MessageSquare, className: "text-[#0ea5e9]" },
   saved: { Icon: Bookmark, className: "text-[#f59e0b]" },
   business: { Icon: TrendingUp, className: "text-admin-label" },
+  announcement: { Icon: Megaphone, className: "text-[#7c3aed]" },
 };
 
 type UserNotificationItemProps = {

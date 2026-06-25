@@ -1,6 +1,6 @@
 import * as React from "react";
-import { Bell, CheckCheck, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Bell, CheckCheck, Settings } from "lucide-react";
 
 import { UserPageShell } from "@/components/user/UserPageShell";
 import { UserNotificationItem } from "@/components/user/shared/UserNotificationItem";
@@ -11,8 +11,18 @@ import { cn } from "@/lib/utils";
 
 export default function UserNotifications() {
   const [activeTab, setActiveTab] = React.useState("all");
-  const { unreadCount, markAsRead, markAllAsRead, filterByTab, loading } =
-    useUserNotifications();
+  const {
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    filterByTab,
+    loading,
+    setActiveCategory,
+  } = useUserNotifications();
+
+  React.useEffect(() => {
+    setActiveCategory(activeTab);
+  }, [activeTab, setActiveCategory]);
 
   const filtered = filterByTab(activeTab);
 
@@ -90,6 +100,9 @@ export default function UserNotifications() {
           { id: "unread", label: "Unread", badge: unreadCount > 0 ? unreadCount : undefined },
           { id: "breaking", label: "Breaking" },
           { id: "topics", label: "Topics" },
+          { id: "social", label: "Social" },
+          { id: "saved", label: "Saved" },
+          { id: "system", label: "System" },
         ]}
         activeId={activeTab}
         onChange={setActiveTab}

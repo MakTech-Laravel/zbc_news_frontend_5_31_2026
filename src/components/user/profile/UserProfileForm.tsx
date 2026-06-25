@@ -14,6 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import {
+  fetchNotificationPreferences,
+  updateNotificationPreferences,
+} from "@/services/user/notificationPreferences";
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  NOTIFICATION_PREFERENCE_OPTIONS,
+  type NotificationPreferenceKey,
+  type NotificationPreferences,
+} from "@/types/notificationPreferences";
 import { request } from "@/api/request";
 import toast from "react-hot-toast";
 import InputError from "@/components/input-error";
@@ -85,24 +95,6 @@ function NotificationToggleRow({
   );
 }
 
-const NOTIFICATION_OPTIONS = [
-  { id: "breaking_news", label: "Breaking News Alerts" },
-  { id: "daily_newsletter", label: "Daily Newsletter" },
-  { id: "personalized_recommendations", label: "Personalized Recommendations" },
-  { id: "comment_replies", label: "Comment Replies" },
-  { id: "saved_article_updates", label: "Saved Article Updates" },
-] as const;
-
-type NotificationPreferences = {
-  breaking_news: boolean;
-  daily_newsletter: boolean;
-  personalized_recommendations: boolean;
-  comment_replies: boolean;
-  saved_article_updates: boolean;
-};
-
-type NotifKey = keyof NotificationPreferences;
-
 export function UserProfileForm() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -166,35 +158,40 @@ export function UserProfileForm() {
   const [notifications, setNotifications] =
     React.useState<NotificationPreferences | null>(null);
   const [notifLoading, setNotifLoading] = useState(true);
+  const [notifError, setNotifError] = useState(false);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  React.useEffect(() => {
-    const fetchPreferences = async () => {
-      try {
-        setNotifLoading(true);
-        const response = await request.get("/admin/notification-preferences");
-        setNotifications(response.data.data);
-      } catch (error) {
-        console.error("Failed to fetch notification preferences:", error);
-      } finally {
-        setNotifLoading(false);
-      }
-    };
-    fetchPreferences();
+  const loadPreferences = React.useCallback(async () => {
+    setNotifLoading(true);
+    setNotifError(false);
+    try {
+      const data = await fetchNotificationPreferences();
+      setNotifications(data);
+    } catch {
+      setNotifError(true);
+      setNotifications(DEFAULT_NOTIFICATION_PREFERENCES);
+      toast.error("Failed to load notification preferences.");
+    } finally {
+      setNotifLoading(false);
+    }
   }, []);
 
-  const handleToggle = (id: NotifKey, value: boolean) => {
-    const updated = { ...notifications!, [id]: value };
+  React.useEffect(() => {
+    void loadPreferences();
+  }, [loadPreferences]);
+
+  const handleToggle = (id: NotificationPreferenceKey, value: boolean) => {
+    const updated = { ...(notifications ?? DEFAULT_NOTIFICATION_PREFERENCES), [id]: value };
     setNotifications(updated);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        await request.put("/admin/notification-preferences/update", updated);
+        await updateNotificationPreferences(updated);
         toast.success("Preferences updated successfully.");
-      } catch (error) {
-        console.error("Failed to update notification preferences:", error);
+      } catch {
         toast.error("Failed to update preferences. Please try again.");
+        void loadPreferences();
       }
     }, 500);
   };
@@ -326,20 +323,28 @@ export function UserProfileForm() {
           icon={<Bell className="size-5" aria-hidden />}
         />
         <div className="space-y-1 px-6 pb-6">
+          {notifError ? (
+            <div className="flex items-center justify-between gap-3 py-2">
+              <p className="text-sm text-destructive">Could not load saved preferences.</p>
+              <Button type="button" size="sm" variant="outline" onClick={() => void loadPreferences()}>
+                Retry
+              </Button>
+            </div>
+          ) : null}
           {notifLoading || !notifications
-            ? Array.from({ length: 5 }).map((_, i) => (
+            ? Array.from({ length: NOTIFICATION_PREFERENCE_OPTIONS.length }).map((_, i) => (
                 <div key={i} className="flex items-center justify-between py-2">
                   <div className="h-4 w-48 animate-pulse rounded bg-muted" />
                   <div className="h-6 w-11 animate-pulse rounded-full bg-muted" />
                 </div>
               ))
-            : NOTIFICATION_OPTIONS.map((item) => (
+            : NOTIFICATION_PREFERENCE_OPTIONS.map((item) => (
                 <NotificationToggleRow
                   key={item.id}
                   id={`notif-${item.id}`}
                   label={item.label}
                   checked={notifications[item.id]}
-                  onChange={(v) => handleToggle(item.id as NotifKey, v)}
+                  onChange={(v) => handleToggle(item.id, v)}
                 />
               ))}
         </div>

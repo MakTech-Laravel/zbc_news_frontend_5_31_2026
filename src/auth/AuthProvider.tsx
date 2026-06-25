@@ -18,6 +18,7 @@ import {
   setRefreshToken,
   setStoredAuthUser,
 } from '@/auth/token'
+import { disconnectEcho } from '@/lib/echo'
 import { type AuthUser } from '@/auth/types'
 import { isSpatieSuperAdmin } from '@/auth/adminSpatie'
 import { getRoleLogoutPath } from '@/auth/rolePolicy'
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetAuthState = React.useCallback(() => {
     clearAccessToken()
+    disconnectEcho()
     setAccessTokenState(null)
     setUser(null)
     setIsUserLoading(false)

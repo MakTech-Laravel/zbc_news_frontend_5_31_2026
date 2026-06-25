@@ -4,9 +4,15 @@ export type UserNotificationIcon =
   | "recommended"
   | "reply"
   | "saved"
-  | "business";
+  | "business"
+  | "announcement";
 
-export type UserNotificationTab = "breaking" | "topic" | "system" | "social" | "saved";
+export type UserNotificationTab =
+  | "breaking"
+  | "topic"
+  | "system"
+  | "social"
+  | "saved";
 
 export type UserNotification = {
   id: string;
