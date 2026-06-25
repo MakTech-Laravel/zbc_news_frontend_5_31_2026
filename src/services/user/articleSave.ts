@@ -28,9 +28,11 @@ export async function toggleArticleSave(
   articleId: string | number,
 ): Promise<ArticleSaveStatus> {
   const id = normalizeArticleId(articleId);
-  const response = await api.post("/admin/save-articles/toggle", {
-    article_id: id,
-  });
+  const response = await api.post(
+    "/admin/save-articles/toggle",
+    { article_id: id },
+    { skipAuthRedirect: true },
+  );
   return {
     saved: Boolean(response.data?.data?.saved),
   };

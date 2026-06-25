@@ -9,17 +9,7 @@ import { getAuthErrorMessage, getAuthFieldErrors } from "@/features/auth/errorMe
 import { resolveAuthRole, saveAuthRole } from "@/features/auth/roleSelection";
 import { resolveDashboardPath, loginUserWithRole } from "@/features/auth/service";
 import { type AuthRole } from "@/features/auth/types";
-
-function isUnsafePostLoginPath(pathname: string | undefined) {
-  if (!pathname) return true;
-  return (
-    pathname === "/unauthorized" ||
-    pathname === "/login" ||
-    pathname.startsWith("/login/") ||
-    pathname.startsWith("/otp-verification")
-  );
-}
-
+import { resolvePostLoginPath } from "@/auth/loginNavigation";
 
 export default function LoginEmail() {
   const navigate = useNavigate();
@@ -58,9 +48,9 @@ export default function LoginEmail() {
         { authStrategy, setToken, setUser, refreshSession, resetAuthState },
       );
 
-      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-      if (from && !isUnsafePostLoginPath(from)) {
-        navigate(from, { replace: true });
+      const returnPath = resolvePostLoginPath(location, searchParams.get("next"));
+      if (returnPath) {
+        navigate(returnPath, { replace: true });
         return;
       }
 

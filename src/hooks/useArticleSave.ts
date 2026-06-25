@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
+import { navigateToLogin } from "@/auth/loginNavigation";
 import { useAuth } from "@/auth/useAuth";
 import {
   checkArticleSaved,
@@ -28,7 +29,8 @@ export function useArticleSave(
   } = options;
 
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated, resetAuthState } = useAuth();
   const numericId = articleId != null && articleId !== "" ? Number(articleId) : NaN;
   const isValidId = !Number.isNaN(numericId) && numericId > 0;
 
@@ -75,6 +77,16 @@ export function useArticleSave(
   const toggle = useCallback(async () => {
     if (!isValidId || toggling) return null;
 
+    if (!isAuthenticated) {
+      if (showToast) {
+        toast.error("Please login to save articles");
+      }
+      if (redirectOnUnauthorized) {
+        navigateToLogin(navigate, location);
+      }
+      return null;
+    }
+
     setToggling(true);
     try {
       const status = await toggleArticleSave(numericId);
@@ -91,11 +103,12 @@ export function useArticleSave(
       const status = (error as { response?: { status?: number } })?.response?.status;
 
       if (status === 401) {
+        resetAuthState();
         if (showToast) {
           toast.error("Please login to save articles");
         }
         if (redirectOnUnauthorized) {
-          navigate("/login");
+          navigateToLogin(navigate, location);
         }
         return null;
       }
@@ -109,11 +122,14 @@ export function useArticleSave(
       setToggling(false);
     }
   }, [
+    isAuthenticated,
     isValidId,
+    location,
     numericId,
-    toggling,
-    showToast,
     redirectOnUnauthorized,
+    resetAuthState,
+    showToast,
+    toggling,
     navigate,
   ]);
 
