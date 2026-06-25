@@ -2,16 +2,19 @@ import * as React from "react";
 import { ArrowRight, Eye } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
+import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 import { resolveAuthRole, saveAuthRole } from "@/features/auth/roleSelection";
-import { registerAndLoginUser } from "@/features/auth/service";
+import { registerAndLoginUser, resolveDashboardPath } from "@/features/auth/service";
 import { type AuthRole } from "@/features/auth/types";
 
 
 export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { setToken, setUser, refreshSession, resetAuthState, authStrategy } = useAuth();
   const [firstName, setFirstName] = React.useState("");
   const [lastName, setLastName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -51,22 +54,20 @@ export default function Register() {
     saveAuthRole(role);
 
     try {
-      const loggedInUser = await registerAndLoginUser({
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        phone,
-        password,
-        password_confirmation: passwordConfirmation,
-        role,
-      });
-      setSuccess("Registration successful. Redirecting to OTP verification...");
-      const verifiedRole = role;
-      const verifiedEmail = encodeURIComponent(loggedInUser?.email ?? email);
-      navigate(
-        `/otp-verification?purpose=register&email=${verifiedEmail}&role=${verifiedRole}`,
-        { replace: true },
+      const loggedInUser = await registerAndLoginUser(
+        {
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          phone,
+          password,
+          password_confirmation: passwordConfirmation,
+          role,
+        },
+        { authStrategy, setToken, setUser, refreshSession, resetAuthState },
       );
+      setSuccess("Registration successful. Redirecting to your dashboard...");
+      navigate(resolveDashboardPath(loggedInUser), { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
       setError(message);

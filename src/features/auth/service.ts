@@ -6,7 +6,7 @@ import {
 import { request } from '@/api/request'
 import { type AuthContextValue } from '@/auth/context'
 import { getUserRoles, isAdminPanelUser } from '@/auth/roles'
-import { setAccessToken, setRefreshToken, setStoredAuthUser } from '@/auth/token'
+import { setRefreshToken } from '@/auth/token'
 import { type AuthUser } from '@/auth/types'
 import {
   type AuthRole,
@@ -132,34 +132,26 @@ export async function registerUser(payload: RegisterPayload) {
   logOtpFromResponse(res.data, 'register')
 }
 
-export async function registerAndLoginUser(payload: RegisterPayload) {
-  const res = await request.post<unknown>('/auth/register', payload)
-  logOtpFromResponse(res.data, 'register')
+export async function registerAndLoginUser(
+  payload: RegisterPayload,
+  handlers: AuthHandlers,
+) {
+  try {
+    const res = await request.post<unknown>('/auth/register', payload)
 
-  // Write the token directly to storage (NOT React state via handlers.setToken).
-  // Updating React state here would make isAuthenticated=true on /register,
-  // causing GuestGate to redirect before navigate() to /otp-verification fires.
-  // AuthProvider picks up the stored token when the OTP page mounts or on reload,
-  // and skips the /me call (which 404s for unverified users).
-  const token = extractBearerTokenFromLoginBody(res.data)
-  const responseUser = extractUserFromAuthPayload(res.data)
-  const storedUser =
-    responseUser ??
-    ({
-      id: payload.email,
-      email: payload.email,
-      role: payload.role,
-      roles: [payload.role],
-    } satisfies AuthUser)
+    const user = await hydrateSessionFromLoginBody(
+      res.data,
+      handlers,
+      'Unable to restore your session after registration.',
+      'Registration response is missing access token.',
+    )
+    ensureRoleMatchesExpected(user, payload.role)
 
-  if (token) {
-    setAccessToken(token)
-    const refresh = extractRefreshTokenFromLoginBody(res.data)
-    if (refresh) setRefreshToken(refresh)
+    return user
+  } catch (error) {
+    handlers.resetAuthState()
+    throw error
   }
-  setStoredAuthUser(storedUser)
-
-  return storedUser
 }
 
 export async function requestPasswordResetOtp(payload: PasswordResetOtpPayload) {
