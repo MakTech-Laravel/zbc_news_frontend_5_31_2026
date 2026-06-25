@@ -16,7 +16,9 @@ export async function checkArticleSaved(
   articleId: string | number,
 ): Promise<ArticleSaveStatus> {
   const id = normalizeArticleId(articleId);
-  const response = await api.get(`/admin/save-articles/check/${id}`);
+  const response = await api.get(`/admin/save-articles/check/${id}`, {
+    skipAuthRedirect: true,
+  });
   return {
     saved: Boolean(response.data?.data?.saved),
   };

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
+import { useAuth } from "@/auth/useAuth";
 import {
   checkArticleSaved,
   toggleArticleSave,
@@ -27,6 +28,7 @@ export function useArticleSave(
   } = options;
 
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const numericId = articleId != null && articleId !== "" ? Number(articleId) : NaN;
   const isValidId = !Number.isNaN(numericId) && numericId > 0;
 
@@ -35,7 +37,7 @@ export function useArticleSave(
   const [toggling, setToggling] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!isValidId) {
+    if (!isValidId || !isAuthenticated) {
       setSaved(false);
       return false;
     }
@@ -47,6 +49,10 @@ export function useArticleSave(
       return status.saved;
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        setSaved(false);
+        return false;
+      }
       if (status !== 401) {
         console.error(error);
       }
@@ -54,12 +60,17 @@ export function useArticleSave(
     } finally {
       setChecking(false);
     }
-  }, [isValidId, numericId]);
+  }, [isAuthenticated, isValidId, numericId]);
 
   useEffect(() => {
-    if (!checkOnMount || !isValidId) return;
+    if (!checkOnMount || !isValidId || !isAuthenticated) {
+      if (!isAuthenticated) {
+        setSaved(false);
+      }
+      return;
+    }
     void refresh();
-  }, [checkOnMount, isValidId, numericId, refresh]);
+  }, [checkOnMount, isAuthenticated, isValidId, numericId, refresh]);
 
   const toggle = useCallback(async () => {
     if (!isValidId || toggling) return null;
