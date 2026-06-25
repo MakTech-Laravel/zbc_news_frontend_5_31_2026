@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useState } from "react";
 
-import { MediaImageField } from "@/components/admin/media/MediaImageField";
+import { ProfilePhotoField } from "@/components/user/profile/ProfilePhotoField";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
 import { UserSettingSwitch } from "@/components/user/profile/UserSettingSwitch";
 import { UserStatusBadge } from "@/components/user/shared/UserStatusBadge";
@@ -99,6 +99,7 @@ export function UserProfileForm() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
 
   const {
     register,
@@ -115,7 +116,6 @@ export function UserProfileForm() {
       try {
         const res = await request.get("/admin/users/profile");
         const d = res.data.data;
-        console.log(d);
         reset({
           name: d.name ?? "",
           email: d.email ?? "",
@@ -138,13 +138,32 @@ export function UserProfileForm() {
     try {
       setSaving(true);
 
-      await request.put("/admin/users/profile/update", {
-        name: data.name,
-        email: data.email,
-        region: data.region ?? "",
-        bio: data.bio ?? "",
-        profile_image: profileImageUrl ?? "",
-      });
+      if (profileImageFile) {
+        const formData = new FormData();
+        formData.append("_method", "PUT");
+        formData.append("name", data.name);
+        formData.append("email", data.email);
+        formData.append("region", data.region ?? "");
+        formData.append("bio", data.bio ?? "");
+        formData.append("profile_image", profileImageFile);
+
+        const res = await request.post("/admin/users/profile/update", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        const updatedImage = res.data?.data?.user_information?.profile_image;
+        if (typeof updatedImage === "string" && updatedImage.trim()) {
+          setProfileImageUrl(resolveMediaUrl(updatedImage));
+        }
+        setProfileImageFile(null);
+      } else {
+        await request.put("/admin/users/profile/update", {
+          name: data.name,
+          email: data.email,
+          region: data.region ?? "",
+          bio: data.bio ?? "",
+          profile_image: profileImageUrl ?? "",
+        });
+      }
 
       toast.success("Profile updated successfully.");
     } catch {
@@ -207,13 +226,11 @@ export function UserProfileForm() {
           />
           <div className="space-y-6 px-6 pb-6">
             {/* Avatar */}
-            <MediaImageField
-              variant="avatar"
+            <ProfilePhotoField
               value={profileImageUrl}
               onChange={setProfileImageUrl}
-              uploadLabel="Select profile photo"
-              previewAlt="Profile photo"
-              urlPlaceholder="Or paste profile image URL"
+              onFileChange={setProfileImageFile}
+              disabled={profileLoading || saving}
             />
 
             <div className="h-px bg-border" />
@@ -303,6 +320,7 @@ export function UserProfileForm() {
                     onClick={() => {
                       reset();
                       setProfileImageUrl(null);
+                      setProfileImageFile(null);
                     }}
                   >
                     Cancel
