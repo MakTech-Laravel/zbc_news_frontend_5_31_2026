@@ -69,8 +69,7 @@ export default function Register() {
       setSuccess("Registration successful. Redirecting to your dashboard...");
       navigate(resolveDashboardPath(loggedInUser), { replace: true });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
-      setError(message);
+      setError(getAuthErrorMessage(err, "Registration failed. Please try again."));
     } finally {
       setLoading(false);
     }
