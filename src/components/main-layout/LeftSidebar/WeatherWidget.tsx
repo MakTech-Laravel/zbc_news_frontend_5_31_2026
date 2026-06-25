@@ -4,6 +4,7 @@ import { Cloud, CloudRain, MapPin, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type WeatherIconType = "sun" | "cloud" | "rain";
+type TemperatureUnit = "celsius" | "fahrenheit";
 
 type WeatherDay = {
   label: string;
@@ -20,6 +21,9 @@ type WeatherState = {
   forecast: WeatherDay[];
 };
 
+const TEMPERATURE_UNIT_STORAGE_KEY = "zbc-weather-temperature-unit";
+const NYC_TIMEZONE = "America/New_York";
+
 const FALLBACK_WEATHER: WeatherState = {
   location: { city: "New York", state: "NY" },
   temperature: 72,
@@ -31,6 +35,24 @@ const FALLBACK_WEATHER: WeatherState = {
     { label: "Wed", high: 68, low: 58, icon: "rain" },
   ],
 };
+
+function readStoredTemperatureUnit(): TemperatureUnit {
+  if (typeof window === "undefined") return "fahrenheit";
+
+  const stored = window.localStorage.getItem(TEMPERATURE_UNIT_STORAGE_KEY);
+  return stored === "celsius" ? "celsius" : "fahrenheit";
+}
+
+function formatForecastDayLabel(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  if (!year || !month || !day) return isoDate;
+
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone: NYC_TIMEZONE,
+  }).format(date);
+}
 
 function mapWeatherCodeToDisplay(code: number): { condition: string; icon: WeatherIconType } {
   if (code === 0) return { condition: "Clear Sky", icon: "sun" };
@@ -50,22 +72,71 @@ function WeatherIcon({ type, className }: { type: WeatherIconType; className?: s
   return <Cloud {...props} />;
 }
 
+function TemperatureUnitToggle({
+  unit,
+  onChange,
+}: {
+  unit: TemperatureUnit;
+  onChange: (unit: TemperatureUnit) => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-1 font-inter text-[10px] font-semibold uppercase tracking-wide text-primary-foreground"
+      role="group"
+      aria-label="Temperature unit"
+    >
+      <button
+        type="button"
+        onClick={() => onChange("celsius")}
+        className={cn(
+          "rounded-xs px-1 py-0.5 transition-opacity",
+          unit === "celsius" ? "opacity-100 underline underline-offset-2" : "opacity-70 hover:opacity-100",
+        )}
+        aria-pressed={unit === "celsius"}
+      >
+        °C
+      </button>
+      <span className="opacity-70" aria-hidden="true">
+        |
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange("fahrenheit")}
+        className={cn(
+          "rounded-xs px-1 py-0.5 transition-opacity",
+          unit === "fahrenheit" ? "opacity-100 underline underline-offset-2" : "opacity-70 hover:opacity-100",
+        )}
+        aria-pressed={unit === "fahrenheit"}
+      >
+        °F
+      </button>
+    </div>
+  );
+}
+
 export function WeatherWidget() {
   const [weather, setWeather] = React.useState<WeatherState>(FALLBACK_WEATHER);
+  const [temperatureUnit, setTemperatureUnit] = React.useState<TemperatureUnit>(readStoredTemperatureUnit);
+
+  const unitSuffix = temperatureUnit === "fahrenheit" ? "F" : "C";
+
+  const handleUnitChange = React.useCallback((unit: TemperatureUnit) => {
+    setTemperatureUnit(unit);
+    window.localStorage.setItem(TEMPERATURE_UNIT_STORAGE_KEY, unit);
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
 
     async function loadWeather() {
       try {
-        // New York City coordinates
         const latitude = 40.7128;
         const longitude = -74.006;
         const url =
           `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
           "&current=temperature_2m,weather_code" +
           "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
-          "&forecast_days=3&temperature_unit=fahrenheit&timezone=America%2FNew_York";
+          `&forecast_days=3&temperature_unit=${temperatureUnit}&timezone=${encodeURIComponent(NYC_TIMEZONE)}`;
 
         const response = await fetch(url);
         if (!response.ok) return;
@@ -95,16 +166,12 @@ export function WeatherWidget() {
         }
 
         const currentDisplay = mapWeatherCodeToDisplay(currentCode);
-        const dayFormatter = new Intl.DateTimeFormat("en-US", {
-          weekday: "short",
-          timeZone: "America/New_York",
-        });
 
         const nextForecast: WeatherDay[] = daily.time.slice(0, 3).map((isoDate, index) => {
           const forecastCode = daily.weather_code?.[index] ?? 0;
           const display = mapWeatherCodeToDisplay(forecastCode);
           return {
-            label: dayFormatter.format(new Date(`${isoDate}T00:00:00`)),
+            label: formatForecastDayLabel(isoDate),
             high: Math.round(daily.temperature_2m_max?.[index] ?? 0),
             low: Math.round(daily.temperature_2m_min?.[index] ?? 0),
             icon: display.icon,
@@ -129,23 +196,26 @@ export function WeatherWidget() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [temperatureUnit]);
 
   return (
     <section className="overflow-hidden rounded-xs bg-gradient-to-r from-primary-500 to-primary text-primary-foreground shadow-sm">
       <div className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <MapPin className="size-5" />
-          <p className="font-inter text-xs font-semibold uppercase tracking-wide text-primary-foreground">
-            {weather.location.city}, {weather.location.state}
-          </p>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <MapPin className="size-5 shrink-0" />
+            <p className="truncate font-inter text-xs font-semibold uppercase tracking-wide text-primary-foreground">
+              {weather.location.city}, {weather.location.state}
+            </p>
+          </div>
+          <TemperatureUnitToggle unit={temperatureUnit} onChange={handleUnitChange} />
         </div>
-        <div className="mt-2 flex items-center justify-between gap-2 mb-3">
+        <div className="mt-2 mb-3 flex items-center justify-between gap-2">
           <div>
             <p className="font-inter text-[32px] font-extrabold leading-none tracking-tight text-primary-foreground">
-              {weather.temperature}°
+              {weather.temperature}°{unitSuffix}
             </p>
-            <p className="mt-1 font-inter font-normal text-xs text-primary-foreground">{weather.condition}</p>
+            <p className="mt-1 font-inter text-xs font-normal text-primary-foreground">{weather.condition}</p>
           </div>
           <WeatherIcon type={weather.icon} className="size-15 shrink-0 text-primary-foreground" />
         </div>
@@ -155,7 +225,10 @@ export function WeatherWidget() {
               <p className="font-inter text-xs font-semibold text-primary-foreground">{day.label}</p>
               <WeatherIcon type={day.icon} className="mx-auto my-1" />
               <p className="font-inter text-xs font-normal text-primary-foreground">
-                {day.high}°{" "}/ <span className="font-inter text-xs font-normal text-primary-foreground">{day.low}°</span>
+                {day.high}°{unitSuffix} /{" "}
+                <span className="font-inter text-xs font-normal text-primary-foreground">
+                  {day.low}°{unitSuffix}
+                </span>
               </p>
             </div>
           ))}
