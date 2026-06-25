@@ -199,9 +199,10 @@ function SearchField({
 }
 
 function AccountActions({ showLabel = true }: { showLabel?: boolean }) {
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, isUserLoading, logout, user } = useAuth();
+  const showAuthenticated = isAuthenticated && !isUserLoading;
 
-  if (!isAuthenticated) {
+  if (!showAuthenticated) {
     return (
       <Button
         asChild

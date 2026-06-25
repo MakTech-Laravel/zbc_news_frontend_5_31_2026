@@ -24,6 +24,18 @@ type UserNotificationsContextValue = {
   refresh: () => Promise<void>;
 };
 
+const noopNotifications: UserNotificationsContextValue = {
+  notifications: [],
+  unreadCount: 0,
+  activeCategory: "all",
+  setActiveCategory: () => undefined,
+  markAsRead: async () => undefined,
+  markAllAsRead: async () => undefined,
+  filterByTab: () => [],
+  loading: false,
+  refresh: async () => undefined,
+};
+
 const UserNotificationsContext = React.createContext<UserNotificationsContextValue | null>(
   null,
 );
@@ -213,8 +225,5 @@ export function UserNotificationsProvider({ children }: { children: React.ReactN
 
 export function useUserNotificationsContext() {
   const ctx = React.useContext(UserNotificationsContext);
-  if (!ctx) {
-    throw new Error("useUserNotificationsContext must be used within UserNotificationsProvider");
-  }
-  return ctx;
+  return ctx ?? noopNotifications;
 }

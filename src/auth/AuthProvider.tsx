@@ -44,7 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => env.authStrategy === 'http_only_cookie',
   )
   const [isUserLoading, setIsUserLoading] = React.useState(() => {
-    return env.authStrategy === 'bearer_memory' && Boolean(initialToken)
+    if (env.authStrategy !== 'bearer_memory' || !initialToken) return false
+    // Cached token + user from storage: render immediately; refresh profile in background.
+    return !initialUser
   })
   /** Prevents broadcast loops when applying auth state from another tab. */
   const isRemoteSyncRef = React.useRef(false)
@@ -68,7 +70,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const prev = userRef.current ?? getStoredAuthUser()
     const shouldBlock =
       env.authStrategy === 'http_only_cookie' ||
-      (env.authStrategy === 'bearer_memory' && Boolean(getAccessToken()))
+      (env.authStrategy === 'bearer_memory' &&
+        Boolean(getAccessToken()) &&
+        !prev)
     if (shouldBlock) {
       setIsUserLoading(true)
     }
@@ -137,10 +141,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const profileDisabled =
-      env.authMePath === 'none' || env.authMePath === 'false'
-    if (profileDisabled && getStoredAuthUser()) {
-      setIsUserLoading(false)
+    const storedUser = getStoredAuthUser()
+    if (storedUser) {
+      const profileDisabled =
+        env.authMePath === 'none' || env.authMePath === 'false'
+      if (profileDisabled) {
+        setIsUserLoading(false)
+        return
+      }
+      // Background profile refresh — keep UI unblocked when cached user exists.
+      void refreshSession()
       return
     }
 
@@ -188,15 +198,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setUser])
 
+  const publishCurrentAuthState = React.useCallback(() => {
+    const token = getAccessToken()
+    const currentUser = userRef.current ?? getStoredAuthUser()
+    if (!token || !currentUser) return
+
+    publishAuthSync({
+      type: 'login',
+      token,
+      refreshToken: getRefreshToken(),
+      user: currentUser,
+    })
+  }, [])
+
   React.useEffect(() => {
     return subscribeAuthSync((message) => {
       if (message.type === 'login') {
         applyRemoteLogin(message)
         return
       }
-      applyRemoteLogout()
+      if (message.type === 'logout') {
+        applyRemoteLogout()
+        return
+      }
+      if (message.type === 'request-auth') {
+        publishCurrentAuthState()
+      }
     })
-  }, [applyRemoteLogin, applyRemoteLogout])
+  }, [applyRemoteLogin, applyRemoteLogout, publishCurrentAuthState])
+
+  React.useEffect(() => {
+    if (env.authStrategy !== 'bearer_memory') return
+    if (getAccessToken() && getStoredAuthUser()) return
+
+    const timer = window.setTimeout(() => {
+      if (getAccessToken() && getStoredAuthUser()) return
+      publishAuthSync({ type: 'request-auth' })
+    }, 100)
+
+    return () => window.clearTimeout(timer)
+  }, [])
 
   React.useEffect(() => {
     if (env.bearerTokenPersistence !== 'local') return

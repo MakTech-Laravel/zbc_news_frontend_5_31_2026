@@ -28,8 +28,8 @@ function bearerTokenPersistenceFromEnv(): BearerTokenPersistence {
   if (raw === 'memory' || raw === 'ram') return 'memory'
   if (raw === 'local' || raw === 'localstorage') return 'local'
   if (raw === 'session' || raw === 'sessionstorage') return 'session'
-  // Default: survives hard refresh in this tab; standard SPA compromise when API only returns Bearer JSON
-  return 'session'
+  // Default: localStorage so new tabs share the session; use `session` for tab-only isolation
+  return 'local'
 }
 
 function roleModeFromEnv(): RoleMode {
@@ -95,8 +95,8 @@ export const env = {
    */
   authStrategy: authStrategyFromEnv(),
   /**
-   * Only for `bearer_memory`. `session` (default) survives Ctrl+Shift+R in this tab.
-   * `local` = cross-tab until logout. `memory` = never survives reload.
+   * Only for `bearer_memory`. `local` (default) shares auth across browser tabs.
+   * `session` = tab-only. `memory` = never survives reload.
    */
   bearerTokenPersistence: bearerTokenPersistenceFromEnv(),
   /** Profile endpoint path (Laravel12 auth routes commonly use `/auth/profile`). */

@@ -16,6 +16,7 @@ export type AuthSyncMessage =
       user: AuthUser | null
     }
   | { type: 'logout' }
+  | { type: 'request-auth' }
 
 type AuthSyncListener = (message: AuthSyncMessage) => void
 
