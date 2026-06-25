@@ -1,10 +1,11 @@
 import * as React from "react";
-import { Cloud, CloudRain, MapPin, Sun } from "lucide-react";
+import { Cloud, CloudRain, Loader2, MapPin, Sun } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 type WeatherIconType = "sun" | "cloud" | "rain";
 type TemperatureUnit = "celsius" | "fahrenheit";
+type WeatherLoadState = "loading" | "ready" | "error";
 
 type WeatherDay = {
   label: string;
@@ -23,18 +24,7 @@ type WeatherState = {
 
 const TEMPERATURE_UNIT_STORAGE_KEY = "zbc-weather-temperature-unit";
 const NYC_TIMEZONE = "America/New_York";
-
-const FALLBACK_WEATHER: WeatherState = {
-  location: { city: "New York", state: "NY" },
-  temperature: 22,
-  condition: "Partly Cloudy",
-  icon: "cloud",
-  forecast: [
-    { label: "Mon", high: 23, low: 17, icon: "sun" },
-    { label: "Tue", high: 22, low: 16, icon: "cloud" },
-    { label: "Wed", high: 20, low: 14, icon: "rain" },
-  ],
-};
+const NYC_LOCATION = { city: "New York", state: "NY" };
 
 function readStoredTemperatureUnit(): TemperatureUnit {
   if (typeof window === "undefined") return "celsius";
@@ -73,12 +63,22 @@ function WeatherIcon({ type, className }: { type: WeatherIconType; className?: s
   return <Cloud {...props} />;
 }
 
+function WeatherWidgetShell({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-xs bg-gradient-to-r from-primary-500 to-primary text-primary-foreground shadow-sm">
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
 function TemperatureUnitToggle({
   unit,
   onChange,
+  disabled = false,
 }: {
   unit: TemperatureUnit;
   onChange: (unit: TemperatureUnit) => void;
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -88,9 +88,10 @@ function TemperatureUnitToggle({
     >
       <button
         type="button"
+        disabled={disabled}
         onClick={() => onChange("celsius")}
         className={cn(
-          "rounded-xs px-1 py-0.5 transition-opacity",
+          "rounded-xs px-1 py-0.5 transition-opacity disabled:cursor-not-allowed disabled:opacity-50",
           unit === "celsius" ? "opacity-100 underline underline-offset-2" : "opacity-70 hover:opacity-100",
         )}
         aria-pressed={unit === "celsius"}
@@ -102,9 +103,10 @@ function TemperatureUnitToggle({
       </span>
       <button
         type="button"
+        disabled={disabled}
         onClick={() => onChange("fahrenheit")}
         className={cn(
-          "rounded-xs px-1 py-0.5 transition-opacity",
+          "rounded-xs px-1 py-0.5 transition-opacity disabled:cursor-not-allowed disabled:opacity-50",
           unit === "fahrenheit" ? "opacity-100 underline underline-offset-2" : "opacity-70 hover:opacity-100",
         )}
         aria-pressed={unit === "fahrenheit"}
@@ -115,9 +117,66 @@ function TemperatureUnitToggle({
   );
 }
 
+function WeatherWidgetLoading({ unit }: { unit: TemperatureUnit }) {
+  return (
+    <WeatherWidgetShell>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <MapPin className="size-5 shrink-0" />
+          <p className="truncate font-inter text-xs font-semibold uppercase tracking-wide text-primary-foreground">
+            {NYC_LOCATION.city}, {NYC_LOCATION.state}
+          </p>
+        </div>
+        <TemperatureUnitToggle unit={unit} onChange={() => undefined} disabled />
+      </div>
+      <div className="mt-2 mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Loader2 className="size-8 animate-spin text-primary-foreground/80" aria-hidden="true" />
+          <p className="font-inter text-sm font-medium text-primary-foreground/90">Loading weather...</p>
+        </div>
+        <div className="size-15 shrink-0 animate-pulse rounded-full bg-white/20" aria-hidden="true" />
+      </div>
+      <div className="grid grid-cols-3 gap-1 border-t border-white/20 px-2 py-2.5">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={index} className="space-y-2 text-center">
+            <div className="mx-auto h-3 w-8 animate-pulse rounded bg-white/20" />
+            <div className="mx-auto size-4 animate-pulse rounded-full bg-white/20" />
+            <div className="mx-auto h-3 w-14 animate-pulse rounded bg-white/20" />
+          </div>
+        ))}
+      </div>
+    </WeatherWidgetShell>
+  );
+}
+
+function WeatherWidgetError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <WeatherWidgetShell>
+      <div className="flex min-w-0 items-center gap-2">
+        <MapPin className="size-5 shrink-0" />
+        <p className="truncate font-inter text-xs font-semibold uppercase tracking-wide text-primary-foreground">
+          {NYC_LOCATION.city}, {NYC_LOCATION.state}
+        </p>
+      </div>
+      <div className="mt-4 text-center">
+        <p className="font-inter text-sm text-primary-foreground/90">Unable to load weather right now.</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-3 rounded-xs border border-white/30 px-3 py-1.5 font-inter text-xs font-semibold text-primary-foreground transition-colors hover:bg-white/10"
+        >
+          Try again
+        </button>
+      </div>
+    </WeatherWidgetShell>
+  );
+}
+
 export function WeatherWidget() {
-  const [weather, setWeather] = React.useState<WeatherState>(FALLBACK_WEATHER);
+  const [weather, setWeather] = React.useState<WeatherState | null>(null);
+  const [loadState, setLoadState] = React.useState<WeatherLoadState>("loading");
   const [temperatureUnit, setTemperatureUnit] = React.useState<TemperatureUnit>(readStoredTemperatureUnit);
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   const unitSuffix = temperatureUnit === "fahrenheit" ? "F" : "C";
 
@@ -126,10 +185,17 @@ export function WeatherWidget() {
     window.localStorage.setItem(TEMPERATURE_UNIT_STORAGE_KEY, unit);
   }, []);
 
+  const handleRetry = React.useCallback(() => {
+    setReloadKey((current) => current + 1);
+  }, []);
+
   React.useEffect(() => {
     let cancelled = false;
 
     async function loadWeather() {
+      setLoadState("loading");
+      setWeather(null);
+
       try {
         const latitude = 40.7128;
         const longitude = -74.006;
@@ -140,7 +206,11 @@ export function WeatherWidget() {
           `&forecast_days=3&temperature_unit=${temperatureUnit}&timezone=${encodeURIComponent(NYC_TIMEZONE)}`;
 
         const response = await fetch(url);
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (!cancelled) setLoadState("error");
+          return;
+        }
+
         const data = (await response.json()) as {
           current?: { temperature_2m?: number; weather_code?: number };
           daily?: {
@@ -163,6 +233,7 @@ export function WeatherWidget() {
           !daily.temperature_2m_max ||
           !daily.temperature_2m_min
         ) {
+          if (!cancelled) setLoadState("error");
           return;
         }
 
@@ -181,15 +252,19 @@ export function WeatherWidget() {
 
         if (!cancelled && nextForecast.length === 3) {
           setWeather({
-            location: { city: "New York", state: "NY" },
+            location: NYC_LOCATION,
             temperature: Math.round(currentTemp),
             condition: currentDisplay.condition,
             icon: currentDisplay.icon,
             forecast: nextForecast,
           });
+          setLoadState("ready");
+          return;
         }
+
+        if (!cancelled) setLoadState("error");
       } catch {
-        // Keep fallback weather on network/API errors.
+        if (!cancelled) setLoadState("error");
       }
     }
 
@@ -197,44 +272,50 @@ export function WeatherWidget() {
     return () => {
       cancelled = true;
     };
-  }, [temperatureUnit]);
+  }, [temperatureUnit, reloadKey]);
+
+  if (loadState === "loading") {
+    return <WeatherWidgetLoading unit={temperatureUnit} />;
+  }
+
+  if (loadState === "error" || !weather) {
+    return <WeatherWidgetError onRetry={handleRetry} />;
+  }
 
   return (
-    <section className="overflow-hidden rounded-xs bg-gradient-to-r from-primary-500 to-primary text-primary-foreground shadow-sm">
-      <div className="p-4">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <MapPin className="size-5 shrink-0" />
-            <p className="truncate font-inter text-xs font-semibold uppercase tracking-wide text-primary-foreground">
-              {weather.location.city}, {weather.location.state}
-            </p>
-          </div>
-          <TemperatureUnitToggle unit={temperatureUnit} onChange={handleUnitChange} />
+    <WeatherWidgetShell>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <MapPin className="size-5 shrink-0" />
+          <p className="truncate font-inter text-xs font-semibold uppercase tracking-wide text-primary-foreground">
+            {weather.location.city}, {weather.location.state}
+          </p>
         </div>
-        <div className="mt-2 mb-3 flex items-center justify-between gap-2">
-          <div>
-            <p className="font-inter text-[32px] font-extrabold leading-none tracking-tight text-primary-foreground">
-              {weather.temperature}°{unitSuffix}
-            </p>
-            <p className="mt-1 font-inter text-xs font-normal text-primary-foreground">{weather.condition}</p>
-          </div>
-          <WeatherIcon type={weather.icon} className="size-15 shrink-0 text-primary-foreground" />
-        </div>
-        <div className="grid grid-cols-3 gap-1 border-t border-white/20 px-2 py-2.5">
-          {weather.forecast.map((day) => (
-            <div key={day.label} className="text-center">
-              <p className="font-inter text-xs font-semibold text-primary-foreground">{day.label}</p>
-              <WeatherIcon type={day.icon} className="mx-auto my-1" />
-              <p className="font-inter text-xs font-normal text-primary-foreground">
-                {day.high}°{unitSuffix} /{" "}
-                <span className="font-inter text-xs font-normal text-primary-foreground">
-                  {day.low}°{unitSuffix}
-                </span>
-              </p>
-            </div>
-          ))}
-        </div>
+        <TemperatureUnitToggle unit={temperatureUnit} onChange={handleUnitChange} />
       </div>
-    </section>
+      <div className="mt-2 mb-3 flex items-center justify-between gap-2">
+        <div>
+          <p className="font-inter text-[32px] font-extrabold leading-none tracking-tight text-primary-foreground">
+            {weather.temperature}°{unitSuffix}
+          </p>
+          <p className="mt-1 font-inter text-xs font-normal text-primary-foreground">{weather.condition}</p>
+        </div>
+        <WeatherIcon type={weather.icon} className="size-15 shrink-0 text-primary-foreground" />
+      </div>
+      <div className="grid grid-cols-3 gap-1 border-t border-white/20 px-2 py-2.5">
+        {weather.forecast.map((day) => (
+          <div key={day.label} className="text-center">
+            <p className="font-inter text-xs font-semibold text-primary-foreground">{day.label}</p>
+            <WeatherIcon type={day.icon} className="mx-auto my-1" />
+            <p className="font-inter text-xs font-normal text-primary-foreground">
+              {day.high}°{unitSuffix} /{" "}
+              <span className="font-inter text-xs font-normal text-primary-foreground">
+                {day.low}°{unitSuffix}
+              </span>
+            </p>
+          </div>
+        ))}
+      </div>
+    </WeatherWidgetShell>
   );
 }
