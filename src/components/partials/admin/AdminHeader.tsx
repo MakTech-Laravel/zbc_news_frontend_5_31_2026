@@ -113,7 +113,10 @@ export function AdminHeader({
 
       <div className="flex shrink-0 items-center gap-1">
         {canViewNotifications ? (
-          <UserNotificationsDropdown className="rounded-lg text-admin-label hover:bg-muted" />
+          <UserNotificationsDropdown
+            className="rounded-lg text-admin-label hover:bg-muted"
+            viewAllPath="/admin/notifications"
+          />
         ) : null}
 
         <button

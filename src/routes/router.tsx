@@ -34,6 +34,7 @@ const AdminMedia = lazy(() => import("@/pages/admin/AdminMedia"));
 const AdminMonetization = lazy(() => import("@/pages/admin/AdminMonetization"));
 const AdminNewsletters = lazy(() => import("@/pages/admin/AdminNewsletters"));
 const AdminAnnouncements = lazy(() => import("@/pages/admin/AdminAnnouncements"));
+const AdminNotifications = lazy(() => import("@/pages/admin/AdminNotifications"));
 const NewsletterVerifyPage = lazy(() => import("@/pages/newsletter/NewsletterVerifyPage"));
 const NewsletterUnsubscribePage = lazy(() => import("@/pages/newsletter/NewsletterUnsubscribePage"));
 const NewsletterPreferencesPage = lazy(() => import("@/pages/newsletter/NewsletterPreferencesPage"));
@@ -158,6 +159,10 @@ export const router = createBrowserRouter([
           {
             path: "announcements",
             element: suspensePage(AdminAnnouncements),
+          },
+          {
+            path: "notifications",
+            element: suspensePage(AdminNotifications),
           },
           {
             path: "comments",

@@ -1,6 +1,8 @@
 import { Bell, CheckCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useAuth } from "@/auth/useAuth";
+import { isAdminPanelUser } from "@/auth/roles";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,9 +15,17 @@ import { cn } from "@/lib/utils";
 
 type UserNotificationsDropdownProps = {
   className?: string;
+  viewAllPath?: string;
 };
 
-export function UserNotificationsDropdown({ className }: UserNotificationsDropdownProps) {
+export function UserNotificationsDropdown({
+  className,
+  viewAllPath,
+}: UserNotificationsDropdownProps) {
+  const { user } = useAuth();
+  const notificationsPath =
+    viewAllPath ?? (isAdminPanelUser(user) ? "/admin/notifications" : "/user/notifications");
+
   const { notifications, unreadCount, markAsRead, markAllAsRead, loading } =
     useUserNotifications();
   const recent = notifications.slice(0, 5);
@@ -96,7 +106,7 @@ export function UserNotificationsDropdown({ className }: UserNotificationsDropdo
             className="h-9 w-full rounded-lg text-sm font-medium"
             asChild
           >
-            <Link to="/user/notifications">View all notifications</Link>
+            <Link to={notificationsPath}>View all notifications</Link>
           </Button>
         </div>
       </DropdownMenuContent>

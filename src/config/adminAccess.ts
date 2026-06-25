@@ -20,6 +20,7 @@ const ADMIN_PATH_PERMISSION_OVERRIDES: { test: RegExp; permission: PermissionKey
   { test: /^\/admin\/rabc\/edit\//, permission: PERMISSIONS.ROLES.UPDATE },
   { test: /^\/admin\/users\/[^/]+\/article-activities/, permission: PERMISSIONS.USERS.ARTICLE_ACTIVITIES },
   { test: /^\/admin\/settings\/seo\//, permission: PERMISSIONS.SITE_SETTINGS.UPDATE },
+  { test: /^\/admin\/notifications/, permission: PERMISSIONS.USER_NOTIFICATIONS.LIST },
 ]
 
 /** Resolve permission for any admin URL (nested routes inherit or override). */
