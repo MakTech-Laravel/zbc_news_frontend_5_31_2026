@@ -286,28 +286,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 
   const logout = React.useCallback(async () => {
-    resetAuthState()
-    try {
-      const logoutPathCandidates: string[] = []
-      if (env.logoutMode === 'multi') {
-        const roles = getUserRoles(user)
-        const roleLogout = roles.map((r) => getRoleLogoutPath(r)).find(Boolean)
-        if (roleLogout) logoutPathCandidates.push(roleLogout)
-      }
-      logoutPathCandidates.push(env.authLogoutPath, '/auth/logout', '/logout')
+    const logoutPathCandidates: string[] = []
+    if (env.logoutMode === 'multi') {
+      const roles = getUserRoles(user)
+      const roleLogout = roles.map((r) => getRoleLogoutPath(r)).find(Boolean)
+      if (roleLogout) logoutPathCandidates.push(roleLogout)
+    }
+    logoutPathCandidates.push(env.authLogoutPath, '/auth/logout')
 
-      const uniquePaths = Array.from(new Set(logoutPathCandidates.filter(Boolean)))
+    const uniquePaths = Array.from(new Set(logoutPathCandidates.filter(Boolean)))
+
+    try {
       for (const path of uniquePaths) {
         try {
-          await api.post(path)
+          await api.post(path, {}, { skipAuthRedirect: true })
           break
         } catch {
-          // try the next logout endpoint
+          // Token may already be invalid; try the next logout endpoint
         }
       }
     } catch {
       // Session may already be invalid; still clear client state
     } finally {
+      resetAuthState()
       if (typeof window === 'undefined') return
       const path = window.location.pathname
       if (path !== '/login' && !path.startsWith('/login/')) {
