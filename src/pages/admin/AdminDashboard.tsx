@@ -15,6 +15,7 @@ import { TrafficOverviewChart } from "@/components/admin/dashboard/TrafficOvervi
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import type { AdminMetricItem } from "@/services/admin/dashboard";
+import { formatCount } from "@/utils/format";
 import { useNavigate } from "react-router-dom";
 
 const PRIMARY_METRICS = [
@@ -72,11 +73,7 @@ const SECONDARY_METRICS = [
 
 function formatMetricValue(label: string, value: string | number): string {
   if (typeof value === "string") return value;
-  if (label === "Total Page Views") {
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-    return value.toLocaleString();
-  }
+  if (label === "Total Page Views") return formatCount(value);
   return value.toLocaleString();
 }
 

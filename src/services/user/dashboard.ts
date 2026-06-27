@@ -62,6 +62,8 @@ function mapFeedArticle(raw: Record<string, unknown>): UserFeedArticle {
     readTime: resolveReadTime(raw.readTime),
     views: (raw.views as number) ?? 0,
     publishedAt: (raw.publishedAt as string) ?? "",
+    publishedAtIso: typeof raw.publishedAtIso === "string" ? raw.publishedAtIso : undefined,
+    updatedAtIso: typeof raw.updatedAtIso === "string" ? raw.updatedAtIso : undefined,
     author: (raw.author as string) ?? "",
   };
 }

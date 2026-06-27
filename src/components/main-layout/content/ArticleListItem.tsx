@@ -36,12 +36,15 @@ export function ArticleListItem({ article, className, hideViewsBelowSm }: Articl
             {article.title}
           </h3>
         </Link>
-        <ArticleMeta
-          author={article.author}
-          readTime={article.readTime}
-          views={article.views}
-          hideViewsBelowSm={hideViewsBelowSm}
-        />
+          <ArticleMeta
+            author={article.author}
+            readTime={article.readTime}
+            views={article.views}
+            publishedAt={article.publishedAt}
+            publishedAtIso={article.publishedAtIso}
+            updatedAtIso={article.updatedAtIso}
+            hideViewsBelowSm={hideViewsBelowSm}
+          />
       </div>
     </article>
   );

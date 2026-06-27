@@ -1,10 +1,68 @@
 import { api } from "@/api/client";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 import type { UserFeedArticle } from "@/types/user";
+import type { UserContinueReadingItem } from "@/data/dummy/userDashboard";
+
+export type { UserContinueReadingItem };
 
 export const BREAKING_NEWS_TAG_SLUG = "breaking-news";
 export const WORLD_NEWS_TAG_SLUG = "world";
+
+/** Slug variants used when loading breaking news from the API. */
+export const BREAKING_NEWS_TAG_SLUGS = [
+  "breaking-news",
+  "breaking_news",
+  "breaking",
+  "Breaking",
+  "Breaking-News",
+  "Breaking_News",
+  "BreakingNews",
+] as const;
+
+export function normalizeTagKey(tag: string): string {
+  return tag.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+export function isBreakingNewsTag(tag: string): boolean {
+  const key = normalizeTagKey(tag);
+  return key === "breaking" || key === "breakingnews";
+}
+
+function resolveTagSlugsForFetch(tagSlug: string): string[] {
+  if (isBreakingNewsTag(tagSlug)) {
+    return [...BREAKING_NEWS_TAG_SLUGS];
+  }
+  return [tagSlug];
+}
+
+function mergeUniqueArticles(articles: UserFeedArticle[]): UserFeedArticle[] {
+  const seen = new Set<string>();
+  const merged: UserFeedArticle[] = [];
+
+  for (const article of articles) {
+    if (seen.has(article.id)) continue;
+    seen.add(article.id);
+    merged.push(article);
+  }
+
+  return merged;
+}
+
+function mergeUniqueArticleRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  const seen = new Set<string>();
+  const merged: Record<string, unknown>[] = [];
+
+  for (const row of rows) {
+    const id = row.id == null ? "" : String(row.id);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    merged.push(row);
+  }
+
+  return merged;
+}
 
 export type TagArticleType = "latest" | "trending" | "recommended";
 
@@ -19,15 +77,6 @@ export type UserFeaturedStoryData = {
   imageUrl: string;
 };
 
-export type UserContinueReadingItem = {
-  id: string;
-  slug?: string;
-  category: string;
-  title: string;
-  readTime: string;
-  publishedAt: string;
-};
-
 export type UserTrendingTopic = {
   id: string;
   rank: number;
@@ -35,15 +84,15 @@ export type UserTrendingTopic = {
   count: number;
 };
 
-function formatPublishedAt(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function formatPublishedAt(value: unknown): {
+  label: string;
+  iso?: string;
+} {
+  const parts = formatPublishDate(value);
+  return {
+    label: parts.combined || parts.date,
+    iso: parts.iso || undefined,
+  };
 }
 
 function resolveCategoryLabel(raw: Record<string, unknown>): string {
@@ -118,6 +167,9 @@ function mapToUserFeedArticle(raw: Record<string, unknown>): UserFeedArticle | n
   const title = raw.title;
   if (id == null || typeof title !== "string" || !title.trim()) return null;
 
+  const published = formatPublishedAt(raw.published_at ?? raw.created_at);
+  const updated = formatPublishedAt(raw.updated_at);
+
   return {
     id: String(id),
     slug: typeof raw.slug === "string" ? raw.slug : undefined,
@@ -130,7 +182,9 @@ function mapToUserFeedArticle(raw: Record<string, unknown>): UserFeedArticle | n
       typeof raw.article_description === "string" ? raw.article_description : undefined,
       resolveExcerpt(raw),
     ),
-    publishedAt: formatPublishedAt(raw.published_at ?? raw.created_at),
+    publishedAt: published.label,
+    publishedAtIso: published.iso,
+    updatedAtIso: updated.iso,
     views: Number(raw.views ?? raw.view_count ?? 0) || undefined,
   };
 }
@@ -161,6 +215,8 @@ export function toContinueReadingItem(article: UserFeedArticle): UserContinueRea
     title: article.title,
     readTime: article.readTime,
     publishedAt: article.publishedAt,
+    publishedAtIso: article.publishedAtIso,
+    updatedAtIso: article.updatedAtIso,
   };
 }
 
@@ -172,6 +228,7 @@ function parseTags(raw: Record<string, unknown>): string[] {
       if (typeof tag === "string") return tag;
       if (tag && typeof tag === "object") {
         const record = tag as Record<string, unknown>;
+        if (typeof record.slug === "string" && record.slug.trim()) return record.slug;
         if (typeof record.tag === "string") return record.tag;
         if (typeof record.name === "string") return record.name;
         if (typeof record.title === "string") return record.title;
@@ -188,7 +245,9 @@ export function buildTrendingTopicsFromArticles(
 
   for (const row of rows) {
     for (const tag of parseTags(row)) {
-      const label = tag.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      const label = isBreakingNewsTag(tag)
+        ? "Breaking News"
+        : tag.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       counts.set(label, (counts.get(label) ?? 0) + 1);
     }
   }
@@ -204,7 +263,7 @@ export function buildTrendingTopicsFromArticles(
     }));
 }
 
-export async function fetchArticlesByTag(
+async function fetchArticlesByTagSlug(
   tagSlug: string,
   type: TagArticleType = "latest",
 ): Promise<UserFeedArticle[]> {
@@ -218,7 +277,7 @@ export async function fetchArticlesByTag(
     .filter((article): article is UserFeedArticle => article !== null);
 }
 
-export async function fetchArticlesByTagRaw(
+async function fetchArticlesByTagSlugRaw(
   tagSlug: string,
   type: TagArticleType = "latest",
 ): Promise<Record<string, unknown>[]> {
@@ -227,6 +286,30 @@ export async function fetchArticlesByTagRaw(
     params: { type },
   });
   return extractArticleRows(response.data);
+}
+
+export async function fetchArticlesByTag(
+  tagSlug: string,
+  type: TagArticleType = "latest",
+): Promise<UserFeedArticle[]> {
+  const tagSlugs = resolveTagSlugsForFetch(tagSlug);
+  const batches = await Promise.all(
+    tagSlugs.map((slug) => fetchArticlesByTagSlug(slug, type).catch(() => [])),
+  );
+
+  return mergeUniqueArticles(batches.flat());
+}
+
+export async function fetchArticlesByTagRaw(
+  tagSlug: string,
+  type: TagArticleType = "latest",
+): Promise<Record<string, unknown>[]> {
+  const tagSlugs = resolveTagSlugsForFetch(tagSlug);
+  const batches = await Promise.all(
+    tagSlugs.map((slug) => fetchArticlesByTagSlugRaw(slug, type).catch(() => [])),
+  );
+
+  return mergeUniqueArticleRows(batches.flat());
 }
 
 export type TagArticleFeeds = {

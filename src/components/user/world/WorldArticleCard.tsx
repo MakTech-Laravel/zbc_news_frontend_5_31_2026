@@ -16,6 +16,8 @@ function toFeedArticle(article: WorldFeedArticle): UserFeedArticle {
     author: article.author,
     readTime: article.readTime,
     publishedAt: article.publishedAt,
+    publishedAtIso: article.publishedAtIso,
+    updatedAtIso: article.updatedAtIso,
   };
 }
 

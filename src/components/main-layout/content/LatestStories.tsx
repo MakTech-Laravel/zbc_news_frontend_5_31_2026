@@ -4,8 +4,7 @@ import { cn } from "@/lib/utils";
 import { ArticleListItem } from "./ArticleListItem";
 import { request } from "@/api/request";
 import { useEffect, useState } from "react";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
-import { resolveReadTime } from "@/lib/readTime";
+import { mapArticleListItem } from "@/services/frontend/articles";
 
 type LatestStoriesProps = {
   // articles: Article[];
@@ -22,21 +21,11 @@ export function LatestStories({  className }: LatestStoriesProps) {
       try {
         const response = await request.get("/articles/latest-stories");
         const data = response.data.data;
-        setArticles(data.map((article: any) => ({
-          id:          String(article.id),
-          slug:        article.slug,
-          title:       article.title,
-          excerpt:     article.excerpt ?? undefined,
-          imageUrl:    resolveMediaUrl(article.featured_image),
-          category:    article.category?.title ?? "News",
-          author:      article.user?.name ?? "ZBC News",
-          readTime: resolveReadTime(
-            article.read_time,
-            article.article_description,
-            article.excerpt,
-          ),
-          publishedAt: article.published_at ?? "",
-        })));
+        setArticles(
+          data
+            .map((article: unknown) => mapArticleListItem(article))
+            .filter((article: Article | null): article is Article => article !== null),
+        );
       } catch (error) {
         console.error("Failed to fetch latest articles:", error);
       } finally {

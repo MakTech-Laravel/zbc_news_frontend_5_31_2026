@@ -245,7 +245,7 @@ function resolveCategorySeo(body: unknown, fallbackTitle: string) {
   };
 }
 
-function mapApiArticleListItem(raw: unknown): Article | null {
+export function mapArticleListItem(raw: unknown): Article | null {
   if (!raw || typeof raw !== "object") return null;
 
   const record = raw as Record<string, unknown>;
@@ -255,6 +255,7 @@ function mapApiArticleListItem(raw: unknown): Article | null {
   if (id == null || typeof title !== "string" || !title.trim()) return null;
 
   const published = formatPublishedAt(record.published_at ?? record.created_at);
+  const updated = formatPublishedAt(record.updated_at);
   const description =
     typeof record.article_description === "string" ? record.article_description : undefined;
 
@@ -278,6 +279,8 @@ function mapApiArticleListItem(raw: unknown): Article | null {
       typeof record.excerpt === "string" ? record.excerpt : undefined,
     ),
     publishedAt: published.date && published.time ? `${published.date} · ${published.time}` : published.date,
+    publishedAtIso: published.iso || undefined,
+    updatedAtIso: updated.iso || undefined,
     views: Number(record.views ?? record.view_count ?? 0) || undefined,
     tags: parseTags(record.tags),
   };
@@ -329,7 +332,7 @@ function resolveCategoryTitle(body: unknown, fallbackSlug: string): string {
 export async function fetchGridArticles(): Promise<Article[]> {
   const response = await request.get("/articles/grid");
   return extractArticleRows(response.data)
-    .map(mapApiArticleListItem)
+    .map(mapArticleListItem)
     .filter((article): article is Article => article !== null);
 }
 
@@ -345,7 +348,7 @@ export async function fetchArticlesByTag(
   });
 
   return extractArticleRows(response.data)
-    .map(mapApiArticleListItem)
+    .map(mapArticleListItem)
     .filter((article): article is Article => article !== null);
 }
 
@@ -360,7 +363,7 @@ export async function fetchMostReadArticles(): Promise<Article[]> {
       .get("/articles/most-read")
       .then((response) =>
         extractArticleRows(response.data)
-          .map(mapApiArticleListItem)
+          .map(mapArticleListItem)
           .filter((article): article is Article => article !== null),
       )
       .then((articles) => {
@@ -387,7 +390,7 @@ export async function fetchArticlesByCategory(
   const body = response.data;
 
   const articles = extractArticleRows(body)
-    .map(mapApiArticleListItem)
+    .map(mapArticleListItem)
     .filter((article): article is Article => article !== null);
 
   const payload = (body as { data?: Record<string, unknown> })?.data ?? body;
@@ -410,7 +413,7 @@ export async function fetchRelatedArticles(slug: string): Promise<Article[]> {
   const body = response.data;
 
   return extractArticleRows(body)
-    .map(mapApiArticleListItem)
+    .map(mapArticleListItem)
     .filter((article): article is Article => article !== null);
 }
 

@@ -6,7 +6,7 @@ export type PublishDateParts = {
   combined: string;
 };
 
-function parsePublishDate(value: unknown): Date | null {
+export function parsePublishDate(value: unknown): Date | null {
   if (value instanceof Date) {
     return Number.isNaN(value.getTime()) ? null : value;
   }

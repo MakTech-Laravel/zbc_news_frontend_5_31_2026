@@ -9,6 +9,45 @@ type AdminPaginationProps = {
   className?: string;
 };
 
+type PaginationItem = number | "ellipsis";
+
+function buildPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
+  if (totalPages <= 0) return [];
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  let start: number;
+  let end: number;
+
+  if (currentPage <= 3) {
+    start = 1;
+    end = 3;
+  } else if (currentPage >= totalPages - 2) {
+    start = totalPages - 2;
+    end = totalPages;
+  } else {
+    start = currentPage - 1;
+    end = currentPage + 1;
+  }
+
+  const items: PaginationItem[] = [];
+
+  if (start > 1) {
+    items.push("ellipsis");
+  }
+
+  for (let pageNumber = start; pageNumber <= end; pageNumber += 1) {
+    items.push(pageNumber);
+  }
+
+  if (end < totalPages) {
+    items.push("ellipsis");
+  }
+
+  return items;
+}
+
 function pageButtonClass(active: boolean, disabled?: boolean) {
   return cn(
     "inline-flex h-[42px] min-w-[38px] items-center justify-center rounded-[10px] border border-admin-input-border px-3 text-base font-medium transition-colors",
@@ -30,8 +69,7 @@ export function AdminPagination({
   const end = Math.min(page * pageSize, totalItems);
   const canPrev = page > 1;
   const canNext = page < totalPages;
-
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, 5);
+  const pages = buildPaginationItems(page, totalPages);
 
   return (
     <div
@@ -54,17 +92,27 @@ export function AdminPagination({
           Previous
         </button>
 
-        {pages.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => onPageChange(p)}
-            className={pageButtonClass(p === page)}
-            aria-current={p === page ? "page" : undefined}
-          >
-            {p}
-          </button>
-        ))}
+        {pages.map((item, index) =>
+          item === "ellipsis" ? (
+            <span
+              key={`ellipsis-${index}`}
+              className="inline-flex h-[42px] min-w-[38px] items-center justify-center px-1 text-base font-medium text-admin-label"
+              aria-hidden
+            >
+              ...
+            </span>
+          ) : (
+            <button
+              key={item}
+              type="button"
+              onClick={() => onPageChange(item)}
+              className={pageButtonClass(item === page)}
+              aria-current={item === page ? "page" : undefined}
+            >
+              {item}
+            </button>
+          ),
+        )}
 
         <button
           type="button"

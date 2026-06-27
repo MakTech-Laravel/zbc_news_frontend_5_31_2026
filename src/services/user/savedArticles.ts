@@ -1,5 +1,6 @@
 import { api } from "@/api/client";
 import { toggleArticleSave } from "@/services/user/articleSave";
+import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 import type { SavedArticlesQuery, UserCategoryFilter, UserFeedArticle } from "@/types/user";
 
@@ -99,15 +100,15 @@ function resolveAuthor(article: Record<string, unknown>): string {
   return "ZBC News";
 }
 
-function formatPublishedAt(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function formatPublishedAt(value: unknown): {
+  label: string;
+  iso?: string;
+} {
+  const parts = formatPublishDate(value);
+  return {
+    label: parts.combined || parts.date,
+    iso: parts.iso || undefined,
+  };
 }
 
 function mapToUserFeedArticle(
@@ -118,6 +119,11 @@ function mapToUserFeedArticle(
     saveRecord.saved_at ?? saveRecord.created_at ?? saveRecord.updated_at ?? "";
   const { label: category, slug: categorySlug } = resolveCategory(article);
   const articleId = article.id ?? saveRecord.article_id;
+
+  const published = formatPublishedAt(
+    article.published_at ?? article.created_at ?? savedAt,
+  );
+  const updated = formatPublishedAt(article.updated_at);
 
   return {
     id: String(articleId),
@@ -139,9 +145,9 @@ function mapToUserFeedArticle(
       typeof article.article_description === "string" ? article.article_description : undefined,
       typeof article.excerpt === "string" ? article.excerpt : undefined,
     ),
-    publishedAt: formatPublishedAt(
-      article.published_at ?? article.created_at ?? savedAt,
-    ),
+    publishedAt: published.label,
+    publishedAtIso: published.iso,
+    updatedAtIso: updated.iso,
     savedAt,
     views: Number(article.views ?? article.view_count ?? article.views_count ?? 0) || undefined,
   };

@@ -100,6 +100,9 @@ export function FeaturedSection() {
               author={topArticle.author}
               readTime={topArticle.readTime}
               views={topArticle.views}
+              publishedAt={topArticle.publishedAt}
+              publishedAtIso={topArticle.publishedAtIso}
+              updatedAtIso={topArticle.updatedAtIso}
             />
           </div>
         </div>

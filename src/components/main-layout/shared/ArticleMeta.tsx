@@ -1,11 +1,17 @@
 import { cn } from "@/lib/utils";
+import { formatCount } from "@/utils/format";
 import { EyeIcon } from "lucide-react";
+
+import { FreshnessIndicator } from "@/components/main-layout/shared/FreshnessIndicator";
+import { getArticleFreshnessIso } from "@/lib/relativeTime";
 
 type ArticleMetaProps = {
   author: string;
   readTime: string;
   views?: number;
   publishedAt?: string;
+  publishedAtIso?: string;
+  updatedAtIso?: string;
   className?: string;
   light?: boolean;
   /** Hide views on screens below `sm` (Latest Stories list on mobile). */
@@ -16,10 +22,15 @@ export function ArticleMeta({
   author,
   readTime,
   views,
+  publishedAt,
+  publishedAtIso,
+  updatedAtIso,
   className,
   light = false,
   hideViewsBelowSm = false,
 }: ArticleMetaProps) {
+  const freshnessIso = getArticleFreshnessIso({ publishedAtIso, updatedAtIso });
+
   return (
     <div
       className={cn(
@@ -33,6 +44,17 @@ export function ArticleMeta({
       <span>{author}</span>
       <span aria-hidden> · </span>
       <span>{readTime}</span>
+      {freshnessIso ? (
+        <>
+          <span aria-hidden> · </span>
+          <FreshnessIndicator dateTime={freshnessIso} fallback={publishedAt} />
+        </>
+      ) : publishedAt ? (
+        <>
+          <span aria-hidden> · </span>
+          <span>{publishedAt}</span>
+        </>
+      ) : null}
       {views != null ? (
         <>
           <span aria-hidden className={cn(hideViewsBelowSm && "hidden sm:inline")}>
@@ -46,7 +68,7 @@ export function ArticleMeta({
             )}
           >
             <EyeIcon className="size-4 shrink-0" aria-hidden />
-            {views} K
+            {formatCount(views)}
           </span>
         </>
       ) : null}

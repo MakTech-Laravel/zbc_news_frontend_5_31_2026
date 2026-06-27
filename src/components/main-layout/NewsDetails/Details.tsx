@@ -77,6 +77,10 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
     url: getArticlePageUrl(article.slug),
     type: "article",
     publishedAt: article.publishedAtIso || undefined,
+    modifiedAt:
+      article.showUpdated && article.updatedAtIso
+        ? article.updatedAtIso
+        : undefined,
   });
 
   useEffect(() => {

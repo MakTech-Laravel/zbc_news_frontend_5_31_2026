@@ -50,6 +50,7 @@ import type { ArticleStatus } from "@/data/admin/mockArticles";
 import { isFutureDatetimeLocal, toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveArticleTagsFromRecord } from "@/lib/articleTags";
 
 type AdminArticleEditorPageProps = {
   mode: "create" | "edit";
@@ -145,26 +146,6 @@ type ArticleFormInputValues = z.input<typeof articleFormSchema>;
 //   return match?.label ?? "Unknown author";
 // }
 
-function parseTags(raw: unknown): string[] {
-  if (Array.isArray(raw)) {
-    return raw
-      .map((tag) => {
-        if (typeof tag === "string") return tag;
-        if (tag && typeof tag === "object") {
-          const record = tag as Record<string, unknown>;
-          if (typeof record.name === "string") return record.name;
-          if (typeof record.title === "string") return record.title;
-        }
-        return "";
-      })
-      .filter(Boolean);
-  }
-  if (typeof raw === "string" && raw.trim()) {
-    return raw.split(",").map((tag) => tag.trim()).filter(Boolean);
-  }
-  return [];
-}
-
 function resolveCategoryId(raw: Record<string, unknown>): string {
   if (typeof raw.article_category_id === "string" || typeof raw.article_category_id === "number") {
     return String(raw.article_category_id);
@@ -225,7 +206,7 @@ function mapArticleToFormValues(raw: unknown): ArticleFormInputValues {
     status: normalizeArticleStatus(record.status),
     visibility: normalizeArticleVisibility(record.visibility),
     article_category_id: resolveCategoryId(record),
-    tags: parseTags(record.tags),
+    tags: resolveArticleTagsFromRecord(record),
     excerpt: typeof record.excerpt === "string" ? record.excerpt : "",
     meta_title:
       typeof record.seo_title === "string"

@@ -3,6 +3,7 @@ import { ChartNoAxesColumn, Eye } from "lucide-react";
 
 import { SidebarCard } from "@/components/main-layout/shared/SidebarCard";
 import { useMostReadArticles } from "@/hooks/useMostReadArticles";
+import { formatCount } from "@/utils/format";
 
 export function MostReadCard() {
   const { articles, loading } = useMostReadArticles();
@@ -41,7 +42,7 @@ export function MostReadCard() {
                 <span className="mt-1 flex items-center gap-1">
                   <Eye className="size-4 text-zbc-gray-500" />
                   <span className="font-inter text-xs text-zbc-gray-500">
-                    {article.views?.toLocaleString() ?? 0}
+                    {formatCount(article.views ?? 0)}
                   </span>
                 </span>
               </div>

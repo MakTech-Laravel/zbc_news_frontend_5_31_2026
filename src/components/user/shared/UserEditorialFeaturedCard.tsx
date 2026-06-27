@@ -2,8 +2,10 @@ import { Clock, Quote } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
+import { FreshnessIndicator } from "@/components/main-layout/shared/FreshnessIndicator";
 import { UserCategoryBadge } from "@/components/user/dashboard/UserCategoryBadge";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
+import { getArticleFreshnessIso } from "@/lib/relativeTime";
 
 type UserEditorialFeaturedCardProps = {
   category: string;
@@ -12,6 +14,8 @@ type UserEditorialFeaturedCardProps = {
   author: string;
   readTime: string;
   publishedAt: string;
+  publishedAtIso?: string;
+  updatedAtIso?: string;
   slug?: string;
   imageUrl?: string;
 };
@@ -23,10 +27,13 @@ export function UserEditorialFeaturedCard({
   author,
   readTime,
   publishedAt,
+  publishedAtIso,
+  updatedAtIso,
   slug,
   imageUrl,
 }: UserEditorialFeaturedCardProps) {
   const articleHref = slug ? `/news-details/${encodeURIComponent(slug)}` : undefined;
+  const freshnessIso = getArticleFreshnessIso({ publishedAtIso, updatedAtIso });
 
   return (
     <UserDashboardCard>
@@ -56,7 +63,16 @@ export function UserEditorialFeaturedCard({
                 {readTime}
               </span>
               <span>·</span>
-              <span>{publishedAt}</span>
+              <span>
+                {freshnessIso ? (
+                  <FreshnessIndicator
+                    dateTime={freshnessIso}
+                    fallback={publishedAt}
+                  />
+                ) : (
+                  publishedAt
+                )}
+              </span>
             </p>
             <ArticleShareButton
               slug={slug}

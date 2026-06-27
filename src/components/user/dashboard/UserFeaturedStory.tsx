@@ -10,6 +10,7 @@ import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard
 import { userFeaturedStory } from "@/data/dummy/userDashboard";
 import type { UserFeaturedStoryData } from "@/services/user/tagArticles";
 import { cn } from "@/lib/utils";
+import { formatCount } from "@/utils/format";
 
 function IconActionButton({
   label,
@@ -101,7 +102,7 @@ export function UserFeaturedStory({ story }: UserFeaturedStoryProps) {
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Eye className="size-4" aria-hidden />
-                {displayStory.views.toLocaleString()}
+                {formatCount(displayStory.views)}
               </span>
             </div>
             <div className="flex items-center gap-2">
