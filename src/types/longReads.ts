@@ -1,3 +1,5 @@
+import { formatCount } from "@/utils/format";
+
 export type LongReadTab = "all" | "most-read";
 
 export type LongReadArticle = {
@@ -29,7 +31,7 @@ export type LongReadLengthFilter = {
 };
 
 export function formatViewCount(views: number): string {
-  return `${views.toLocaleString()} views`;
+  return `${formatCount(views)} views`;
 }
 
 export function filterLongReadArticles(

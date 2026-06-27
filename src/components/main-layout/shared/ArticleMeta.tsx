@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { formatCount } from "@/utils/format";
 import { EyeIcon } from "lucide-react";
 
 import { FreshnessIndicator } from "@/components/main-layout/shared/FreshnessIndicator";
@@ -67,7 +68,7 @@ export function ArticleMeta({
             )}
           >
             <EyeIcon className="size-4 shrink-0" aria-hidden />
-            {views} K
+            {formatCount(views)}
           </span>
         </>
       ) : null}

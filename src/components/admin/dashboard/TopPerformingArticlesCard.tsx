@@ -6,6 +6,7 @@ import {
 } from "@/components/admin/shared/AdminStatusBadge";
 import { cn } from "@/lib/utils";
 import type { AdminTopArticle } from "@/services/admin/dashboard";
+import { formatCount } from "@/utils/format";
 
 type TopPerformingArticlesCardProps = {
   articles?: AdminTopArticle[];
@@ -21,7 +22,7 @@ export function TopPerformingArticlesCard({ articles = [] }: TopPerformingArticl
           const TrendIcon = article.trend === "down" ? TrendingDown : TrendingUp;
           const viewsLabel =
             typeof article.views === "number"
-              ? `${article.views.toLocaleString()} views`
+              ? `${formatCount(article.views)} views`
               : article.views;
           return (
             <li

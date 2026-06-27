@@ -5,6 +5,7 @@ import { ArticleSaveButton } from "@/components/articles/ArticleSaveButton";
 import { UserCategoryBadge } from "@/components/user/dashboard/UserCategoryBadge";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
 import type { UserFeaturedStoryData } from "@/services/user/tagArticles";
+import { formatCount } from "@/utils/format";
 
 export type HeroStory = {
   id?: string;
@@ -77,7 +78,7 @@ export function UserHeroStoryCard({ story, loading = false }: UserHeroStoryCardP
             {story.views !== undefined ? (
               <span className="inline-flex items-center gap-1.5">
                 <Eye className="size-4" aria-hidden />
-                {story.views.toLocaleString()}
+                {formatCount(story.views)}
               </span>
             ) : null}
           </div>
