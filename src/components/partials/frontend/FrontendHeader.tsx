@@ -10,6 +10,7 @@ import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
 import { UserNotificationsDropdown } from "@/components/user/shared/UserNotificationsDropdown";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { formatPublishDate } from "@/lib/publishDate";
 import { request } from "@/api/request";
 import { fetchQuickLinks, type QuickLink } from "@/services/frontend/navigation";
 
@@ -90,25 +91,25 @@ function useQuickLinks() {
   return links;
 }
 
-const BREAKING_ITEMS = [
-  {
-    headline: "Climate Accord in Brussels — Statement Expected 14:00 CET",
-    time: "9:28 AM",
-  },
-  {
-    headline:
-      "Dow Jones surges 847 points as Federal Reserve signals rate pause through Q3 2026",
-    time: "9:12 AM",
-  },
-  {
-    headline: "Ceasefire negotiations resume in Geneva as UN envoy arrives",
-    time: "8:55 AM",
-  },
-  {
-    headline: "Tech giants announce joint AI safety framework ahead of summit",
-    time: "8:41 AM",
-  },
-];
+// const BREAKING_ITEMS = [
+//   {
+//     headline: "Climate Accord in Brussels — Statement Expected 14:00 CET",
+//     time: "9:28 AM",
+//   },
+//   {
+//     headline:
+//       "Dow Jones surges 847 points as Federal Reserve signals rate pause through Q3 2026",
+//     time: "9:12 AM",
+//   },
+//   {
+//     headline: "Ceasefire negotiations resume in Geneva as UN envoy arrives",
+//     time: "8:55 AM",
+//   },
+//   {
+//     headline: "Tech giants announce joint AI safety framework ahead of summit",
+//     time: "8:41 AM",
+//   },
+// ];
 
 const FALLBACK_LOGO = "/images/home/logo.png";
 
@@ -139,10 +140,26 @@ function BrandLogo({ compact }: { compact?: boolean }) {
 }
 
 function BreakingNewsTicker() {
-  const items = [...BREAKING_ITEMS, ...BREAKING_ITEMS];
+
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchBreakingNews = async () => {
+      try {
+        const response = await request.get("/articles/breaking");
+        setItems(response.data.data);
+      } catch (error) {
+        console.error("Failed to fetch breaking news:", error);
+      }
+    };
+
+    fetchBreakingNews();
+  }, []);
+
+  const tickerItems = items.length > 0 ? [...items, ...items] : items;
 
   return (
-    <div className="hidden bg-zbc-breaking text-primary-foreground md:block" aria-label="Breaking news">
+    <div className="bg-zbc-breaking text-primary-foreground" aria-label="Breaking news">
       <div className="mx-auto flex h-9 w-full container items-center gap-2.5 overflow-hidden px-4 sm:gap-3">
         <span className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-zbc-breaking-dark px-2 py-[3px] font-sans text-[12px] font-bold uppercase leading-none tracking-[0.06em] sm:text-[11px]">
           <Zap className="size-3 fill-current sm:size-3.5" aria-hidden />
@@ -151,18 +168,21 @@ function BreakingNewsTicker() {
         <div className="relative min-w-0 flex-1 overflow-hidden" aria-live="polite">
           <div
             className="flex w-max items-center gap-5 whitespace-nowrap font-sans text-[12px] leading-none motion-reduce:animate-none sm:gap-6 sm:text-[13px]"
-            style={{ animation: "news-ticker 50s linear infinite" }}
+            style={{ animation: "news-ticker 10s linear infinite" }}
           >
-            {items.map((item, index) => (
+            {tickerItems.map((item, index) => (
               <span
-                key={`${item.headline}-${index}`}
+                key={`${item.title}-${index}`}
                 className="inline-flex items-center gap-2"
               >
-                <span>{item.headline}</span>
+                <span>{item.title}</span>
                 <span className="text-white/60" aria-hidden>
                   •
                 </span>
-                <span className="font-medium text-white/90">{item.time}</span>
+                <span className="font-medium text-white/90">
+                  {formatPublishDate(item.published_at ?? item.created_at).time ||
+                    item.created_at}
+                </span>
               </span>
             ))}
           </div>
