@@ -40,6 +40,8 @@ export function mapArticleToUserFeed(article: Article): UserFeedArticle {
     author: article.author || "Editorial Team",
     readTime: resolveReadTime(article.readTime, article.excerpt),
     publishedAt: article.publishedAt || "Recently",
+    publishedAtIso: article.publishedAtIso,
+    updatedAtIso: article.updatedAtIso,
     views: article.views,
     imageUrl: article.imageUrl,
   };

@@ -41,6 +41,9 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
             author={article.author}
             readTime={article.readTime}
             views={article.views}
+            publishedAt={article.publishedAt}
+            publishedAtIso={article.publishedAtIso}
+            updatedAtIso={article.updatedAtIso}
           />
         </div>
       </Link>

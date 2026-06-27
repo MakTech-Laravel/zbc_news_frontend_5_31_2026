@@ -6,6 +6,8 @@ export type UserFeedArticle = {
   author: string;
   readTime: string;
   publishedAt: string;
+  publishedAtIso?: string;
+  updatedAtIso?: string;
   views?: number;
   slug?: string;
   imageUrl?: string;
@@ -21,6 +23,8 @@ export type UserContinueReadingItem = {
   title: string;
   readTime: string;
   publishedAt: string;
+  publishedAtIso?: string;
+  updatedAtIso?: string;
 };
 
 export type UserTrendingTopic = {

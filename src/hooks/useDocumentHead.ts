@@ -20,6 +20,8 @@ type DocumentHeadOptions = {
   type?: string;
   /** ISO 8601 publish date for article pages. */
   publishedAt?: string;
+  /** ISO 8601 modified date for article pages. */
+  modifiedAt?: string;
 };
 
 function applyReplacements(value: string, replacements: Record<string, string>) {
@@ -197,6 +199,9 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
     if (options.publishedAt) {
       upsertMeta("article:published_time", options.publishedAt, "property");
     }
+    if (options.modifiedAt) {
+      upsertMeta("article:modified_time", options.modifiedAt, "property");
+    }
 
     upsertMeta("twitter:card", twitterCard);
     upsertMeta("twitter:title", pageTitle);
@@ -211,6 +216,7 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
     options.keywords,
     options.path,
     options.publishedAt,
+    options.modifiedAt,
     options.replacements,
     options.title,
     options.type,

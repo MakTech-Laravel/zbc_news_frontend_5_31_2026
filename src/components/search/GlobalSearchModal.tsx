@@ -3,6 +3,7 @@ import { Clock, History, Loader2, Newspaper, Search, Trash2 } from "lucide-react
 import { Link } from "react-router-dom";
 
 import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
+import { FreshnessIndicator } from "@/components/main-layout/shared/FreshnessIndicator";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
+import { getArticleFreshnessIso } from "@/lib/relativeTime";
 import { cn } from "@/lib/utils";
 
 type GlobalSearchModalProps = {
@@ -180,7 +182,10 @@ export function GlobalSearchModal({
                 </p>
               ) : (
                 <ul className="space-y-2">
-                  {results.map((article) => (
+                  {results.map((article) => {
+                    const freshnessIso = getArticleFreshnessIso(article);
+
+                    return (
                     <li key={article.id}>
                       <Link
                         to={
@@ -218,13 +223,21 @@ export function GlobalSearchModal({
                             </p>
                           ) : null}
                           <p className="mt-2 font-sans text-[11px] text-muted-foreground">
-                            {article.publishedAt}
+                            {freshnessIso ? (
+                              <FreshnessIndicator
+                                dateTime={freshnessIso}
+                                fallback={article.publishedAt}
+                              />
+                            ) : (
+                              article.publishedAt
+                            )}
                             {article.readTime ? ` · ${article.readTime}` : ""}
                           </p>
                         </div>
                       </Link>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </section>

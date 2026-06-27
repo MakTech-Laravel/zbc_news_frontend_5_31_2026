@@ -4,10 +4,9 @@ import { Link } from "react-router-dom";
 import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import type { Article } from "@/data/dummy/types";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
-import { resolveReadTime } from "@/lib/readTime";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
+import { mapArticleListItem } from "@/services/frontend/articles";
 
 type HeroSectionProps = {
   className?: string;
@@ -22,22 +21,7 @@ export function HeroSection({ className }: HeroSectionProps) {
       try {
         const response = await request.get("/articles/latest");
         const data = response.data.data;
-
-        setArticle({
-          id:          String(data.id),
-          slug:        data.slug,
-          title:       data.title,
-          excerpt:     data.excerpt ?? undefined,
-          imageUrl:    resolveMediaUrl(data.featured_image),
-          category:    data.category?.title ?? "News",
-          author:      data.user?.name ?? "ZBC News",
-          readTime: resolveReadTime(
-            data.read_time,
-            data.article_description,
-            data.excerpt,
-          ),
-          publishedAt: data.published_at ?? "",
-        });
+        setArticle(mapArticleListItem(data));
       } catch (error) {
         console.error("Failed to fetch latest article:", error);
       } finally {

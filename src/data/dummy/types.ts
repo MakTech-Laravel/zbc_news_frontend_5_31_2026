@@ -7,7 +7,10 @@ export type Article = {
   imageUrl: string;
   author: string;
   readTime: string;
+  /** Formatted publish date/time for display fallback. */
   publishedAt: string;
+  publishedAtIso?: string;
+  updatedAtIso?: string;
   views?: number;
   tags?: string[];
 };

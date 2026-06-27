@@ -1,12 +1,14 @@
 import { BookMarked, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { FreshnessIndicator } from "@/components/main-layout/shared/FreshnessIndicator";
 import { UserCategoryBadge } from "@/components/user/dashboard/UserCategoryBadge";
 import {
   UserDashboardCard,
   UserDashboardCardHeader,
 } from "@/components/user/dashboard/UserDashboardCard";
 import { userContinueReading, type UserContinueReadingItem } from "@/data/dummy/userDashboard";
+import { getArticleFreshnessIso } from "@/lib/relativeTime";
 
 type UserContinueReadingProps = {
   items?: UserContinueReadingItem[];
@@ -27,7 +29,10 @@ export function UserContinueReading({ items }: UserContinueReadingProps) {
         </p>
       ) : (
         <div className="space-y-3 p-4 sm:p-6">
-          {displayItems.map((item) => (
+          {displayItems.map((item) => {
+            const freshnessIso = getArticleFreshnessIso(item);
+
+            return (
             <Link
               key={item.id}
               to={
@@ -45,10 +50,18 @@ export function UserContinueReading({ items }: UserContinueReadingProps) {
                 <Clock className="size-3 shrink-0" aria-hidden />
                 {item.readTime}
                 <span aria-hidden>·</span>
-                {item.publishedAt}
+                {freshnessIso ? (
+                  <FreshnessIndicator
+                    dateTime={freshnessIso}
+                    fallback={item.publishedAt}
+                  />
+                ) : (
+                  item.publishedAt
+                )}
               </p>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </UserDashboardCard>

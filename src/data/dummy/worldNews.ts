@@ -21,6 +21,8 @@ export type WorldFeedArticle = {
   author: string;
   readTime: string;
   publishedAt: string;
+  publishedAtIso?: string;
+  updatedAtIso?: string;
 };
 
 export const worldRegionTabs: { id: WorldRegionId; label: string }[] = [

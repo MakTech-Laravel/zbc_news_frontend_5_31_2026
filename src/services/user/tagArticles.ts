@@ -1,7 +1,11 @@
 import { api } from "@/api/client";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 import type { UserFeedArticle } from "@/types/user";
+import type { UserContinueReadingItem } from "@/data/dummy/userDashboard";
+
+export type { UserContinueReadingItem };
 
 export const BREAKING_NEWS_TAG_SLUG = "breaking-news";
 export const WORLD_NEWS_TAG_SLUG = "world";
@@ -19,15 +23,6 @@ export type UserFeaturedStoryData = {
   imageUrl: string;
 };
 
-export type UserContinueReadingItem = {
-  id: string;
-  slug?: string;
-  category: string;
-  title: string;
-  readTime: string;
-  publishedAt: string;
-};
-
 export type UserTrendingTopic = {
   id: string;
   rank: number;
@@ -35,15 +30,15 @@ export type UserTrendingTopic = {
   count: number;
 };
 
-function formatPublishedAt(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function formatPublishedAt(value: unknown): {
+  label: string;
+  iso?: string;
+} {
+  const parts = formatPublishDate(value);
+  return {
+    label: parts.combined || parts.date,
+    iso: parts.iso || undefined,
+  };
 }
 
 function resolveCategoryLabel(raw: Record<string, unknown>): string {
@@ -118,6 +113,9 @@ function mapToUserFeedArticle(raw: Record<string, unknown>): UserFeedArticle | n
   const title = raw.title;
   if (id == null || typeof title !== "string" || !title.trim()) return null;
 
+  const published = formatPublishedAt(raw.published_at ?? raw.created_at);
+  const updated = formatPublishedAt(raw.updated_at);
+
   return {
     id: String(id),
     slug: typeof raw.slug === "string" ? raw.slug : undefined,
@@ -130,7 +128,9 @@ function mapToUserFeedArticle(raw: Record<string, unknown>): UserFeedArticle | n
       typeof raw.article_description === "string" ? raw.article_description : undefined,
       resolveExcerpt(raw),
     ),
-    publishedAt: formatPublishedAt(raw.published_at ?? raw.created_at),
+    publishedAt: published.label,
+    publishedAtIso: published.iso,
+    updatedAtIso: updated.iso,
     views: Number(raw.views ?? raw.view_count ?? 0) || undefined,
   };
 }
@@ -161,6 +161,8 @@ export function toContinueReadingItem(article: UserFeedArticle): UserContinueRea
     title: article.title,
     readTime: article.readTime,
     publishedAt: article.publishedAt,
+    publishedAtIso: article.publishedAtIso,
+    updatedAtIso: article.updatedAtIso,
   };
 }
 

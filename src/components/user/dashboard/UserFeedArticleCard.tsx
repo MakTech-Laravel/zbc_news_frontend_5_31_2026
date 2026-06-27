@@ -4,9 +4,11 @@ import { Link } from "react-router-dom";
 
 import { ArticleSaveButton } from "@/components/articles/ArticleSaveButton";
 import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
+import { FreshnessIndicator } from "@/components/main-layout/shared/FreshnessIndicator";
 import { UserCategoryBadge } from "@/components/user/dashboard/UserCategoryBadge";
 import { UserDashboardCard } from "@/components/user/dashboard/UserDashboardCard";
 import type { UserFeedArticle } from "@/types/user";
+import { getArticleFreshnessIso } from "@/lib/relativeTime";
 import { cn } from "@/lib/utils";
 
 export type UserFeedArticleCardDensity = "default" | "compact";
@@ -27,6 +29,7 @@ function UserFeedArticleCardComponent({
   const articleHref =
     href ?? (article.slug ? `/news-details/${encodeURIComponent(article.slug)}` : "/news-details");
   const isCompact = density === "compact";
+  const freshnessIso = getArticleFreshnessIso(article);
 
   return (
     <UserDashboardCard className={className}>
@@ -36,7 +39,16 @@ function UserFeedArticleCardComponent({
             label={article.category}
             className="bg-zbc-gray-200 py-0.5 font-inter text-xs font-medium text-zbc-gray-1000"
           />
-          <span className="text-xs text-admin-label">{article.publishedAt}</span>
+          <span className="text-xs text-admin-label">
+            {freshnessIso ? (
+              <FreshnessIndicator
+                dateTime={freshnessIso}
+                fallback={article.publishedAt}
+              />
+            ) : (
+              article.publishedAt
+            )}
+          </span>
         </div>
 
         <Link

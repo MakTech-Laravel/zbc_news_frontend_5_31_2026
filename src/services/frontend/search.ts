@@ -12,6 +12,8 @@ export type SearchResultItem = {
   category: string;
   imageUrl: string;
   publishedAt: string;
+  publishedAtIso?: string;
+  updatedAtIso?: string;
   readTime: string;
 };
 
@@ -31,9 +33,15 @@ function resolveCategoryLabel(raw: Record<string, unknown>): string {
   return "News";
 }
 
-function formatPublishedAt(value: unknown): string {
+function formatPublishedAt(value: unknown): {
+  label: string;
+  iso?: string;
+} {
   const parts = formatPublishDate(value);
-  return parts.combined || "";
+  return {
+    label: parts.combined || parts.date,
+    iso: parts.iso || undefined,
+  };
 }
 
 function mapSearchResult(raw: unknown): SearchResultItem | null {
@@ -42,6 +50,9 @@ function mapSearchResult(raw: unknown): SearchResultItem | null {
   const id = record.id;
   const title = record.title;
   if (id == null || typeof title !== "string" || !title.trim()) return null;
+
+  const published = formatPublishedAt(record.published_at ?? record.created_at);
+  const updated = formatPublishedAt(record.updated_at);
 
   return {
     id: String(id),
@@ -55,7 +66,9 @@ function mapSearchResult(raw: unknown): SearchResultItem | null {
           : "",
     category: resolveCategoryLabel(record),
     imageUrl: resolveArticleImageUrl(record),
-    publishedAt: formatPublishedAt(record.published_at ?? record.created_at),
+    publishedAt: published.label,
+    publishedAtIso: published.iso,
+    updatedAtIso: updated.iso,
     readTime: resolveReadTime(
       record.read_time,
       typeof record.article_description === "string" ? record.article_description : undefined,
