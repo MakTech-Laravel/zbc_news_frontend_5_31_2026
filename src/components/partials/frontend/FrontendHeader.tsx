@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { BarChart3, Clock, LogIn, LogOut, Menu, Radio, Search, Settings, Star, TrendingUp, User, X, Zap } from "lucide-react";
 
 import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogPortal,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
@@ -416,69 +423,66 @@ function MobileMenu() {
   const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
 
-  function close() {
-    setOpen(false);
-  }
-
   useEffect(() => {
-    close();
+    setOpen(false);
   }, [location.pathname]);
 
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
   return (
-    <div className="md:hidden">
-
-    {!open && (
-      <Button
-        type="button"
-        variant="ghost"
-        className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted"
-        aria-label="Open menu"
-        onClick={() => setOpen(true)}
-      >
-        <Menu className="size-5" />
-      </Button>
-    )}
-
-      {open ? (
-        <>
-        <div className="fixed top-0 inset-x-0 z-[70] overflow-y-auto border-t border-border bg-background shadow-lg">
-          {/* Close button — right side */}
-          <div className="flex justify-end p-4 pb-0">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogPrimitive.Trigger asChild>
         <Button
           type="button"
           variant="ghost"
-          className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted"
-          aria-label="Close menu"
-          onClick={close}
+          className="size-9 shrink-0 rounded-lg p-0 text-foreground bg-zbc-gray-100 hover:bg-muted md:hidden"
+          aria-label="Open menu"
         >
-          <X className="size-5" />
+          <Menu className="size-5" />
         </Button>
-      </div>
+      </DialogPrimitive.Trigger>
 
-            <div className="space-y-4 p-4">
-              {/* <SearchField /> */}
-              {/* <NotificationButton className="block md:hidden" /> */}
-              
+      <DialogPortal>
+        <DialogPrimitive.Overlay
+          className={cn(
+            "fixed inset-0 z-[100] bg-black/50",
+            "data-[state=open]:mobile-menu-overlay-in data-[state=closed]:mobile-menu-overlay-out",
+          )}
+        />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed inset-y-0 left-0 z-[101] flex w-[min(calc(100vw-3rem),20rem)] flex-col bg-background shadow-2xl outline-none",
+            "border-r border-border will-change-transform",
+            "data-[state=open]:mobile-menu-drawer-in data-[state=closed]:mobile-menu-drawer-out",
+          )}
+        >
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+            <DialogTitle className="font-heading text-base font-semibold text-foreground">
+              Menu
+            </DialogTitle>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-lg bg-zbc-gray-100 hover:bg-muted"
+                aria-label="Close menu"
+              >
+                <X className="size-5" />
+              </Button>
+            </DialogClose>
+          </div>
 
-              <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
-                {navItems.map((item) => {
-                  const isActive =
-                    location.pathname === item.to ||
-                    (item.to === "/" && location.pathname === "/");
-                  return (
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+            <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
+              {navItems.map((item) => {
+                const isActive =
+                  location.pathname === item.to ||
+                  (item.to === "/" && location.pathname === "/");
+                return (
+                  <DialogClose asChild key={item.id}>
                     <Link
-                      key={item.id}
                       to={item.to}
-                      onClick={close}
                       className={cn(
-                        "rounded-lg px-3 py-2.5 font-sans text-[14px] font-medium",
+                        "rounded-lg px-3 py-2.5 font-sans text-[14px] font-medium transition-colors",
                         isActive
                           ? "bg-accent text-primary"
                           : "text-foreground hover:bg-muted",
@@ -486,76 +490,80 @@ function MobileMenu() {
                     >
                       {item.label}
                     </Link>
-                  );
-                })}
-              </nav>
+                  </DialogClose>
+                );
+              })}
+            </nav>
 
-              <nav
-                className="flex flex-col gap-0.5 border-t border-border pt-3"
-                aria-label="Quick links"
-              >
-                {quickLinks.map(({ id, label, url, icon }) => {
-                  const Icon = icon ? (quickLinkIconMap[icon] ?? TrendingUp) : TrendingUp;
-                  return (
-                  <Link
-                    key={id}
-                    to={url || "/"}
-                    onClick={close}
-                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <Icon className="size-4" aria-hidden />
-                    {label}
-                  </Link>
-                  );
-                })}
-              </nav>
+            <nav
+              className="flex flex-col gap-0.5 border-t border-border pt-3"
+              aria-label="Quick links"
+            >
+              {quickLinks.map(({ id, label, url, icon }) => {
+                const Icon = icon ? (quickLinkIconMap[icon] ?? TrendingUp) : TrendingUp;
+                return (
+                  <DialogClose asChild key={id}>
+                    <Link
+                      to={url || "/"}
+                      className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <Icon className="size-4" aria-hidden />
+                      {label}
+                    </Link>
+                  </DialogClose>
+                );
+              })}
+            </nav>
 
-              <div className="flex items-center gap-1.5 border-t border-border pt-3 font-sans text-[12px] text-muted-foreground">
-                <Clock className="size-3.5" aria-hidden />
-                <LiveDateTimeMobile />
-              </div>
+            <div className="flex items-center gap-1.5 border-t border-border pt-3 font-sans text-[12px] text-muted-foreground">
+              <Clock className="size-3.5" aria-hidden />
+              <LiveDateTimeMobile />
+            </div>
 
-              <div className="border-t border-border pt-3">
-                {isAuthenticated ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between px-1">
-                      <p className="text-[11px] uppercase tracking-wide text-zbc-gray-400">
-                        Signed in as {user?.email ?? user?.name}
-                      </p>
-                      <UserNotificationsDropdown className="rounded-full text-muted-foreground hover:bg-muted" />
-                    </div>
-                    <Button asChild variant="outline" className="w-full justify-start gap-2" onClick={close}>
+            <div className="border-t border-border pt-3">
+              {isAuthenticated ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-[11px] uppercase tracking-wide text-zbc-gray-400">
+                      Signed in as {user?.email ?? user?.name}
+                    </p>
+                    <UserNotificationsDropdown className="rounded-full text-muted-foreground hover:bg-muted" />
+                  </div>
+                  <DialogClose asChild>
+                    <Button asChild variant="outline" className="w-full justify-start gap-2">
                       <Link to="/dashboard">
                         <Settings className="size-4" />
                         Dashboard
                       </Link>
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-2 text-destructive"
-                      onClick={() => {
-                        close();
-                        void logout();
-                      }}
-                    >
-                      <LogOut className="size-4" />
-                      Sign out
-                    </Button>
-                  </div>
-                ) : (
-                  <Button asChild variant="outline" className="h-11 w-full gap-2" onClick={close}>
+                  </DialogClose>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 text-destructive"
+                    onClick={() => {
+                      setOpen(false);
+                      void logout();
+                    }}
+                  >
+                    <LogOut className="size-4" />
+                    Sign out
+                  </Button>
+                </div>
+              ) : (
+                <DialogClose asChild>
+                  <Button asChild variant="outline" className="h-11 w-full gap-2">
                     <Link to="/login">
                       <LogIn className="size-4" />
                       My Account
                     </Link>
                   </Button>
-                )}
-              </div>
+                </DialogClose>
+              )}
             </div>
           </div>
-        </>
-      ) : null}
-    </div>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
   );
 }
 
