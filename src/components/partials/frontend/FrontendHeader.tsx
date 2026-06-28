@@ -366,7 +366,7 @@ function MainNavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function MainNavBar() {
   return (
     <nav
-      className="hidden md:block border-t border-border"
+      className="block border-t border-border"
       aria-label="Main navigation"
     >
       <div
