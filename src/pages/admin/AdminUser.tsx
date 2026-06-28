@@ -39,6 +39,7 @@ import {
   deleteAdminUser,
   fetchAdminUsers,
   formatRoleLabel,
+  getAdminUserApiError,
   updateAdminUser,
   userMatchesRoleFilter,
 } from "@/services/admin/users";
@@ -336,9 +337,13 @@ export default function AdminUser() {
     } catch (error) {
       console.error("Failed to save user:", error);
       if (!applyServerErrors(error, setError)) {
-        toast.error("Failed to save user");
+        toast.error(getAdminUserApiError(error, "Failed to save user"));
       }
     }
+  };
+
+  const submitForm = () => {
+    void handleSubmit(onSubmit)();
   };
 
   const filtered = React.useMemo(() => {
@@ -440,7 +445,14 @@ export default function AdminUser() {
           </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1">
-            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+            <form
+              className="space-y-4"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitForm();
+              }}
+            >
               <div className="space-y-1">
                 <label
                   htmlFor="user-name"
@@ -568,9 +580,10 @@ export default function AdminUser() {
                   Cancel
                 </Button>
                 <Button
-                  type="submit"
+                  type="button"
                   className="h-10 w-full sm:w-auto"
                   disabled={isSubmitting}
+                  onClick={submitForm}
                 >
                   {isSubmitting
                     ? isEditing

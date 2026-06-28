@@ -77,12 +77,31 @@ function optionalViteString(name: string): string | undefined {
   return v || undefined
 }
 
+/** Avoid POST→GET redirects when production API env uses http:// on a host that forces https. */
+function normalizeApiBaseUrl(raw: string): string {
+  try {
+    const parsed = new URL(raw)
+    const isLocalHost =
+      parsed.hostname === 'localhost' ||
+      parsed.hostname === '127.0.0.1' ||
+      parsed.hostname.endsWith('.localhost')
+
+    if (import.meta.env.PROD && !isLocalHost && parsed.protocol === 'http:') {
+      parsed.protocol = 'https:'
+    }
+
+    return parsed.toString().replace(/\/+$/, '')
+  } catch {
+    return raw.replace(/\/+$/, '')
+  }
+}
+
 export const env = {
   mode: import.meta.env.MODE,
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
   // Vite only exposes env vars to the client when prefixed with VITE_
-  apiBaseUrl: required('VITE_API_BASE_URL'),
+  apiBaseUrl: normalizeApiBaseUrl(required('VITE_API_BASE_URL')),
   /** Public site URL for canonical links and OG tags (optional; defaults to window.location.origin). */
   siteUrl: optionalViteString('VITE_SITE_URL'),
   /** Optional Meta app id for Facebook Share Dialog (recommended for reliable sharing). */

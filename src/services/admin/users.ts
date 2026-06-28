@@ -1,5 +1,7 @@
 import type { AdminUserRow } from "@/components/admin/users/useUsersDataTable";
+import { api } from "@/api/client";
 import { request } from "@/api/request";
+import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 
 export type AdminUserApiPayload = {
   name: string;
@@ -107,15 +109,34 @@ export async function fetchAdminUsers(): Promise<AdminUserRow[]> {
   return normalizeAdminUsers(response.data);
 }
 
+function postAdminUser(
+  url: string,
+  payload: AdminUserApiPayload,
+): Promise<unknown> {
+  return api.request({
+    method: "POST",
+    url,
+    data: payload,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+  });
+}
+
 export async function createAdminUser(payload: AdminUserApiPayload): Promise<void> {
-  await request.post("/admin/users/store", payload);
+  await postAdminUser("/admin/users/store", payload);
 }
 
 export async function updateAdminUser(
   userId: string | number,
   payload: AdminUserApiPayload,
 ): Promise<void> {
-  await request.post(`/admin/users/update/${userId}`, payload);
+  await postAdminUser(`/admin/users/update/${userId}`, payload);
+}
+
+export function getAdminUserApiError(error: unknown, fallback: string): string {
+  return getAuthErrorMessage(error, fallback);
 }
 
 export async function deleteAdminUser(userId: string | number): Promise<void> {
