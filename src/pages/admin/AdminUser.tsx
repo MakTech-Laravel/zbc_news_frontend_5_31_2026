@@ -1,5 +1,8 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
+import { Controller, useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import toast from "react-hot-toast";
 
 import {
@@ -15,6 +18,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import InputPassword from "@/components/input-password";
+import InputError from "@/components/input-error";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +44,80 @@ import {
 } from "@/services/admin/users";
 
 const PAGE_SIZE = 10;
+
+const userFormSchema = (isEditing: boolean) =>
+  z
+    .object({
+      name: z.string().min(1, "Name is required"),
+      email: z
+        .string()
+        .min(1, "Email is required")
+        .email("Enter a valid email address"),
+      role: z.string().min(1, "Role is required"),
+      status: z.enum(["active", "inactive"]),
+      password: z.string(),
+      password_confirmation: z.string(),
+    })
+    .superRefine((data, ctx) => {
+      if (!isEditing && !data.password.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Password is required for new users",
+          path: ["password"],
+        });
+      }
+
+      if (
+        data.password.trim() &&
+        data.password !== data.password_confirmation
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Passwords do not match",
+          path: ["password_confirmation"],
+        });
+      }
+    });
+
+type UserFormValues = z.infer<ReturnType<typeof userFormSchema>>;
+
+const USER_FORM_DEFAULTS: UserFormValues = {
+  name: "",
+  email: "",
+  role: "",
+  status: "active",
+  password: "",
+  password_confirmation: "",
+};
+
+function applyServerErrors(
+  error: unknown,
+  setError: ReturnType<typeof useForm<UserFormValues>>["setError"],
+) {
+  const fieldErrors = (
+    error as { response?: { data?: { errors?: Record<string, string[]> } } }
+  )?.response?.data?.errors;
+  if (!fieldErrors) return false;
+
+  const formFields: (keyof UserFormValues)[] = [
+    "name",
+    "email",
+    "role",
+    "status",
+    "password",
+    "password_confirmation",
+  ];
+
+  for (const [field, messages] of Object.entries(fieldErrors)) {
+    const message = messages?.[0];
+    if (!message) continue;
+    if (formFields.includes(field as keyof UserFormValues)) {
+      setError(field as keyof UserFormValues, { message });
+    }
+  }
+
+  return true;
+}
 
 function userNameInitials(name: string) {
   return name
@@ -99,16 +177,6 @@ const USER_STATUS_OPTIONS = [
   { value: "inactive", label: "Inactive" },
 ] as const;
 
-const EMPTY_USER_FORM = {
-  name: "",
-  email: "",
-  role: "",
-  status: "active" as AdminUserRow["status"],
-  password: "",
-  password_confirmation: "",
-  avatar: null as string | null,
-};
-
 function matchesSearch(user: AdminUserRow, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
@@ -128,15 +196,33 @@ export default function AdminUser() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingUserId, setEditingUserId] = React.useState<string | null>(null);
-  const [formData, setFormData] = React.useState(EMPTY_USER_FORM);
   const [users, setUsers] = React.useState<AdminUserRow[]>([]);
   const [roleOptions, setRoleOptions] = React.useState<
     { value: string; label: string }[]
   >([]);
   const [loading, setLoading] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
 
   const isEditing = editingUserId !== null;
+  const isEditingRef = React.useRef(isEditing);
+  isEditingRef.current = isEditing;
+
+  const userResolver = React.useCallback<Resolver<UserFormValues>>(
+    (values, context, options) =>
+      zodResolver(userFormSchema(isEditingRef.current))(values, context, options),
+    [],
+  );
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<UserFormValues>({
+    resolver: userResolver,
+    defaultValues: USER_FORM_DEFAULTS,
+  });
 
   const roleFilterOptions = React.useMemo(
     () => [{ value: "all", label: "All Roles" }, ...roleOptions],
@@ -189,22 +275,25 @@ export default function AdminUser() {
 
   const openCreateModal = () => {
     setEditingUserId(null);
-    setFormData({ ...EMPTY_USER_FORM });
+    reset(USER_FORM_DEFAULTS);
     setIsModalOpen(true);
   };
 
   const openEditModal = (user: AdminUserRow) => {
     setEditingUserId(user.id);
-    setFormData({
+    reset({
       name: user.name,
       email: user.email,
       role: user.role,
       status: user.status,
       password: "",
       password_confirmation: "",
-      avatar: user.avatarUrl ?? null,
     });
     setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
 
   const deleteUser = async (user: AdminUserRow) => {
@@ -220,32 +309,21 @@ export default function AdminUser() {
     }
   };
 
-  const handleSave = async () => {
-    if (!formData.name.trim() || !formData.email.trim() || !formData.role) {
-      toast.error("Name, email, and role are required");
-      return;
-    }
-
-    if (!isEditing && !formData.password) {
-      toast.error("Password is required for new users");
-      return;
-    }
-
+  const onSubmit = async (data: UserFormValues) => {
     const payload = {
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      role: formData.role,
-      status: formData.status,
-      ...(formData.password
+      name: data.name.trim(),
+      email: data.email.trim(),
+      role: data.role,
+      status: data.status,
+      ...(data.password.trim()
         ? {
-            password: formData.password,
-            password_confirmation: formData.password_confirmation,
+            password: data.password,
+            password_confirmation: data.password_confirmation,
           }
         : {}),
     };
 
     try {
-      setSaving(true);
       if (isEditing && editingUserId) {
         await updateAdminUser(editingUserId, payload);
         toast.success("User updated successfully");
@@ -253,13 +331,13 @@ export default function AdminUser() {
         await createAdminUser(payload);
         toast.success("User created successfully");
       }
-      setIsModalOpen(false);
+      closeModal();
       await fetchUsers();
     } catch (error) {
       console.error("Failed to save user:", error);
-      toast.error("Failed to save user");
-    } finally {
-      setSaving(false);
+      if (!applyServerErrors(error, setError)) {
+        toast.error("Failed to save user");
+      }
     }
   };
 
@@ -351,6 +429,9 @@ export default function AdminUser() {
             "flex max-h-[min(90dvh,100%)] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden",
             "border-[#DDD8C8] bg-primary-foreground p-4 sm:w-full sm:p-6",
           )}
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
         >
           <DialogHeader className="shrink-0 pr-8 text-left">
             <DialogTitle className="text-xl font-bold text-[#151000] sm:text-2xl">
@@ -358,157 +439,149 @@ export default function AdminUser() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-1">
-            <div className="grid grid-cols-1 gap-4 sm:gap-5">
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
-                  >
-                    Name
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
-                  >
-                    Email
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="Email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="role"
-                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
-                  >
-                    Role
-                  </label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, role: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roleOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="status"
-                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
-                  >
-                    Status
-                  </label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        status: value as AdminUserRow["status"],
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
-                  >
-                    Password
-                  </label>
-                  <InputPassword
-                    placeholder={isEditing ? "Leave blank to keep current" : "Password"}
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="password_confirmation"
-                    className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
-                  >
-                    Password Confirmation
-                  </label>
-                  <InputPassword
-                    placeholder="Password Confirmation"
-                    value={formData.password_confirmation}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        password_confirmation: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-full sm:w-auto"
-                    onClick={() => setIsModalOpen(false)}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    className="h-10 w-full sm:w-auto"
-                    onClick={() => void handleSave()}
-                    disabled={saving}
-                  >
-                    {saving
-                      ? isEditing
-                        ? "Saving…"
-                        : "Creating…"
-                      : isEditing
-                        ? "Save"
-                        : "Create"}
-                  </Button>
-                </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1">
+            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+              <div className="space-y-1">
+                <label
+                  htmlFor="user-name"
+                  className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                >
+                  Name
+                </label>
+                <Input
+                  id="user-name"
+                  type="text"
+                  placeholder="Name"
+                  {...register("name")}
+                />
+                <InputError message={errors.name?.message} />
               </div>
-            </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="user-email"
+                  className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                >
+                  Email
+                </label>
+                <Input
+                  id="user-email"
+                  type="email"
+                  placeholder="Email"
+                  {...register("email")}
+                />
+                <InputError message={errors.email?.message} />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
+                  Role
+                </label>
+                <Controller
+                  name="role"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roleOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <InputError message={errors.role?.message} />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
+                  Status
+                </label>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) =>
+                        field.onChange(value as AdminUserRow["status"])
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <InputError message={errors.status?.message} />
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="user-password"
+                  className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                >
+                  Password
+                </label>
+                <InputPassword
+                  id="user-password"
+                  placeholder={
+                    isEditing ? "Leave blank to keep current" : "Password"
+                  }
+                  {...register("password")}
+                />
+                <InputError message={errors.password?.message} />
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="user-password-confirmation"
+                  className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm"
+                >
+                  Password Confirmation
+                </label>
+                <InputPassword
+                  id="user-password-confirmation"
+                  placeholder="Password Confirmation"
+                  {...register("password_confirmation")}
+                />
+                <InputError message={errors.password_confirmation?.message} />
+              </div>
+
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 w-full sm:w-auto"
+                  onClick={closeModal}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-10 w-full sm:w-auto"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? isEditing
+                      ? "Saving…"
+                      : "Creating…"
+                    : isEditing
+                      ? "Save"
+                      : "Create"}
+                </Button>
+              </div>
+            </form>
           </div>
         </DialogContent>
       </Dialog>
