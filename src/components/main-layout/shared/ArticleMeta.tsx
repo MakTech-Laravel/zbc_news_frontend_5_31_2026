@@ -2,8 +2,7 @@ import { cn } from "@/lib/utils";
 import { formatCount } from "@/utils/format";
 import { EyeIcon } from "lucide-react";
 
-import { FreshnessIndicator } from "@/components/main-layout/shared/FreshnessIndicator";
-import { getArticleFreshnessIso } from "@/lib/relativeTime";
+import { ArticleTimestamps } from "@/components/articles/ArticleTimestamps";
 
 type ArticleMetaProps = {
   author: string;
@@ -29,8 +28,6 @@ export function ArticleMeta({
   light = false,
   hideViewsBelowSm = false,
 }: ArticleMetaProps) {
-  const freshnessIso = getArticleFreshnessIso({ publishedAtIso, updatedAtIso });
-
   return (
     <div
       className={cn(
@@ -44,15 +41,16 @@ export function ArticleMeta({
       <span>{author}</span>
       <span aria-hidden> · </span>
       <span>{readTime}</span>
-      {freshnessIso ? (
+      {publishedAtIso || updatedAtIso || publishedAt ? (
         <>
           <span aria-hidden> · </span>
-          <FreshnessIndicator dateTime={freshnessIso} fallback={publishedAt} />
-        </>
-      ) : publishedAt ? (
-        <>
-          <span aria-hidden> · </span>
-          <span>{publishedAt}</span>
+          <ArticleTimestamps
+            variant="compact"
+            publishedAtIso={publishedAtIso}
+            updatedAtIso={updatedAtIso}
+            fallback={publishedAt}
+            light={light}
+          />
         </>
       ) : null}
       {views != null ? (

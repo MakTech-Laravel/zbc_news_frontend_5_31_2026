@@ -1,5 +1,6 @@
-import { Calendar, Clock, Tag } from "lucide-react";
+import { Tag } from "lucide-react";
 
+import { ArticleTimestamps } from "@/components/articles/ArticleTimestamps";
 import { AdminStatusBadge } from "@/components/admin/shared/AdminStatusBadge";
 import {
   Dialog,
@@ -9,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { ARTICLE_STATUS_LABELS } from "@/data/admin/articleWorkflow";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
-import { formatPublishDate } from "@/lib/publishDate";
 import { cn } from "@/lib/utils";
 
 export type ArticlePreviewData = {
@@ -45,9 +45,7 @@ export function ArticlePreviewDialog({
   const displayExcerpt = (preview.excerpt ?? "").trim();
   const displayDescription = (preview.article_description ?? "").trim();
   const displayTags = preview.tags ?? [];
-  const publishParts = formatPublishDate(
-    preview.publishDisplayAt ?? new Date().toISOString(),
-  );
+  const publishIso = preview.publishDisplayAt ?? new Date().toISOString();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,18 +103,7 @@ export function ArticlePreviewDialog({
                   <span className="font-medium text-zbc-gray-1000">
                     {preview.authorName || "Unknown author"}
                   </span>
-                  {publishParts.date ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Calendar className="size-4 shrink-0" aria-hidden />
-                      <time dateTime={publishParts.iso}>{publishParts.date}</time>
-                    </span>
-                  ) : null}
-                  {publishParts.time ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock className="size-4 shrink-0" aria-hidden />
-                      <time dateTime={publishParts.iso}>{publishParts.time}</time>
-                    </span>
-                  ) : null}
+                  <ArticleTimestamps publishedAtIso={publishIso} />
                 </div>
               </header>
 

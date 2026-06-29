@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Calendar, Clock, Timer } from "lucide-react";
+import { Timer } from "lucide-react";
 
+import { ArticleTimestamps } from "@/components/articles/ArticleTimestamps";
 import { ArticleComments } from "@/components/main-layout/NewsDetails/ArticleComments";
 import { ArticleDetailToolbar } from "@/components/main-layout/NewsDetails/ArticleDetailToolbar";
 import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
@@ -136,36 +137,10 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
             </div>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-inter text-sm text-zbc-gray-500">
-              {article.publishedAt ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar
-                    className="size-4 shrink-0 text-zbc-gray-400"
-                    aria-hidden
-                  />
-                  <span>
-                    Published:{" "}
-                    <time dateTime={article.publishedAtIso}>
-                      {article.publishedAt}
-                      {article.publishedTime ? ` ${article.publishedTime}` : ""}
-                    </time>
-                  </span>
-                </span>
-              ) : null}
-              {article.showUpdated && article.updatedAt ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock
-                    className="size-4 shrink-0 text-zbc-gray-400"
-                    aria-hidden
-                  />
-                  <span>
-                    Updated:{" "}
-                    <time dateTime={article.updatedAtIso}>
-                      {article.updatedAt}
-                      {article.updatedTime ? ` ${article.updatedTime}` : ""}
-                    </time>
-                  </span>
-                </span>
-              ) : null}
+              <ArticleTimestamps
+                publishedAtIso={article.publishedAtIso}
+                updatedAtIso={article.updatedAtIso}
+              />
               <span className="inline-flex items-center gap-1.5">
                 <Timer
                   className="size-4 shrink-0 text-zbc-gray-400"
