@@ -1,0 +1,30 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    name: Deploy to GCP Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_SERVER_IP }}
+          username: ${{ secrets.GCP_SERVER_USER }}
+          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /var/www/zbc-news
+
+            echo "── Pulling latest frontend code ──"
+            git -C frontend checkout -- .
+            git -C frontend pull origin main
+
+            echo "── Rebuilding frontend container ──"
+            docker compose --env-file .env up -d --build frontend
+
+            echo "── Frontend deployed at $(date) ──"
