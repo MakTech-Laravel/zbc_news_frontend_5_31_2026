@@ -1,6 +1,6 @@
 import { api } from "@/api/client";
+import { mapArticleTimestampFields } from "@/lib/articleTimestamps";
 import { toggleArticleSave } from "@/services/user/articleSave";
-import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 import type { SavedArticlesQuery, UserCategoryFilter, UserFeedArticle } from "@/types/user";
 
@@ -100,17 +100,6 @@ function resolveAuthor(article: Record<string, unknown>): string {
   return "ZBC News";
 }
 
-function formatPublishedAt(value: unknown): {
-  label: string;
-  iso?: string;
-} {
-  const parts = formatPublishDate(value);
-  return {
-    label: parts.combined || parts.date,
-    iso: parts.iso || undefined,
-  };
-}
-
 function mapToUserFeedArticle(
   saveRecord: SavedArticleRecord,
   article: Record<string, unknown>,
@@ -120,10 +109,10 @@ function mapToUserFeedArticle(
   const { label: category, slug: categorySlug } = resolveCategory(article);
   const articleId = article.id ?? saveRecord.article_id;
 
-  const published = formatPublishedAt(
-    article.published_at ?? article.created_at ?? savedAt,
-  );
-  const updated = formatPublishedAt(article.updated_at);
+  const timestamps = mapArticleTimestampFields({
+    published_at: article.published_at ?? article.created_at ?? savedAt,
+    updated_at: article.updated_at,
+  });
 
   return {
     id: String(articleId),
@@ -145,9 +134,9 @@ function mapToUserFeedArticle(
       typeof article.article_description === "string" ? article.article_description : undefined,
       typeof article.excerpt === "string" ? article.excerpt : undefined,
     ),
-    publishedAt: published.label,
-    publishedAtIso: published.iso,
-    updatedAtIso: updated.iso,
+    publishedAt: timestamps.publishedAt,
+    publishedAtIso: timestamps.publishedAtIso,
+    updatedAtIso: timestamps.updatedAtIso,
     savedAt,
     views: Number(article.views ?? article.view_count ?? article.views_count ?? 0) || undefined,
   };

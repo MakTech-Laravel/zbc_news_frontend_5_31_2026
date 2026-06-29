@@ -1,7 +1,11 @@
 import { request } from "@/api/request";
 import type { Article } from "@/data/dummy/types";
+import {
+  formatArticleTimestamp,
+  mapArticleTimestampFields,
+  resolveArticleTimestamps,
+} from "@/lib/articleTimestamps";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
-import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 
 export type ArticleDetail = {
@@ -14,11 +18,7 @@ export type ArticleDetail = {
   imageUrl: string;
   authorName: string;
   authorInitials: string;
-  publishedAt: string;
-  publishedTime: string;
   publishedAtIso: string;
-  updatedAt: string;
-  updatedTime: string;
   updatedAtIso: string;
   showUpdated: boolean;
   scheduledAtIso: string;
@@ -29,15 +29,6 @@ export type ArticleDetail = {
   metaKeywords: string;
   shareImageUrl: string;
 };
-
-function formatPublishedAt(value: unknown): {
-  date: string;
-  time: string;
-  iso: string;
-} {
-  const parts = formatPublishDate(value);
-  return { date: parts.date, time: parts.time, iso: parts.iso };
-}
 
 function resolveAuthorName(raw: Record<string, unknown>): string {
   if (typeof raw.author === "string") return raw.author;
@@ -111,12 +102,11 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     (typeof record.excerpt === "string" && record.excerpt) ||
     "";
 
-  const published = formatPublishedAt(record.published_at ?? record.created_at);
-  const updated = formatPublishedAt(record.updated_at);
-  const scheduled = formatPublishedAt(record.scheduled_publishing);
-  const showUpdated =
-    Boolean(updated.iso && published.iso) &&
-    new Date(updated.iso).getTime() > new Date(published.iso).getTime() + 60_000;
+  const timestamps = resolveArticleTimestamps(
+    record.published_at ?? record.created_at,
+    record.updated_at,
+  );
+  const scheduled = formatArticleTimestamp(record.scheduled_publishing);
   const authorName = resolveAuthorName(record);
   const seo =
     record.seo && typeof record.seo === "object"
@@ -139,13 +129,9 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     ),
     authorName,
     authorInitials: toInitials(authorName),
-    publishedAt: published.date,
-    publishedTime: published.time,
-    publishedAtIso: published.iso,
-    updatedAt: updated.date,
-    updatedTime: updated.time,
-    updatedAtIso: updated.iso,
-    showUpdated,
+    publishedAtIso: timestamps.published.iso,
+    updatedAtIso: timestamps.updated.iso,
+    showUpdated: timestamps.wasUpdated,
     scheduledAtIso: scheduled.iso,
     readTime: resolveReadTime(record.read_time, articleDescription, record.excerpt as string),
     tags: parseTags(record.tags),
@@ -254,8 +240,7 @@ export function mapArticleListItem(raw: unknown): Article | null {
 
   if (id == null || typeof title !== "string" || !title.trim()) return null;
 
-  const published = formatPublishedAt(record.published_at ?? record.created_at);
-  const updated = formatPublishedAt(record.updated_at);
+  const timestamps = mapArticleTimestampFields(record);
   const description =
     typeof record.article_description === "string" ? record.article_description : undefined;
 
@@ -278,9 +263,9 @@ export function mapArticleListItem(raw: unknown): Article | null {
       description,
       typeof record.excerpt === "string" ? record.excerpt : undefined,
     ),
-    publishedAt: published.date && published.time ? `${published.date} · ${published.time}` : published.date,
-    publishedAtIso: published.iso || undefined,
-    updatedAtIso: updated.iso || undefined,
+    publishedAt: timestamps.publishedAt,
+    publishedAtIso: timestamps.publishedAtIso,
+    updatedAtIso: timestamps.updatedAtIso,
     views: Number(record.views ?? record.view_count ?? 0) || undefined,
     tags: parseTags(record.tags),
   };

@@ -1,6 +1,6 @@
 import { request } from "@/api/request";
+import { mapArticleTimestampFields } from "@/lib/articleTimestamps";
 import { resolveArticleImageUrl } from "@/lib/mediaUrl";
-import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 import { getSearchSessionHeaders } from "@/lib/searchSession";
 
@@ -33,17 +33,6 @@ function resolveCategoryLabel(raw: Record<string, unknown>): string {
   return "News";
 }
 
-function formatPublishedAt(value: unknown): {
-  label: string;
-  iso?: string;
-} {
-  const parts = formatPublishDate(value);
-  return {
-    label: parts.combined || parts.date,
-    iso: parts.iso || undefined,
-  };
-}
-
 function mapSearchResult(raw: unknown): SearchResultItem | null {
   if (!raw || typeof raw !== "object") return null;
   const record = raw as Record<string, unknown>;
@@ -51,8 +40,7 @@ function mapSearchResult(raw: unknown): SearchResultItem | null {
   const title = record.title;
   if (id == null || typeof title !== "string" || !title.trim()) return null;
 
-  const published = formatPublishedAt(record.published_at ?? record.created_at);
-  const updated = formatPublishedAt(record.updated_at);
+  const timestamps = mapArticleTimestampFields(record);
 
   return {
     id: String(id),
@@ -66,9 +54,9 @@ function mapSearchResult(raw: unknown): SearchResultItem | null {
           : "",
     category: resolveCategoryLabel(record),
     imageUrl: resolveArticleImageUrl(record),
-    publishedAt: published.label,
-    publishedAtIso: published.iso,
-    updatedAtIso: updated.iso,
+    publishedAt: timestamps.publishedAt,
+    publishedAtIso: timestamps.publishedAtIso,
+    updatedAtIso: timestamps.updatedAtIso,
     readTime: resolveReadTime(
       record.read_time,
       typeof record.article_description === "string" ? record.article_description : undefined,

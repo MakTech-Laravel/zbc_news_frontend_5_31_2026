@@ -1,6 +1,6 @@
 import { api } from "@/api/client";
+import { mapArticleTimestampFields } from "@/lib/articleTimestamps";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
-import { formatPublishDate } from "@/lib/publishDate";
 import { resolveReadTime } from "@/lib/readTime";
 import type { UserFeedArticle } from "@/types/user";
 import type { UserContinueReadingItem } from "@/data/dummy/userDashboard";
@@ -84,17 +84,6 @@ export type UserTrendingTopic = {
   count: number;
 };
 
-function formatPublishedAt(value: unknown): {
-  label: string;
-  iso?: string;
-} {
-  const parts = formatPublishDate(value);
-  return {
-    label: parts.combined || parts.date,
-    iso: parts.iso || undefined,
-  };
-}
-
 function resolveCategoryLabel(raw: Record<string, unknown>): string {
   if (typeof raw.category === "string") return raw.category;
   if (raw.category && typeof raw.category === "object") {
@@ -167,8 +156,7 @@ function mapToUserFeedArticle(raw: Record<string, unknown>): UserFeedArticle | n
   const title = raw.title;
   if (id == null || typeof title !== "string" || !title.trim()) return null;
 
-  const published = formatPublishedAt(raw.published_at ?? raw.created_at);
-  const updated = formatPublishedAt(raw.updated_at);
+  const timestamps = mapArticleTimestampFields(raw);
 
   return {
     id: String(id),
@@ -182,9 +170,9 @@ function mapToUserFeedArticle(raw: Record<string, unknown>): UserFeedArticle | n
       typeof raw.article_description === "string" ? raw.article_description : undefined,
       resolveExcerpt(raw),
     ),
-    publishedAt: published.label,
-    publishedAtIso: published.iso,
-    updatedAtIso: updated.iso,
+    publishedAt: timestamps.publishedAt,
+    publishedAtIso: timestamps.publishedAtIso,
+    updatedAtIso: timestamps.updatedAtIso,
     views: Number(raw.views ?? raw.view_count ?? 0) || undefined,
   };
 }

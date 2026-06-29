@@ -1,16 +1,18 @@
-import { formatPublishDate, parsePublishDate } from "@/lib/publishDate";
+import { getArticleRelativeTimeIso } from "@/lib/articleTimestamps";
+import { parsePublishDate } from "@/lib/publishDate";
 
 const JUST_NOW_THRESHOLD_SEC = 45;
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
 const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
-const SECONDS_PER_WEEK = 7 * SECONDS_PER_DAY;
+const DAYS_PER_MONTH = 30;
+const MONTHS_PER_YEAR = 12;
 
 export function formatRelativeTime(value: unknown, now: Date = new Date()): string {
   const date = parsePublishDate(value);
   if (!date) return "";
 
-  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const diffSec = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
   if (diffSec < JUST_NOW_THRESHOLD_SEC) return "Just now";
 
   const diffMin = Math.floor(diffSec / SECONDS_PER_MINUTE);
@@ -24,12 +26,17 @@ export function formatRelativeTime(value: unknown, now: Date = new Date()): stri
   }
 
   const diffDay = Math.floor(diffSec / SECONDS_PER_DAY);
-  if (diffDay < 7) {
+  if (diffDay < DAYS_PER_MONTH) {
     return diffDay === 1 ? "1 day ago" : `${diffDay} days ago`;
   }
 
-  const parts = formatPublishDate(date);
-  return parts.combined || parts.date;
+  const diffMonth = Math.floor(diffDay / DAYS_PER_MONTH);
+  if (diffMonth < MONTHS_PER_YEAR) {
+    return diffMonth === 1 ? "1 month ago" : `${diffMonth} months ago`;
+  }
+
+  const diffYear = Math.floor(diffMonth / MONTHS_PER_YEAR);
+  return diffYear === 1 ? "1 year ago" : `${diffYear} years ago`;
 }
 
 export function getRelativeTimeUpdateInterval(
@@ -42,7 +49,8 @@ export function getRelativeTimeUpdateInterval(
   const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
   if (diffSec < SECONDS_PER_HOUR) return 30_000;
   if (diffSec < SECONDS_PER_DAY) return 60_000;
-  if (diffSec < SECONDS_PER_WEEK) return 300_000;
+  if (diffSec < DAYS_PER_MONTH * SECONDS_PER_DAY) return 300_000;
+  if (diffSec < MONTHS_PER_YEAR * DAYS_PER_MONTH * SECONDS_PER_DAY) return 3_600_000;
   return null;
 }
 
@@ -50,15 +58,5 @@ export function getArticleFreshnessIso(article: {
   publishedAtIso?: string;
   updatedAtIso?: string;
 }): string | undefined {
-  const { publishedAtIso, updatedAtIso } = article;
-  if (!publishedAtIso && !updatedAtIso) return undefined;
-  if (!publishedAtIso) return updatedAtIso;
-  if (!updatedAtIso) return publishedAtIso;
-
-  const publishedTime = new Date(publishedAtIso).getTime();
-  const updatedTime = new Date(updatedAtIso).getTime();
-  if (Number.isNaN(publishedTime)) return updatedAtIso;
-  if (Number.isNaN(updatedTime)) return publishedAtIso;
-
-  return updatedTime > publishedTime ? updatedAtIso : publishedAtIso;
+  return getArticleRelativeTimeIso(article.publishedAtIso, article.updatedAtIso);
 }
