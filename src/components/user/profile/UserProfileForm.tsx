@@ -25,6 +25,7 @@ import {
   type NotificationPreferences,
 } from "@/types/notificationPreferences";
 import { request } from "@/api/request";
+import { uploadAdminMedia } from "@/services/admin/media";
 import toast from "react-hot-toast";
 import InputError from "@/components/input-error";
 
@@ -138,31 +139,32 @@ export function UserProfileForm() {
     try {
       setSaving(true);
 
-      if (profileImageFile) {
-        const formData = new FormData();
-        formData.append("_method", "PUT");
-        formData.append("name", data.name);
-        formData.append("email", data.email);
-        formData.append("region", data.region ?? "");
-        formData.append("bio", data.bio ?? "");
-        formData.append("profile_image", profileImageFile);
+      let imageUrl = profileImageUrl;
 
-        const res = await request.post("/admin/users/profile/update", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        const updatedImage = res.data?.data?.user_information?.profile_image;
-        if (typeof updatedImage === "string" && updatedImage.trim()) {
-          setProfileImageUrl(resolveMediaUrl(updatedImage));
+      if (profileImageFile) {
+        const uploaded = await uploadAdminMedia(profileImageFile);
+
+        if (!uploaded?.url) {
+          toast.error("Failed to upload profile photo.");
+          return;
         }
+
+        imageUrl = resolveMediaUrl(uploaded.url);
+        setProfileImageUrl(imageUrl);
         setProfileImageFile(null);
-      } else {
-        await request.put("/admin/users/profile/update", {
-          name: data.name,
-          email: data.email,
-          region: data.region ?? "",
-          bio: data.bio ?? "",
-          profile_image: profileImageUrl ?? "",
-        });
+      }
+
+      const res = await request.put("/admin/users/profile/update", {
+        name: data.name,
+        email: data.email,
+        region: data.region ?? "",
+        bio: data.bio ?? "",
+        profile_image: imageUrl ?? "",
+      });
+
+      const updatedImage = res.data?.data?.user_information?.profile_image;
+      if (typeof updatedImage === "string" && updatedImage.trim()) {
+        setProfileImageUrl(resolveMediaUrl(updatedImage));
       }
 
       toast.success("Profile updated successfully.");
