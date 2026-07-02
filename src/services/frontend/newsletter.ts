@@ -35,6 +35,16 @@ export async function subscribeNewsletter(payload: NewsletterSubscribePayload): 
   await request.post("/newsletter/subscribe", payload);
 }
 
+export type NewsletterVerifyPreview = {
+  email: string;
+  status: "pending" | "verified" | "unsubscribed";
+};
+
+export async function previewNewsletterVerification(token: string): Promise<NewsletterVerifyPreview> {
+  const response = await request.get("/newsletter/verify/preview", { params: { token } });
+  return extractData<NewsletterVerifyPreview>(response.data);
+}
+
 export async function verifyNewsletter(token: string): Promise<{ email: string; already_verified: boolean }> {
   const response = await request.get("/newsletter/verify", { params: { token } });
   return extractData<{ email: string; already_verified: boolean }>(response.data);
