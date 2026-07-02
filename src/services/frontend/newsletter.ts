@@ -35,9 +35,9 @@ export async function subscribeNewsletter(payload: NewsletterSubscribePayload): 
   await request.post("/newsletter/subscribe", payload);
 }
 
-export async function verifyNewsletter(token: string): Promise<{ email: string }> {
+export async function verifyNewsletter(token: string): Promise<{ email: string; already_verified: boolean }> {
   const response = await request.get("/newsletter/verify", { params: { token } });
-  return extractData<{ email: string }>(response.data);
+  return extractData<{ email: string; already_verified: boolean }>(response.data);
 }
 
 export async function unsubscribeNewsletter(token: string): Promise<{ email: string }> {

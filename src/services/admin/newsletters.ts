@@ -136,7 +136,13 @@ function normalizeAnalytics(data: unknown): NewsletterAnalytics {
 }
 
 export function getNewsletterApiError(error: unknown, fallback: string): string {
-  return getAuthErrorMessage(error, fallback);
+  const message = getAuthErrorMessage(error, fallback);
+
+  if (message.includes("No verified subscribers match this campaign audience")) {
+    return "No verified subscribers match this campaign. Verify pending subscribers or adjust the campaign audience categories.";
+  }
+
+  return message;
 }
 
 export async function fetchNewsletterAnalytics(): Promise<NewsletterAnalytics> {

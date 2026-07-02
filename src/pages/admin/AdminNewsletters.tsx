@@ -166,8 +166,8 @@ export default function AdminNewsletters() {
       await scheduleNewsletterCampaign(campaignId, new Date(scheduledAt).toISOString());
       toast.success("Campaign scheduled");
       await loadData();
-    } catch {
-      toast.error("Failed to schedule campaign");
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to schedule campaign"));
     }
   }
 
@@ -176,8 +176,8 @@ export default function AdminNewsletters() {
       await sendNewsletterCampaign(campaignId);
       toast.success("Campaign dispatch started");
       await loadData();
-    } catch {
-      toast.error("Failed to send campaign");
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to send campaign"));
     }
   }
 
@@ -186,8 +186,8 @@ export default function AdminNewsletters() {
       await deleteNewsletterSubscriber(id);
       toast.success("Subscriber removed");
       await loadData();
-    } catch {
-      toast.error("Failed to remove subscriber");
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to remove subscriber"));
     }
   }
 
@@ -199,8 +199,8 @@ export default function AdminNewsletters() {
       await updateNewsletterSubscriberStatus(id, status);
       toast.success("Subscriber status updated");
       await loadData();
-    } catch {
-      toast.error("Failed to update subscriber status");
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to update subscriber status"));
     }
   }
 
@@ -208,8 +208,8 @@ export default function AdminNewsletters() {
     try {
       await resendNewsletterVerification(id);
       toast.success("Verification email sent");
-    } catch {
-      toast.error("Failed to send verification email");
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to send verification email"));
     }
   }
 
@@ -485,20 +485,26 @@ export default function AdminNewsletters() {
                   <tr key={subscriber.id} className="border-b border-border/70">
                     <td className="py-2 pr-4">{subscriber.email}</td>
                     <td className="py-2 pr-4">
-                      <select
-                        value={subscriber.status}
-                        onChange={(e) =>
-                          void handleSubscriberStatusChange(
-                            subscriber.id,
-                            e.target.value as NewsletterSubscriber["status"],
-                          )
-                        }
-                        className="rounded-md border border-border px-2 py-1 text-sm capitalize"
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="verified">Verified</option>
-                        <option value="unsubscribed">Unsubscribed</option>
-                      </select>
+                      {subscriber.status === "verified" ? (
+                        <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium capitalize text-green-800">
+                          Verified
+                        </span>
+                      ) : (
+                        <select
+                          value={subscriber.status}
+                          onChange={(e) =>
+                            void handleSubscriberStatusChange(
+                              subscriber.id,
+                              e.target.value as NewsletterSubscriber["status"],
+                            )
+                          }
+                          className="rounded-md border border-border px-2 py-1 text-sm capitalize"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="verified">Verified</option>
+                          <option value="unsubscribed">Unsubscribed</option>
+                        </select>
+                      )}
                     </td>
                     <td className="py-2 pr-4">{subscriber.source ?? "—"}</td>
                     <td className="py-2 pr-4">
