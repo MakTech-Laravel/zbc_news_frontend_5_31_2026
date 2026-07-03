@@ -68,7 +68,7 @@ export function UserNotificationItem({ notification, onMarkRead }: UserNotificat
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                 {notification.showReadArticle && notification.articleSlug ? (
                   <Link
-                    to={`/news-details/${notification.articleSlug}`}
+                    to={`/${notification.articleSlug}`}
                     className="inline-flex h-8 flex-1 items-center justify-center rounded-lg border border-border px-2.5 text-xs font-medium text-admin-heading transition-colors hover:bg-muted sm:h-7 sm:flex-none"
                   >
                     Read Article

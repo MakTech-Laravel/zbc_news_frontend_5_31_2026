@@ -74,7 +74,7 @@ function CommentForm({
   const [guestEmail, setGuestEmail] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
-  const loginHref = `/login?next=${encodeURIComponent(`/news-details/${articleSlug}`)}`;
+  const loginHref = `/login?next=${encodeURIComponent(`/${articleSlug}`)}`;
 
   if (requireRegistration && !isAuthenticated) {
     return (
@@ -370,7 +370,7 @@ export function ArticleComments({
           <p className="mb-4 font-inter text-sm text-zbc-gray-700">
             Commenting as a guest.{" "}
             <Link
-              to={`/login?next=${encodeURIComponent(`/news-details/${articleSlug}`)}`}
+              to={`/login?next=${encodeURIComponent(`/${articleSlug}`)}`}
               className="font-medium text-primary hover:underline"
             >
               Sign in

@@ -49,7 +49,6 @@ const RESERVED_SINGLE_SEGMENT_PATHS = new Set([
   "accessibility-statement",
   "advertise",
   "careers",
-  "news-details",
   "admin",
   "user",
 ]);

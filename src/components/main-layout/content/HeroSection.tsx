@@ -43,7 +43,7 @@ export function HeroSection({ className }: HeroSectionProps) {
   return (
     <section className={cn("relative", className)} aria-label="Featured story">
       <Link
-        to={article.slug ? `/news-details/${article.slug}` : "/news-details"}
+        to={article.slug ? `/${article.slug}` : "/"}
         className="group block overflow-hidden rounded-xs border border-border bg-card shadow-sm"
       >
         <div className="relative aspect-[16/10] min-h-[220px] w-full sm:aspect-[2/1] sm:min-h-[260px] lg:min-h-[320px]">

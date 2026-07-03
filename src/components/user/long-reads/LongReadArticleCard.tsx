@@ -12,8 +12,8 @@ type LongReadArticleCardProps = {
 
 export function LongReadArticleCard({ article, featured = false, className }: LongReadArticleCardProps) {
   const articleHref = article.slug
-    ? `/news-details/${encodeURIComponent(article.slug)}`
-    : "/news-details";
+    ? `/${encodeURIComponent(article.slug)}`
+    : "/";
 
   return (
     <article
