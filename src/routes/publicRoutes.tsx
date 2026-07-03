@@ -12,6 +12,7 @@ import {
   Contact,
   CookiePolicy,
   Home,
+  TagArticles,
   PrivacyPolicy,
   TermsOfService,
 } from "./dynamicImport";
@@ -41,6 +42,7 @@ export const publicRoutes: RouteObject = {
       element: <MainLayout />,
       children: [
         { path: "/", element: suspensePage(Home) },
+        { path: "/tag/:tagSlug", element: suspensePage(TagArticles) },
         { path: "/news-details/:articleSlug", element: <LegacyArticleRedirect /> },
         { path: "/news-details", element: <Navigate to="/" replace /> },
         { path: "/:slug", element: suspensePage(Home) },
