@@ -110,7 +110,7 @@ export function isLocalEnvironment(): boolean {
 }
 
 export function getArticlePageUrl(slug: string): string {
-  return `${getPublicSiteOrigin()}/news-details/${encodeURIComponent(slug)}`;
+  return `${getPublicSiteOrigin()}/${encodeURIComponent(slug)}`;
 }
 
 export function getArticleSharePreviewUrl(slug: string): string {

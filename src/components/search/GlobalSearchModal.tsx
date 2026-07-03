@@ -190,8 +190,8 @@ export function GlobalSearchModal({
                       <Link
                         to={
                           article.slug
-                            ? `/news-details/${encodeURIComponent(article.slug)}`
-                            : "/news-details"
+                            ? `/${encodeURIComponent(article.slug)}`
+                            : "/"
                         }
                         onClick={() => handleResultNavigate(trimmedQuery)}
                         className="flex gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/30 hover:bg-muted/40"

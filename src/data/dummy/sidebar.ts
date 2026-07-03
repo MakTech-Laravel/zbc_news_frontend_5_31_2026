@@ -68,12 +68,12 @@ export const mostReadItems = [
 ] satisfies import("./types").MostReadItem[];
 
 export const trendingTags: TrendingTag[] = [
-  { id: "t1", label: "#FederalReserve", href: "/news-details" },
-  { id: "t2", label: "#InterestRates", href: "/news-details" },
-  { id: "t3", label: "#Research", href: "/news-details" },
-  { id: "t4", label: "#ChampionsLeague", href: "/news-details" },
-  { id: "t5", label: "#Climate", href: "/news-details" },
-  { id: "t6", label: "#AI", href: "/news-details" },
-  { id: "t7", label: "#Markets", href: "/news-details" },
-  { id: "t8", label: "#Election2026", href: "/news-details" },
+  { id: "t1", label: "#FederalReserve", href: "/" },
+  { id: "t2", label: "#InterestRates", href: "/" },
+  { id: "t3", label: "#Research", href: "/" },
+  { id: "t4", label: "#ChampionsLeague", href: "/" },
+  { id: "t5", label: "#Climate", href: "/" },
+  { id: "t6", label: "#AI", href: "/" },
+  { id: "t7", label: "#Markets", href: "/" },
+  { id: "t8", label: "#Election2026", href: "/" },
 ];

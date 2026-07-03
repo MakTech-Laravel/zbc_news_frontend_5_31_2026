@@ -147,7 +147,7 @@ export default function AdminComments() {
                     </div>
                     {comment.articleTitle && comment.articleSlug ? (
                       <Link
-                        to={`/news-details/${comment.articleSlug}`}
+                        to={`/${comment.articleSlug}`}
                         className="text-xs font-medium text-primary hover:underline"
                       >
                         {comment.articleTitle}

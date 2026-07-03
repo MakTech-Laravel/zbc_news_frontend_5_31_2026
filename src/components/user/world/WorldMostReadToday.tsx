@@ -27,7 +27,7 @@ export function WorldMostReadToday({ className }: WorldMostReadTodayProps) {
               {item.rank}.
             </span>
             <Link
-              to="/news-details"
+              to="/"
               className="font-inter text-sm font-medium leading-5 text-ink-heading transition-colors hover:text-brand-deep line-clamp-2"
             >
               {item.title}

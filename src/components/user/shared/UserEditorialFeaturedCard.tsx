@@ -32,7 +32,7 @@ export function UserEditorialFeaturedCard({
   slug,
   imageUrl,
 }: UserEditorialFeaturedCardProps) {
-  const articleHref = slug ? `/news-details/${encodeURIComponent(slug)}` : undefined;
+  const articleHref = slug ? `/${encodeURIComponent(slug)}` : undefined;
   const freshnessIso = getArticleFreshnessIso({ publishedAtIso, updatedAtIso });
 
   return (

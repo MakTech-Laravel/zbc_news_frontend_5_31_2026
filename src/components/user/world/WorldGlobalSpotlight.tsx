@@ -20,7 +20,7 @@ export function WorldGlobalSpotlight({ className }: WorldGlobalSpotlightProps) {
         {worldGlobalSpotlight.map((item) => (
           <Link
             key={item.id}
-            to="/news-details"
+            to="/"
             className="rounded-[10px] bg-[#ECECF0] px-3 py-3 transition-colors hover:bg-[#E4E4E8]"
           >
             <p className="font-inter text-sm font-medium leading-5 text-ink-heading">{item.title}</p>

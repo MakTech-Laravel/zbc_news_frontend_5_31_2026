@@ -1,5 +1,5 @@
-
 import type { RouteObject } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 
 import { FrontendLayout } from "@/layouts/frontend/FrontendLayout";
 import { MainLayout } from "@/layouts/main/MainLayout";
@@ -12,12 +12,19 @@ import {
   Contact,
   CookiePolicy,
   Home,
-  NewsDetails,
   PrivacyPolicy,
   TermsOfService,
 } from "./dynamicImport";
-// import { Test, Politics, Business, Entertainment, Technology, Sports, WorldNews, VideoMedia } from "./dynamicImport";
 
+function LegacyArticleRedirect() {
+  const { articleSlug } = useParams<{ articleSlug: string }>();
+  return (
+    <Navigate
+      to={articleSlug ? `/${encodeURIComponent(articleSlug)}` : "/"}
+      replace
+    />
+  );
+}
 
 export const publicRoutes: RouteObject = {
   element: <FrontendLayout />,
@@ -34,11 +41,10 @@ export const publicRoutes: RouteObject = {
       element: <MainLayout />,
       children: [
         { path: "/", element: suspensePage(Home) },
-        { path: "/news-details/:articleSlug", element: suspensePage(NewsDetails) },
-        { path: "/news-details", element: suspensePage(NewsDetails) },
+        { path: "/news-details/:articleSlug", element: <LegacyArticleRedirect /> },
+        { path: "/news-details", element: <Navigate to="/" replace /> },
         { path: "/:slug", element: suspensePage(Home) },
       ],
     },
-
   ],
 };

@@ -32,8 +32,8 @@ export function MostReadCard() {
                 <Link
                   to={
                     article.slug
-                      ? `/news-details/${encodeURIComponent(article.slug)}`
-                      : "/news-details"
+                      ? `/${encodeURIComponent(article.slug)}`
+                      : "/"
                   }
                   className="line-clamp-3 font-inter text-xs font-semibold leading-snug text-zbc-gray-1000 hover:text-primary"
                 >

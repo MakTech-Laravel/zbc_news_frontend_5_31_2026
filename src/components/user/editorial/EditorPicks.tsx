@@ -40,7 +40,7 @@ export function EditorPicks({ picks, className }: EditorPicksProps) {
             return (
               <Link
                 key={item.id}
-                to={`/news-details/${encodeURIComponent(item.slug)}`}
+                to={`/${encodeURIComponent(item.slug)}`}
                 className="block rounded-md transition-colors hover:text-brand-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {content}
