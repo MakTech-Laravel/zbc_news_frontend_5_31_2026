@@ -37,8 +37,8 @@ export function UserContinueReading({ items }: UserContinueReadingProps) {
               key={item.id}
               to={
                 item.slug
-                  ? `/news-details/${encodeURIComponent(item.slug)}`
-                  : "/news-details"
+                  ? `/${encodeURIComponent(item.slug)}`
+                  : "/"
               }
               className="block rounded-lg border border-border bg-card p-4 transition-colors hover:border-zbc-blue/30 hover:bg-muted/30"
             >

@@ -46,8 +46,8 @@ export function UserFeaturedStory({ story }: UserFeaturedStoryProps) {
   const [shareOpen, setShareOpen] = useState(false);
   const displayStory = story ?? userFeaturedStory;
   const articleHref = story?.slug
-    ? `/news-details/${encodeURIComponent(story.slug)}`
-    : "/news-details";
+    ? `/${encodeURIComponent(story.slug)}`
+    : "/";
   const articleId = story?.id;
 
   if (story === null) {

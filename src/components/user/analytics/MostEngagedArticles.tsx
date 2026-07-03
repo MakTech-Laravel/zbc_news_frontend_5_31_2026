@@ -35,8 +35,8 @@ export function MostEngagedArticles({ articles }: MostEngagedArticlesProps) {
                   <Link
                     to={
                       article.slug
-                        ? `/news-details/${encodeURIComponent(article.slug)}`
-                        : "/news-details"
+                        ? `/${encodeURIComponent(article.slug)}`
+                        : "/"
                     }
                     className="block font-inter text-sm font-medium leading-5 text-ink-heading transition-colors hover:text-brand-deep"
                   >

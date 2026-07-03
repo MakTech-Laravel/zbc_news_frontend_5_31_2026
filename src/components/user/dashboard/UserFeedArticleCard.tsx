@@ -27,7 +27,7 @@ function UserFeedArticleCardComponent({
   className,
 }: UserFeedArticleCardProps) {
   const articleHref =
-    href ?? (article.slug ? `/news-details/${encodeURIComponent(article.slug)}` : "/news-details");
+    href ?? (article.slug ? `/${encodeURIComponent(article.slug)}` : "/");
   const isCompact = density === "compact";
   const freshnessIso = getArticleFreshnessIso(article);
 

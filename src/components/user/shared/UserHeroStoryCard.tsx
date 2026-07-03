@@ -45,8 +45,8 @@ export function UserHeroStoryCard({ story, loading = false }: UserHeroStoryCardP
   }
 
   const articleHref = story.slug
-    ? `/news-details/${encodeURIComponent(story.slug)}`
-    : "/news-details";
+    ? `/${encodeURIComponent(story.slug)}`
+    : "/";
 
   return (
     <UserDashboardCard>

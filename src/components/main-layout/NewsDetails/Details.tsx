@@ -37,7 +37,7 @@ const articleBodyClassName = cn(
   "[&_img]:my-4 [&_img]:max-h-[420px] [&_img]:w-full [&_img]:rounded-lg [&_img]:object-cover",
 );
 
-function DetailsSkeleton() {
+export function DetailsSkeleton() {
   return (
     <article className="bg-background text-foreground">
       <div className="mx-auto w-full max-w-4xl px-0 sm:px-2">
@@ -65,12 +65,12 @@ function DetailsSkeleton() {
   );
 }
 
-function ArticleContent({ article }: { article: ArticleDetail }) {
+export function ArticleContent({ article }: { article: ArticleDetail }) {
   const { settings } = useSiteSettings();
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
 
   useDocumentHead({
-    path: `/news-details/${article.slug}`,
+    path: `/${article.slug}`,
     title: article.metaTitle,
     description: article.metaDescription,
     keywords: article.metaKeywords,
@@ -263,13 +263,14 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
 }
 
 export default function Details() {
-  const { articleSlug } = useParams<{ articleSlug: string }>();
+  const { slug, articleSlug } = useParams<{ slug?: string; articleSlug?: string }>();
+  const resolvedSlug = slug ?? articleSlug;
   const [article, setArticle] = useState<ArticleDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!articleSlug) {
+    if (!resolvedSlug) {
       setLoading(false);
       setNotFound(true);
       return;
@@ -277,7 +278,7 @@ export default function Details() {
 
     let cancelled = false;
 
-    fetchArticleBySlug(decodeURIComponent(articleSlug))
+    fetchArticleBySlug(decodeURIComponent(resolvedSlug))
       .then((data) => {
         if (cancelled) return;
         if (!data) {
@@ -297,7 +298,7 @@ export default function Details() {
     return () => {
       cancelled = true;
     };
-  }, [articleSlug]);
+  }, [resolvedSlug]);
 
   if (loading) {
     return <DetailsSkeleton />;

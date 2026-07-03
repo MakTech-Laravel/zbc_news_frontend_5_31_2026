@@ -20,7 +20,7 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
       )}
     >
       <Link
-        to={article.slug ? `/news-details/${article.slug}` : "/news-details"}
+        to={article.slug ? `/${article.slug}` : "/"}
         className="block"
       >
         <div className="aspect-[16/10] overflow-hidden bg-muted">

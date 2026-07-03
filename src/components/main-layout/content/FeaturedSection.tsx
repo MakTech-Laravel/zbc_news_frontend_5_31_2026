@@ -12,8 +12,8 @@ export function FeaturedSection() {
   const { topArticle, loading } = useMostReadArticles();
 
   const articleHref = topArticle?.slug
-    ? `/news-details/${encodeURIComponent(topArticle.slug)}`
-    : "/news-details";
+    ? `/${encodeURIComponent(topArticle.slug)}`
+    : "/";
 
   if (loading) {
     return (
