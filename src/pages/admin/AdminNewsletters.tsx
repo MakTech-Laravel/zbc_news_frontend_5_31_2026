@@ -7,9 +7,10 @@ import {
   createNewsletterCampaign,
   deleteNewsletterSubscriber,
   EMPTY_ANALYTICS,
+  EMPTY_ELIGIBLE_COUNT,
   fetchNewsletterAnalytics,
+  fetchNewsletterCampaignEligibleCount,
   fetchNewsletterCampaigns,
-  fetchNewsletterCategories,
   fetchNewsletterSubscribers,
   getNewsletterApiError,
   resendNewsletterVerification,
@@ -19,7 +20,7 @@ import {
   updateNewsletterSubscriberStatus,
   type NewsletterAnalytics,
   type NewsletterCampaign,
-  type NewsletterCategory,
+  type NewsletterEligibleCount,
   type NewsletterSubscriber,
 } from "@/services/admin/newsletters";
 
@@ -32,23 +33,29 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 export default function AdminNewsletters() {
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [activeTab, setActiveTab] = useState<TabId>("subscribers");
   const [analytics, setAnalytics] = useState<NewsletterAnalytics>(EMPTY_ANALYTICS);
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [campaigns, setCampaigns] = useState<NewsletterCampaign[]>([]);
-  const [categories, setCategories] = useState<NewsletterCategory[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState("");
   const [previewText, setPreviewText] = useState("");
   const [contentHtml, setContentHtml] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [premiumOnly, setPremiumOnly] = useState(false);
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [editorScheduleAt, setEditorScheduleAt] = useState("");
+  const [eligibleByPremium, setEligibleByPremium] = useState<{
+    standard: NewsletterEligibleCount;
+    premium: NewsletterEligibleCount;
+  }>({
+    standard: EMPTY_ELIGIBLE_COUNT,
+    premium: EMPTY_ELIGIBLE_COUNT,
+  });
+  const [campaignScheduleTimes, setCampaignScheduleTimes] = useState<Record<number, string>>({});
+  const [campaignActionId, setCampaignActionId] = useState<number | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -58,7 +65,6 @@ export default function AdminNewsletters() {
       fetchNewsletterAnalytics(),
       fetchNewsletterSubscribers(statusFilter || undefined),
       fetchNewsletterCampaigns(),
-      fetchNewsletterCategories(),
     ]);
 
     const errors: string[] = [];
@@ -78,16 +84,43 @@ export default function AdminNewsletters() {
     }
 
     if (results[2].status === "fulfilled") {
-      setCampaigns(results[2].value);
+      const nextCampaigns = results[2].value;
+      setCampaigns(nextCampaigns);
+
+      const nextScheduleTimes: Record<number, string> = {};
+      for (const campaign of nextCampaigns) {
+        if (campaign.scheduled_at) {
+          nextScheduleTimes[campaign.id] = campaign.scheduled_at.slice(0, 16);
+        }
+      }
+      setCampaignScheduleTimes(nextScheduleTimes);
+
+      const eligibleResults = await Promise.allSettled([
+        fetchNewsletterCampaignEligibleCount(false),
+        fetchNewsletterCampaignEligibleCount(true),
+      ]);
+
+      const standardEligible =
+        eligibleResults[0].status === "fulfilled"
+          ? eligibleResults[0].value
+          : EMPTY_ELIGIBLE_COUNT;
+      const premiumEligible =
+        eligibleResults[1].status === "fulfilled"
+          ? eligibleResults[1].value
+          : EMPTY_ELIGIBLE_COUNT;
+
+      setEligibleByPremium({
+        standard: standardEligible,
+        premium: premiumEligible,
+      });
     } else {
       setCampaigns([]);
+      setCampaignScheduleTimes({});
+      setEligibleByPremium({
+        standard: EMPTY_ELIGIBLE_COUNT,
+        premium: EMPTY_ELIGIBLE_COUNT,
+      });
       errors.push(getNewsletterApiError(results[2].reason, "Unable to load campaigns"));
-    }
-
-    if (results[3].status === "fulfilled") {
-      setCategories(results[3].value);
-    } else {
-      setCategories([]);
     }
 
     if (errors.length > 0) {
@@ -104,51 +137,59 @@ export default function AdminNewsletters() {
   function resetEditor() {
     setEditingId(null);
     setTitle("");
-    setSubject("");
     setPreviewText("");
     setContentHtml("");
-    setSelectedCategories([]);
     setPremiumOnly(false);
-    setScheduledAt("");
+    setEditorScheduleAt("");
   }
 
   function loadCampaignIntoEditor(campaign: NewsletterCampaign) {
     setEditingId(campaign.id);
     setTitle(campaign.title);
-    setSubject(campaign.subject);
     setPreviewText(campaign.preview_text ?? "");
     setContentHtml(campaign.content_html ?? "");
-    setSelectedCategories(campaign.segments?.category_slugs ?? []);
     setPremiumOnly(Boolean(campaign.premium_only));
-    setScheduledAt(campaign.scheduled_at ? campaign.scheduled_at.slice(0, 16) : "");
+    setEditorScheduleAt(campaign.scheduled_at ? campaign.scheduled_at.slice(0, 16) : "");
     setActiveTab("campaigns");
+  }
+
+  function formatCampaignSchedule(value?: string | null) {
+    if (!value) return "—";
+    return new Date(value).toLocaleString();
   }
 
   async function handleSaveCampaign(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const plainContent = contentHtml.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
-    if (!title.trim() || !subject.trim() || !plainContent) {
-      toast.error("Add a title, subject, and campaign content.");
+    if (!title.trim() || !plainContent) {
+      toast.error("Add a title and campaign content.");
+      return;
+    }
+
+    if (editorScheduleAt && new Date(editorScheduleAt) <= new Date()) {
+      toast.error("Schedule time must be in the future.");
       return;
     }
 
     const payload = {
       title: title.trim(),
-      subject: subject.trim(),
       preview_text: previewText.trim() || undefined,
       content_html: contentHtml,
-      category_slugs: selectedCategories,
       premium_only: premiumOnly,
     };
 
     try {
-      if (editingId) {
-        await updateNewsletterCampaign(editingId, payload);
-        toast.success("Campaign updated");
+      const campaign = editingId
+        ? await updateNewsletterCampaign(editingId, payload)
+        : await createNewsletterCampaign(payload);
+
+      if (editorScheduleAt) {
+        await scheduleNewsletterCampaign(campaign.id, new Date(editorScheduleAt).toISOString());
+        toast.success(editingId ? "Campaign updated and scheduled" : "Campaign created and scheduled");
       } else {
-        await createNewsletterCampaign(payload);
-        toast.success("Campaign created");
+        toast.success(editingId ? "Campaign updated" : "Campaign saved to the list");
       }
+
       resetEditor();
       await loadData();
     } catch (error) {
@@ -157,27 +198,40 @@ export default function AdminNewsletters() {
   }
 
   async function handleSchedule(campaignId: number) {
-    if (!scheduledAt) {
-      toast.error("Choose a schedule date and time first");
+    const scheduleValue = campaignScheduleTimes[campaignId];
+
+    if (!scheduleValue) {
+      toast.error("Choose a schedule date and time for this campaign");
       return;
     }
 
+    if (new Date(scheduleValue) <= new Date()) {
+      toast.error("Schedule time must be in the future");
+      return;
+    }
+
+    setCampaignActionId(campaignId);
     try {
-      await scheduleNewsletterCampaign(campaignId, new Date(scheduledAt).toISOString());
+      await scheduleNewsletterCampaign(campaignId, new Date(scheduleValue).toISOString());
       toast.success("Campaign scheduled");
       await loadData();
     } catch (error) {
       toast.error(getNewsletterApiError(error, "Failed to schedule campaign"));
+    } finally {
+      setCampaignActionId(null);
     }
   }
 
   async function handleSend(campaignId: number) {
+    setCampaignActionId(campaignId);
     try {
       await sendNewsletterCampaign(campaignId);
-      toast.success("Campaign dispatch started");
+      toast.success("Campaign is sending now");
       await loadData();
     } catch (error) {
       toast.error(getNewsletterApiError(error, "Failed to send campaign"));
+    } finally {
+      setCampaignActionId(null);
     }
   }
 
@@ -213,17 +267,31 @@ export default function AdminNewsletters() {
     }
   }
 
-  function toggleCategory(slug: string) {
-    setSelectedCategories((current) =>
-      current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug],
-    );
+  function getCampaignEligibleCount(campaign: NewsletterCampaign): NewsletterEligibleCount {
+    return campaign.premium_only ? eligibleByPremium.premium : eligibleByPremium.standard;
   }
+
+  function getEditorEligibleCount(): NewsletterEligibleCount {
+    return premiumOnly ? eligibleByPremium.premium : eligibleByPremium.standard;
+  }
+
+  const editorEligibleCount = getEditorEligibleCount();
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title="Newsletters"
         description="Manage subscribers, campaigns, delivery, and engagement analytics"
+        actions={
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            disabled={loading}
+            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-zbc-gray-700 hover:bg-muted disabled:opacity-50"
+          >
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        }
       />
 
       <div className="flex flex-wrap gap-2 border-b border-border pb-1">
@@ -301,6 +369,46 @@ export default function AdminNewsletters() {
         </div>
       ) : null}
 
+      {activeTab === "overview" ? (
+        <section className="rounded-xl border border-border bg-background p-4 sm:p-5">
+          <h2 className="text-lg font-semibold text-zbc-gray-1000">Recent subscribers</h2>
+          <div className="mt-4 space-y-2">
+            {subscribers.length === 0 ? (
+              <p className="text-sm text-zbc-gray-500">No subscribers yet.</p>
+            ) : (
+              subscribers.slice(0, 8).map((subscriber) => (
+                <div
+                  key={subscriber.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/70 px-3 py-2 text-sm"
+                >
+                  <div>
+                    <div className="font-medium text-zbc-gray-1000">{subscriber.email}</div>
+                    <div className="text-zbc-gray-500">
+                      {subscriber.preferences?.categories?.join(", ") || "All categories"} ·{" "}
+                      <span className="capitalize">{subscriber.status}</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-zbc-gray-500">
+                    {subscriber.created_at
+                      ? new Date(subscriber.created_at).toLocaleString()
+                      : "—"}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          {subscribers.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab("subscribers")}
+              className="mt-4 text-sm font-medium text-primary"
+            >
+              View all subscribers
+            </button>
+          ) : null}
+        </section>
+      ) : null}
+
       {activeTab === "campaigns" ? (
         <>
           <section className="rounded-xl border border-border bg-background p-4 sm:p-5">
@@ -320,20 +428,12 @@ export default function AdminNewsletters() {
             </div>
 
             <form onSubmit={(e) => void handleSaveCampaign(e)} className="mt-4 space-y-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <input
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                  placeholder="Campaign title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-                <input
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
-                  placeholder="Email subject"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                />
-              </div>
+              <input
+                className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                placeholder="Campaign title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
 
               <input
                 className="w-full rounded-md border border-border px-3 py-2 text-sm"
@@ -344,35 +444,39 @@ export default function AdminNewsletters() {
 
               <NewsletterHtmlEditor value={contentHtml} onChange={setContentHtml} />
 
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zbc-gray-800">Audience segments</p>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((category) => {
-                    const active = selectedCategories.includes(category.slug);
-                    return (
-                      <button
-                        key={category.id}
-                        type="button"
-                        onClick={() => toggleCategory(category.slug)}
-                        className={`rounded-full border px-3 py-1 text-xs ${
-                          active
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-zbc-gray-600"
-                        }`}
-                      >
-                        {category.name}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="space-y-3 rounded-lg border border-border/70 bg-muted/30 p-4">
                 <label className="flex items-center gap-2 text-sm text-zbc-gray-700">
                   <input
                     type="checkbox"
                     checked={premiumOnly}
                     onChange={(e) => setPremiumOnly(e.target.checked)}
                   />
-                  Premium / member subscribers only
+                  Premium only (verified subscribers)
                 </label>
+                <p className="text-sm text-zbc-gray-700">
+                  <span className="font-semibold text-zbc-gray-1000">
+                    Eligible recipients: {editorEligibleCount.count}
+                  </span>
+                  {premiumOnly ? (
+                    <span className="text-zbc-gray-500">
+                      {" "}
+                      (verified subscribers only)
+                    </span>
+                  ) : (
+                    <span className="text-zbc-gray-500">
+                      {" "}
+                      ({editorEligibleCount.breakdown.subscribers} subscribers — verified or pending ·{" "}
+                      {editorEligibleCount.breakdown.users} users with role user)
+                    </span>
+                  )}
+                </p>
+                {editorEligibleCount.count === 0 ? (
+                  <p className="text-sm text-amber-700">
+                    {premiumOnly
+                      ? "No verified subscribers yet. Uncheck “Premium only” to include pending subscribers and site users."
+                      : "No eligible recipients right now. Add subscribers or users with the user role."}
+                  </p>
+                ) : null}
               </div>
 
               <div className="flex flex-wrap gap-3">
@@ -380,20 +484,60 @@ export default function AdminNewsletters() {
                   type="submit"
                   className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white"
                 >
-                  {editingId ? "Update campaign" : "Save draft"}
+                  {editingId
+                    ? editorScheduleAt
+                      ? "Update & schedule"
+                      : "Update draft"
+                    : editorScheduleAt
+                      ? "Save & schedule"
+                      : "Save to list"}
                 </button>
+                {editingId ? (
+                  <button
+                    type="button"
+                    onClick={resetEditor}
+                    className="rounded-md border border-border px-4 py-2 text-sm font-medium text-zbc-gray-700"
+                  >
+                    Cancel edit
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="rounded-lg border border-border/70 bg-muted/20 p-4">
+                <label className="block text-sm font-medium text-zbc-gray-800">
+                  Schedule send (optional)
+                </label>
+                <p className="mt-1 text-xs text-zbc-gray-500">
+                  Leave empty to save as a draft. Set a future time here to schedule when saving, or
+                  schedule later from the campaign list.
+                </p>
+                <input
+                  type="datetime-local"
+                  value={editorScheduleAt}
+                  onChange={(e) => setEditorScheduleAt(e.target.value)}
+                  className="mt-3 w-full max-w-xs rounded-md border border-border px-3 py-2 text-sm"
+                />
               </div>
             </form>
           </section>
 
           <section className="rounded-xl border border-border bg-background p-4 sm:p-5">
-            <h2 className="text-lg font-semibold text-zbc-gray-1000">Campaigns</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-zbc-gray-1000">Campaign list</h2>
+                <p className="mt-1 text-xs text-zbc-gray-500">
+                  Save drafts below, send instantly, or pick a schedule time per campaign. Scheduled
+                  campaigns run automatically every minute.
+                </p>
+              </div>
+            </div>
             <div className="mt-3 overflow-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-zbc-gray-500">
                     <th className="py-2 pr-4">Title</th>
                     <th className="py-2 pr-4">Status</th>
+                    <th className="py-2 pr-4">Scheduled for</th>
                     <th className="py-2 pr-4">Sent</th>
                     <th className="py-2 pr-4">Opens</th>
                     <th className="py-2 pr-4">Clicks</th>
@@ -401,50 +545,96 @@ export default function AdminNewsletters() {
                   </tr>
                 </thead>
                 <tbody>
-                  {campaigns.map((campaign) => (
+                  {campaigns.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-sm text-zbc-gray-500">
+                        No campaigns yet. Create one above and it will appear here.
+                      </td>
+                    </tr>
+                  ) : (
+                  campaigns.map((campaign) => {
+                    const eligible = getCampaignEligibleCount(campaign);
+                    const canDispatch =
+                      (campaign.status === "draft" || campaign.status === "scheduled") &&
+                      eligible.count > 0;
+                    const isBusy = campaignActionId === campaign.id;
+
+                    return (
                     <tr key={campaign.id} className="border-b border-border/70">
-                      <td className="py-2 pr-4">{campaign.title}</td>
-                      <td className="py-2 pr-4 capitalize">{campaign.status}</td>
+                      <td className="py-2 pr-4 font-medium text-zbc-gray-1000">{campaign.title}</td>
+                      <td className="py-2 pr-4 capitalize">
+                        {campaign.status}
+                        {campaign.premium_only ? (
+                          <span className="ml-1 text-xs text-zbc-gray-500">(premium only)</span>
+                        ) : null}
+                      </td>
+                      <td className="py-2 pr-4 text-zbc-gray-600">
+                        {formatCampaignSchedule(campaign.scheduled_at)}
+                      </td>
                       <td className="py-2 pr-4">{campaign.subscriber_count ?? 0}</td>
                       <td className="py-2 pr-4">{campaign.open_count ?? 0}</td>
                       <td className="py-2 pr-4">{campaign.click_count ?? 0}</td>
                       <td className="py-2 pr-4">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => loadCampaignIntoEditor(campaign)}
-                            className="text-xs font-medium text-primary"
-                          >
-                            Edit
-                          </button>
-                          {campaign.status === "draft" || campaign.status === "scheduled" ? (
-                            <>
-                              <input
-                                type="datetime-local"
-                                value={scheduledAt}
-                                onChange={(e) => setScheduledAt(e.target.value)}
-                                className="rounded border border-border px-2 py-1 text-xs"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => void handleSchedule(campaign.id)}
-                                className="text-xs font-medium text-zbc-gray-700"
-                              >
-                                Schedule
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void handleSend(campaign.id)}
-                                className="text-xs font-medium text-zbc-gray-700"
-                              >
-                                Send now
-                              </button>
-                            </>
-                          ) : null}
+                        <div className="flex min-w-[280px] flex-col gap-2">
+                          <span className="text-xs text-zbc-gray-500">
+                            {eligible.count} eligible recipient{eligible.count === 1 ? "" : "s"}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => loadCampaignIntoEditor(campaign)}
+                              className="text-xs font-medium text-primary"
+                            >
+                              Edit
+                            </button>
+                            {campaign.status === "draft" || campaign.status === "scheduled" ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleSend(campaign.id)}
+                                  disabled={!canDispatch || isBusy}
+                                  title={
+                                    canDispatch
+                                      ? "Send this campaign immediately"
+                                      : "No eligible recipients for this campaign"
+                                  }
+                                  className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {isBusy ? "Sending..." : "Send now"}
+                                </button>
+                                <input
+                                  type="datetime-local"
+                                  value={campaignScheduleTimes[campaign.id] ?? ""}
+                                  onChange={(e) =>
+                                    setCampaignScheduleTimes((current) => ({
+                                      ...current,
+                                      [campaign.id]: e.target.value,
+                                    }))
+                                  }
+                                  className="rounded border border-border px-2 py-1 text-xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => void handleSchedule(campaign.id)}
+                                  disabled={!canDispatch || isBusy}
+                                  title={
+                                    canDispatch
+                                      ? "Schedule this campaign for the selected time"
+                                      : "No eligible recipients for this campaign"
+                                  }
+                                  className="text-xs font-medium text-zbc-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Schedule
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -481,7 +671,14 @@ export default function AdminNewsletters() {
                 </tr>
               </thead>
               <tbody>
-                {subscribers.map((subscriber) => (
+                {subscribers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-sm text-zbc-gray-500">
+                      No subscribers found{statusFilter ? ` with status "${statusFilter}"` : ""}.
+                    </td>
+                  </tr>
+                ) : (
+                  subscribers.map((subscriber) => (
                   <tr key={subscriber.id} className="border-b border-border/70">
                     <td className="py-2 pr-4">{subscriber.email}</td>
                     <td className="py-2 pr-4">
@@ -526,6 +723,15 @@ export default function AdminNewsletters() {
                             Resend email
                           </button>
                         ) : null}
+                        {subscriber.status === "verified" ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleSubscriberStatusChange(subscriber.id, "unsubscribed")}
+                            className="text-xs font-medium text-zbc-gray-700"
+                          >
+                            Unsubscribe
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => void handleDeleteSubscriber(subscriber.id)}
@@ -536,7 +742,8 @@ export default function AdminNewsletters() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
