@@ -69,6 +69,22 @@ export type NewsletterAnalytics = {
   };
 };
 
+export type NewsletterEligibleCount = {
+  count: number;
+  breakdown: {
+    subscribers: number;
+    users: number;
+  };
+};
+
+export const EMPTY_ELIGIBLE_COUNT: NewsletterEligibleCount = {
+  count: 0,
+  breakdown: {
+    subscribers: 0,
+    users: 0,
+  },
+};
+
 export type NewsletterCategory = {
   id: number;
   name: string;
@@ -92,9 +108,20 @@ export const EMPTY_ANALYTICS: NewsletterAnalytics = {
 function extractPaginatedRows(body: unknown): unknown[] {
   if (!body || typeof body !== "object") return [];
   const root = body as Record<string, unknown>;
-  const data = root.data as Record<string, unknown> | undefined;
-  const rows = data?.data;
-  return Array.isArray(rows) ? rows : [];
+  const payload = root.data;
+
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (payload && typeof payload === "object") {
+    const rows = (payload as Record<string, unknown>).data;
+    if (Array.isArray(rows)) {
+      return rows;
+    }
+  }
+
+  return [];
 }
 
 function extractData<T>(body: unknown): T {
@@ -137,6 +164,10 @@ function normalizeAnalytics(data: unknown): NewsletterAnalytics {
 
 export function getNewsletterApiError(error: unknown, fallback: string): string {
   const message = getAuthErrorMessage(error, fallback);
+
+  if (message.includes("No eligible recipients for this campaign")) {
+    return "No eligible recipients for this campaign. Users may be unsubscribed or the audience is empty.";
+  }
 
   if (message.includes("No verified subscribers match this campaign audience")) {
     return "No verified subscribers match this campaign. Verify pending subscribers or adjust the campaign audience categories.";
@@ -183,6 +214,22 @@ export async function fetchNewsletterCampaign(id: number): Promise<NewsletterCam
   return extractData<NewsletterCampaign>(response.data);
 }
 
+export async function fetchNewsletterCampaignEligibleCount(
+  premiumOnly = false,
+): Promise<NewsletterEligibleCount> {
+  const response = await request.get("/admin/newsletter/campaigns/eligible-count", {
+    params: { premium_only: premiumOnly ? 1 : 0 },
+  });
+  return extractData<NewsletterEligibleCount>(response.data);
+}
+
+export async function fetchNewsletterCampaignEligibleCountById(
+  id: number,
+): Promise<NewsletterEligibleCount> {
+  const response = await request.get(`/admin/newsletter/campaigns/${id}/eligible-count`);
+  return extractData<NewsletterEligibleCount>(response.data);
+}
+
 export async function fetchNewsletterCategories(): Promise<NewsletterCategory[]> {
   const response = await request.get("/admin/newsletter/categories");
   const data = extractData<NewsletterCategory[]>(response.data);
@@ -191,12 +238,11 @@ export async function fetchNewsletterCategories(): Promise<NewsletterCategory[]>
 
 export async function createNewsletterCampaign(payload: {
   title: string;
-  subject: string;
+  subject?: string;
   preview_text?: string;
   content_html: string;
   status?: "draft" | "scheduled";
   scheduled_at?: string;
-  category_slugs?: string[];
   premium_only?: boolean;
 }): Promise<NewsletterCampaign> {
   const response = await request.post("/admin/newsletter/campaigns/store", payload);
@@ -210,7 +256,6 @@ export async function updateNewsletterCampaign(
     subject: string;
     preview_text: string;
     content_html: string;
-    category_slugs: string[];
     premium_only: boolean;
   }>,
 ): Promise<NewsletterCampaign> {
