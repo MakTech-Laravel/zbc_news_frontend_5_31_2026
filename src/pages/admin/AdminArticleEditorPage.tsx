@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Navigate, useBlocker, useNavigate, useParams } from "react-router-dom";
@@ -50,6 +51,7 @@ import type { ArticleStatus } from "@/data/admin/mockArticles";
 import { isFutureDatetimeLocal, toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { getAuthErrorMessage, getAuthFieldErrors } from "@/features/auth/errorMessage";
 import { resolveArticleTagsFromRecord } from "@/lib/articleTags";
 
 type AdminArticleEditorPageProps = {
@@ -301,6 +303,46 @@ function appendImageUrlsToPayload(
 const fieldLabelClassName =
   "block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm";
 
+const ARTICLE_FORM_FIELDS: (keyof ArticleFormInputValues)[] = [
+  "title",
+  "article_description",
+  "status",
+  "visibility",
+  "article_category_id",
+  "tags",
+  "excerpt",
+  "meta_title",
+  "meta_description",
+  "meta_keywords",
+  "slug",
+  "scheduled_publishing",
+  "published_at",
+];
+
+function applyServerErrors(
+  error: unknown,
+  setError: ReturnType<typeof useForm<ArticleFormInputValues>>["setError"],
+) {
+  const fieldErrors = getAuthFieldErrors(error);
+  let applied = false;
+
+  for (const [field, message] of Object.entries(fieldErrors)) {
+    if (!ARTICLE_FORM_FIELDS.includes(field as keyof ArticleFormInputValues)) continue;
+    setError(field as keyof ArticleFormInputValues, { message });
+    applied = true;
+  }
+
+  if (!applied && axios.isAxiosError(error)) {
+    const message = (error.response?.data as { message?: string } | undefined)?.message;
+    if (typeof message === "string" && /slug/i.test(message)) {
+      setError("slug", { message });
+      applied = true;
+    }
+  }
+
+  return applied;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageProps) {
@@ -333,6 +375,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     control,
     reset,
     setValue,
+    setError,
     getValues,
     watch,
     formState: { errors, isDirty, isSubmitting },
@@ -493,8 +536,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       navigate("/admin/articles");
     } catch (error) {
       console.error("Failed to save article:", error);
-      toast.error("Failed to save article");
-      console.log("DATA:", (error as { response?: { data?: unknown } }).response?.data);
+      if (!applyServerErrors(error, setError)) {
+        toast.error(getAuthErrorMessage(error, "Failed to save article"));
+      }
     }
   };
 

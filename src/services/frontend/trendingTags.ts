@@ -1,5 +1,6 @@
 import { request } from "@/api/request";
 import type { TrendingTag } from "@/data/dummy/types";
+import { formatTagLabel, getTagPath, slugifyTag } from "@/lib/tagPaths";
 
 function extractRows(body: unknown): unknown[] {
   if (!body || typeof body !== "object") return [];
@@ -18,19 +19,13 @@ function extractRows(body: unknown): unknown[] {
   return [];
 }
 
-function formatTagLabel(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
-}
-
 function mapTrendingTag(raw: unknown, index: number): TrendingTag | null {
   if (typeof raw === "string" && raw.trim()) {
-    const slug = raw.trim().toLowerCase().replace(/\s+/g, "-");
+    const slug = slugifyTag(raw);
     return {
       id: `tag-${index}`,
       label: formatTagLabel(raw),
-      href: `/?tag=${encodeURIComponent(slug)}`,
+      href: getTagPath(slug),
     };
   }
 
@@ -53,7 +48,7 @@ function mapTrendingTag(raw: unknown, index: number): TrendingTag | null {
   const href =
     (typeof record.href === "string" && record.href) ||
     (typeof record.url === "string" && record.url) ||
-    (tagSlug ? `/?tag=${encodeURIComponent(tagSlug)}` : "/");
+    (tagSlug ? getTagPath(tagSlug) : "/");
 
   return {
     id,

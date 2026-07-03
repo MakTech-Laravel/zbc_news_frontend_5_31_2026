@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Timer } from "lucide-react";
 
 import { ArticleTimestamps } from "@/components/articles/ArticleTimestamps";
@@ -11,6 +11,7 @@ import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import NotFound from "@/pages/global/NotFound";
 import { cn } from "@/lib/utils";
+import { getTagPath } from "@/lib/tagPaths";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { useDocumentHead } from "@/hooks/useDocumentHead";
 import {
@@ -197,12 +198,13 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
         {article.tags.length > 0 ? (
           <div className="flex flex-wrap gap-2 border-t border-border pt-6">
             {article.tags.map((tag) => (
-              <span
+              <Link
                 key={tag}
-                className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-zbc-gray-700"
+                to={getTagPath(tag)}
+                className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-zbc-gray-700 hover:text-primary"
               >
                 {tag}
-              </span>
+              </Link>
             ))}
           </div>
         ) : null}

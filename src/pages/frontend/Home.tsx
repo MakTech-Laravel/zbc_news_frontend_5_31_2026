@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   ArticleContent,
@@ -12,6 +12,7 @@ import { FeaturedSection } from "@/components/main-layout/content/FeaturedSectio
 import { HeroSection } from "@/components/main-layout/content/HeroSection";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
 import { useDocumentHead } from "@/hooks/useDocumentHead";
+import { getTagPath } from "@/lib/tagPaths";
 import {
   fetchArticleBySlug,
   type ArticleDetail,
@@ -21,6 +22,8 @@ type SlugView = "loading" | "article" | "category";
 
 export default function Home() {
   const { slug } = useParams<{ slug?: string }>();
+  const [searchParams] = useSearchParams();
+  const legacyTag = searchParams.get("tag");
   const [view, setView] = useState<SlugView>(slug ? "loading" : "category");
   const [article, setArticle] = useState<ArticleDetail | null>(null);
 
@@ -56,6 +59,10 @@ export default function Home() {
       cancelled = true;
     };
   }, [slug]);
+
+  if (!slug && legacyTag?.trim()) {
+    return <Navigate to={getTagPath(legacyTag)} replace />;
+  }
 
   if (!slug) {
     return (

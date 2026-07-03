@@ -3,6 +3,7 @@ import { lazyWithRetry } from "@/routes/lazyWithRetry";
 
 // Frontend
 export const Home = lazyWithRetry(() => import("@/pages/frontend/Home"));
+export const TagArticles = lazyWithRetry(() => import("@/pages/frontend/TagArticles"));
 export const Test = lazyWithRetry(() => import("@/pages/frontend/Home"));
 export const Politics = lazyWithRetry(() => import("@/pages/frontend/Politics"));
 export const Business = lazyWithRetry(() => import("@/pages/frontend/Business"));
