@@ -20,6 +20,16 @@ type AdminFilterBarProps = {
   categoryOptions?: AdminFilterOption[];
   showCategoryFilter?: boolean;
   showStatusFilter?: boolean;
+  archiveYearValue?: string;
+  onArchiveYearChange?: (value: string) => void;
+  archiveYearOptions?: AdminFilterOption[];
+  archiveMonthValue?: string;
+  onArchiveMonthChange?: (value: string) => void;
+  archiveMonthOptions?: AdminFilterOption[];
+  archiveAuthorValue?: string;
+  onArchiveAuthorChange?: (value: string) => void;
+  archiveAuthorOptions?: AdminFilterOption[];
+  showArchiveFilters?: boolean;
   className?: string;
 };
 
@@ -71,47 +81,90 @@ export function AdminFilterBar({
   categoryOptions,
   showCategoryFilter = true,
   showStatusFilter = true,
+  archiveYearValue,
+  onArchiveYearChange,
+  archiveYearOptions,
+  archiveMonthValue,
+  onArchiveMonthChange,
+  archiveMonthOptions,
+  archiveAuthorValue,
+  onArchiveAuthorChange,
+  archiveAuthorOptions,
+  showArchiveFilters = false,
   className,
 }: AdminFilterBarProps) {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 lg:flex-row lg:items-center",
-        className,
-      )}
-    >
-      <div className="relative min-w-0 flex-1">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-admin-label"
-          aria-hidden
-        />
-        <Input
-          type="search"
-          value={searchValue}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={searchPlaceholder}
-          className="h-[42px] rounded-[10px] border-admin-input-border pl-10 text-base placeholder:text-foreground/50"
-        />
+    <div className={cn("flex flex-col gap-3", className)}>
+      <div
+        className={cn(
+          "flex flex-col gap-3 lg:flex-row lg:items-center",
+        )}
+      >
+        <div className="relative min-w-0 flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-admin-label"
+            aria-hidden
+          />
+          <Input
+            type="search"
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-[42px] rounded-[10px] border-admin-input-border pl-10 text-base placeholder:text-foreground/50"
+          />
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {showStatusFilter ? (
+            <AdminFilterSelect
+              value={statusValue}
+              onChange={onStatusChange}
+              options={statusOptions}
+              aria-label="Filter by status"
+            />
+          ) : null}
+          {showCategoryFilter && categoryValue != null && onCategoryChange && categoryOptions ? (
+            <AdminFilterSelect
+              value={categoryValue}
+              onChange={onCategoryChange}
+              options={categoryOptions}
+              aria-label="Filter by category"
+            />
+          ) : null}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        {showStatusFilter ? (
+      {showArchiveFilters &&
+      archiveYearValue != null &&
+      onArchiveYearChange &&
+      archiveYearOptions &&
+      archiveMonthValue != null &&
+      onArchiveMonthChange &&
+      archiveMonthOptions &&
+      archiveAuthorValue != null &&
+      onArchiveAuthorChange &&
+      archiveAuthorOptions ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <AdminFilterSelect
-            value={statusValue}
-            onChange={onStatusChange}
-            options={statusOptions}
-            aria-label="Filter by status"
+            value={archiveYearValue}
+            onChange={onArchiveYearChange}
+            options={archiveYearOptions}
+            aria-label="Filter archived articles by year"
           />
-        ) : null}
-        {showCategoryFilter && categoryValue != null && onCategoryChange && categoryOptions ? (
           <AdminFilterSelect
-            value={categoryValue}
-            onChange={onCategoryChange}
-            options={categoryOptions}
-            aria-label="Filter by category"
+            value={archiveMonthValue}
+            onChange={onArchiveMonthChange}
+            options={archiveMonthOptions}
+            aria-label="Filter archived articles by month"
           />
-        ) : null}
-      </div>
+          <AdminFilterSelect
+            value={archiveAuthorValue}
+            onChange={onArchiveAuthorChange}
+            options={archiveAuthorOptions}
+            aria-label="Filter archived articles by author"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

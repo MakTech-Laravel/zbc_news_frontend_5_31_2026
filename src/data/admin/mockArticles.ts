@@ -7,12 +7,15 @@ export type AdminArticle = {
   slug: string;
   title: string;
   author: string;
+  authorId?: string;
   category: string;
   status: ArticleStatus;
   visibility: ArticleVisibility;
   views: number;
   /** Published date & time shown to readers */
   date: string;
+  publishedAtIso?: string;
+  updatedAtIso?: string;
   /** Last editorial update timestamp (internal) */
   updatedAt?: string;
   /** ISO timestamp of the last manual or auto-save */

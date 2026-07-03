@@ -1,7 +1,7 @@
 import { request } from "@/api/request";
 import { normalizeArticleVisibility } from "@/data/admin/articleVisibility";
 import type { AdminArticle, ArticleStatus } from "@/data/admin/mockArticles";
-import { formatPublishDateTime } from "@/lib/publishDate";
+import { formatPublishDateTime, parsePublishDate } from "@/lib/publishDate";
 
 export type AdminArticleApiCategory = {
   id?: number | string;
@@ -64,6 +64,18 @@ function resolveAuthorLabel(raw: Record<string, unknown>): string {
   return "Unknown";
 }
 
+function resolveAuthorId(raw: Record<string, unknown>): string | undefined {
+  if (raw.user && typeof raw.user === "object") {
+    const user = raw.user as Record<string, unknown>;
+    if (user.id != null) return String(user.id);
+  }
+  if (raw.author && typeof raw.author === "object") {
+    const author = raw.author as Record<string, unknown>;
+    if (author.id != null) return String(author.id);
+  }
+  return undefined;
+}
+
 function mapApiArticle(raw: unknown): AdminArticle | null {
   if (!raw || typeof raw !== "object") return null;
   const record = raw as Record<string, unknown>;
@@ -77,11 +89,16 @@ function mapApiArticle(raw: unknown): AdminArticle | null {
     slug,
     title,
     author: resolveAuthorLabel(record),
+    authorId: resolveAuthorId(record),
     category: resolveCategoryLabel(record),
     status: normalizeArticleStatus(record.status),
     visibility: normalizeArticleVisibility(record.visibility),
     views: Number(record.views ?? record.view_count ?? 0),
     date: formatArticleDate(record.published_at ?? record.created_at),
+    publishedAtIso:
+      typeof record.published_at === "string" ? record.published_at : undefined,
+    updatedAtIso:
+      typeof record.updated_at === "string" ? record.updated_at : undefined,
     updatedAt: formatArticleDate(record.updated_at),
     lastSavedAt:
       typeof record.last_saved_at === "string"
@@ -237,4 +254,132 @@ export function matchesArticleSearch(article: AdminArticle, query: string) {
     article.title.toLowerCase().includes(q) ||
     article.author.toLowerCase().includes(q)
   );
+}
+
+const ARCHIVE_MONTH_LABELS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+export function getArchivedArticleFilterDate(article: AdminArticle): Date | null {
+  return (
+    parsePublishDate(article.publishedAtIso) ??
+    parsePublishDate(article.updatedAtIso) ??
+    null
+  );
+}
+
+export function buildArchiveYearFilterOptions(
+  articles: AdminArticle[],
+): AdminFilterOption[] {
+  const years = new Set<number>();
+
+  articles
+    .filter((article) => article.status === "archived")
+    .forEach((article) => {
+      const date = getArchivedArticleFilterDate(article);
+      if (date) years.add(date.getFullYear());
+    });
+
+  return [
+    { value: "all", label: "All Years" },
+    ...[...years]
+      .sort((a, b) => b - a)
+      .map((year) => ({ value: String(year), label: String(year) })),
+  ];
+}
+
+export function buildArchiveMonthFilterOptions(
+  articles: AdminArticle[],
+  yearFilter: string,
+): AdminFilterOption[] {
+  const months = new Set<number>();
+  const year = yearFilter === "all" ? null : Number.parseInt(yearFilter, 10);
+
+  articles
+    .filter((article) => article.status === "archived")
+    .forEach((article) => {
+      const date = getArchivedArticleFilterDate(article);
+      if (!date) return;
+      if (year !== null && date.getFullYear() !== year) return;
+      months.add(date.getMonth() + 1);
+    });
+
+  return [
+    { value: "all", label: "All Months" },
+    ...[...months]
+      .sort((a, b) => a - b)
+      .map((month) => ({
+        value: String(month),
+        label: ARCHIVE_MONTH_LABELS[month - 1] ?? String(month),
+      })),
+  ];
+}
+
+export function buildArchiveAuthorFilterOptions(
+  articles: AdminArticle[],
+): AdminFilterOption[] {
+  const seen = new Set<string>();
+
+  return [
+    { value: "all", label: "All Authors" },
+    ...articles
+      .filter((article) => article.status === "archived")
+      .filter((article) => {
+        const key = article.authorId ?? article.author;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => a.author.localeCompare(b.author))
+      .map((article) => ({
+        value: article.authorId ?? article.author,
+        label: article.author,
+      })),
+  ];
+}
+
+export function matchesArchivedArticleFilters(
+  article: AdminArticle,
+  filters: {
+    year: string;
+    month: string;
+    category: string;
+    author: string;
+  },
+) {
+  if (article.status !== "archived") return true;
+
+  const date = getArchivedArticleFilterDate(article);
+
+  if (filters.year !== "all") {
+    const year = Number.parseInt(filters.year, 10);
+    if (!date || date.getFullYear() !== year) return false;
+  }
+
+  if (filters.month !== "all") {
+    const month = Number.parseInt(filters.month, 10);
+    if (!date || date.getMonth() + 1 !== month) return false;
+  }
+
+  if (filters.category !== "all" && article.category !== filters.category) {
+    return false;
+  }
+
+  if (filters.author !== "all") {
+    const authorKey = article.authorId ?? article.author;
+    if (authorKey !== filters.author) return false;
+  }
+
+  return true;
 }
