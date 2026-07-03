@@ -184,7 +184,7 @@ export function TermsOfServiceContent() {
               Contact Legal Team
             </a>
             <Link
-              to="/privacy-policy"
+              to="/privacy"
               className="inline-flex items-center border border-zbc-gray-200 px-5 py-2.5 text-sm font-bold text-admin-label"
             >
               Privacy Policy

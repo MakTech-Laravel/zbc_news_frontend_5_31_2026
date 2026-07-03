@@ -239,7 +239,7 @@ export function CookiePolicyContent() {
                 {COOKIE_PRIVACY_EMAIL}
               </a>
               <Link
-                to="/privacy-policy"
+                to="/privacy"
                 className="inline-flex items-center border border-zbc-blue-border px-5 py-2.5 text-sm font-bold text-white"
               >
                 View Privacy Policy

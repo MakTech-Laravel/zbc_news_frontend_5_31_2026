@@ -18,8 +18,8 @@ const FOOTER_STATIC_COLUMNS: { title: string; links: readonly FooterLink[] }[] =
   {
     title: "Legal",
     links: [
-      { label: "Privacy Policy", to: "/privacy-policy" },
-      { label: "Terms of Service", to: "/terms-of-service" },
+      { label: "Privacy Policy", to: "/privacy" },
+      { label: "Terms of Service", to: "/terms" },
       { label: "Cookie Policy", to: "/cookie-policy" },
       { label: "Accessibility", to: "/accessibility-statement" },
     ],

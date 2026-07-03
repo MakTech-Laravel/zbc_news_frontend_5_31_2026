@@ -32,8 +32,10 @@ export const publicRoutes: RouteObject = {
   children: [
     { path: "/about", element: suspensePage(AboutUs) },
     { path: "/contact", element: suspensePage(Contact) },
-    { path: "/privacy-policy", element: suspensePage(PrivacyPolicy) },
-    { path: "/terms-of-service", element: suspensePage(TermsOfService) },
+    { path: "/privacy", element: suspensePage(PrivacyPolicy) },
+    { path: "/terms", element: suspensePage(TermsOfService) },
+    { path: "/privacy-policy", element: <Navigate to="/privacy" replace /> },
+    { path: "/terms-of-service", element: <Navigate to="/terms" replace /> },
     { path: "/cookie-policy", element: suspensePage(CookiePolicy) },
     { path: "/accessibility-statement", element: suspensePage(AccessibilityStatement) },
     { path: "/advertise", element: suspensePage(Advertise) },
