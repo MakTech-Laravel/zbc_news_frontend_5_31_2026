@@ -6,12 +6,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 import { requestPasswordResetOtp } from "@/features/auth/service";
 import { toast } from "react-hot-toast";
+import { type AuthRole } from "@/features/auth/types";
+
 
 export default function ForgetPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [role] = React.useState<AuthRole>("user");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -100,9 +103,9 @@ export default function ForgetPassword() {
               <p className="text-base font-inter font-normal text-muted-foreground">
                 Don't have an account?
               </p>
-              <Link to="/signup" className="text-primary hover:underline">
-                Sign Up
-              </Link>
+              <Link to={`/register?role=${role}`} className="text-primary hover:underline">
+              Sign Up
+            </Link>
             </div>
 
             {/* Divider */}

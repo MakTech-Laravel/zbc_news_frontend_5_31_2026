@@ -17,15 +17,15 @@ type TagArticlesViewProps = {
   tagSlug: string;
 };
 
-const TAG_FILTERS: { value: ArticlesByTagType; label: string }[] = [
-  { value: "latest", label: "Latest" },
-  { value: "trending", label: "Trending" },
-  { value: "recommended", label: "Recommended" },
-];
+// const TAG_FILTERS: { value: ArticlesByTagType; label: string }[] = [
+//   { value: "latest", label: "Latest" },
+//   { value: "trending", label: "Trending" },
+//   { value: "recommended", label: "Recommended" },
+// ];
 
 export function TagArticlesView({ tagSlug }: TagArticlesViewProps) {
   const [articles, setArticles] = useState<Article[]>([]);
-  const [filter, setFilter] = useState<ArticlesByTagType>("latest");
+  const [filter ] = useState<ArticlesByTagType>("latest");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notFound, setNotFound] = useState(false);

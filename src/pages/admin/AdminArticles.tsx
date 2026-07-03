@@ -17,7 +17,11 @@ import {
 } from "@/data/admin/mockArticles";
 import {
   buildArticleCategoryFilterOptions,
+  buildArchiveAuthorFilterOptions,
+  buildArchiveMonthFilterOptions,
+  buildArchiveYearFilterOptions,
   fetchAdminArticles,
+  matchesArchivedArticleFilters,
   matchesArticleSearch,
   type AdminArticleApiCategory,
 } from "@/services/admin/articles";
@@ -32,6 +36,9 @@ export default function AdminArticles() {
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [categoryFilter, setCategoryFilter] = React.useState("all");
+  const [archiveYearFilter, setArchiveYearFilter] = React.useState("all");
+  const [archiveMonthFilter, setArchiveMonthFilter] = React.useState("all");
+  const [archiveAuthorFilter, setArchiveAuthorFilter] = React.useState("all");
   const [page, setPage] = React.useState(1);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
@@ -67,6 +74,35 @@ export default function AdminArticles() {
     [categories, articles],
   );
 
+  const isArchiveView = statusFilter === "archived";
+
+  const archiveYearOptions = React.useMemo(
+    () => buildArchiveYearFilterOptions(articles),
+    [articles],
+  );
+
+  const archiveMonthOptions = React.useMemo(
+    () => buildArchiveMonthFilterOptions(articles, archiveYearFilter),
+    [articles, archiveYearFilter],
+  );
+
+  const archiveAuthorOptions = React.useMemo(
+    () => buildArchiveAuthorFilterOptions(articles),
+    [articles],
+  );
+
+  React.useEffect(() => {
+    if (!isArchiveView) {
+      setArchiveYearFilter("all");
+      setArchiveMonthFilter("all");
+      setArchiveAuthorFilter("all");
+    }
+  }, [isArchiveView]);
+
+  React.useEffect(() => {
+    setArchiveMonthFilter("all");
+  }, [archiveYearFilter]);
+
   const draftCount = React.useMemo(
     () => articles.filter((a) => a.status === "draft" || a.hasUnsavedDraft).length,
     [articles],
@@ -77,9 +113,29 @@ export default function AdminArticles() {
       if (!matchesArticleSearch(article, search)) return false;
       if (statusFilter !== "all" && article.status !== statusFilter) return false;
       if (categoryFilter !== "all" && article.category !== categoryFilter) return false;
+      if (
+        isArchiveView &&
+        !matchesArchivedArticleFilters(article, {
+          year: archiveYearFilter,
+          month: archiveMonthFilter,
+          category: categoryFilter,
+          author: archiveAuthorFilter,
+        })
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [articles, search, statusFilter, categoryFilter]);
+  }, [
+    articles,
+    search,
+    statusFilter,
+    categoryFilter,
+    isArchiveView,
+    archiveYearFilter,
+    archiveMonthFilter,
+    archiveAuthorFilter,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -168,6 +224,25 @@ export default function AdminArticles() {
             setPage(1);
           }}
           categoryOptions={categoryOptions}
+          showArchiveFilters={isArchiveView}
+          archiveYearValue={archiveYearFilter}
+          onArchiveYearChange={(v) => {
+            setArchiveYearFilter(v);
+            setPage(1);
+          }}
+          archiveYearOptions={archiveYearOptions}
+          archiveMonthValue={archiveMonthFilter}
+          onArchiveMonthChange={(v) => {
+            setArchiveMonthFilter(v);
+            setPage(1);
+          }}
+          archiveMonthOptions={archiveMonthOptions}
+          archiveAuthorValue={archiveAuthorFilter}
+          onArchiveAuthorChange={(v) => {
+            setArchiveAuthorFilter(v);
+            setPage(1);
+          }}
+          archiveAuthorOptions={archiveAuthorOptions}
         />
       </AdminPanel>
 
