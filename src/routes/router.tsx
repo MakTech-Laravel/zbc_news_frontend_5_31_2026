@@ -42,6 +42,7 @@ const NewsletterPreferencesPage = lazyWithRetry(() => import("@/pages/newsletter
 const AdminComments = lazyWithRetry(() => import("@/pages/admin/AdminComments"));
 const AdminSettings = lazyWithRetry(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazyWithRetry(() => import("@/pages/admin/AdminSettingsSeoEdit"));
+const AdminProfile = lazyWithRetry(() => import("@/pages/admin/AdminProfile"));
 const AdminArticlesEdit = lazyWithRetry(() => import("@/pages/admin/AdminArticlesEdit"));
 const AdminArticleActivities = lazyWithRetry(() => import("@/pages/admin/AdminArticleActivities"));
 const AdminArticlesTrash = lazyWithRetry(() => import("@/pages/admin/AdminArticlesTrash"));
@@ -177,6 +178,10 @@ export const router = createBrowserRouter([
           {
             path: "settings/seo/:pageId",
             element: suspensePage(AdminSettingsSeoEdit),
+          },
+          {
+            path: "profile",
+            element: suspensePage(AdminProfile),
           },
         ],
       },

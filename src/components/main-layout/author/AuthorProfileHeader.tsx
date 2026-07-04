@@ -47,6 +47,11 @@ export function AuthorProfileHeader({ author, className }: AuthorProfileHeaderPr
               <h1 className="font-inter text-3xl font-bold tracking-tight text-zbc-gray-1000 sm:text-4xl">
                 {author.name}
               </h1>
+              {hasPublicTitle ? (
+                <p className="font-inter text-base font-semibold text-primary sm:text-lg">
+                  {author.publicTitle}
+                </p>
+              ) : null}
             </div>
 
             {hasBio ? (

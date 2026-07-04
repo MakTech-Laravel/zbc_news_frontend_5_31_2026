@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import type { Article } from "@/data/dummy/types";
 import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { getAuthorPath } from "@/lib/authorPaths";
-import { fetchAuthorBySlug } from "@/services/frontend/authors";
+import NotFound from "@/pages/global/NotFound";
+import {
+  AuthorProfileNotFoundError,
+  fetchAuthorBySlug,
+} from "@/services/frontend/authors";
 import type { PublicAuthor } from "@/types/author";
 import { useEffect, useState } from "react";
 
@@ -45,6 +49,7 @@ export function AuthorProfileView({ authorSlug }: AuthorProfileViewProps) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useDocumentHead({
     path: getAuthorPath(authorSlug),
@@ -69,6 +74,7 @@ export function AuthorProfileView({ authorSlug }: AuthorProfileViewProps) {
     let cancelled = false;
     setLoading(true);
     setError(false);
+    setNotFound(false);
 
     fetchAuthorBySlug(authorSlug, page)
       .then((result) => {
@@ -81,6 +87,10 @@ export function AuthorProfileView({ authorSlug }: AuthorProfileViewProps) {
       .catch((err) => {
         console.error("Failed to fetch author profile:", err);
         if (cancelled) return;
+        if (err instanceof AuthorProfileNotFoundError) {
+          setNotFound(true);
+          return;
+        }
         setError(true);
       })
       .finally(() => {
@@ -91,6 +101,10 @@ export function AuthorProfileView({ authorSlug }: AuthorProfileViewProps) {
       cancelled = true;
     };
   }, [authorSlug, page]);
+
+  if (notFound) {
+    return <NotFound />;
+  }
 
   if (loading) {
     return (

@@ -5,6 +5,7 @@ export type AuthorSocialLinks = {
   facebook?: string;
   linkedin?: string;
   instagram?: string;
+  youtube?: string;
   website?: string;
 };
 

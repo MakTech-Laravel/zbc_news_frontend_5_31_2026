@@ -77,6 +77,13 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.COMMENTS.LIST,
   },
   {
+    label: 'My Profile',
+    path: '/admin/profile',
+    segment: 'profile',
+    permission: PERMISSIONS.USERS.PROFILE,
+    end: true,
+  },
+  {
     label: 'Settings',
     path: '/admin/settings',
     segment: 'settings',
