@@ -3,6 +3,16 @@
  */
 export const READER_ROLES = ['user', 'subscriber'] as const
 
+/** Roles that manage a public author profile page. */
+export const PUBLIC_AUTHOR_PROFILE_ROLES = [
+  'author',
+  'editor',
+  'journalist',
+  'writer',
+  'sub-editor',
+  'sub_editor',
+] as const
+
 export const ROLES = {
   USER: 'user',
   SUBSCRIBER: 'subscriber',

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bell, Mail, MapPin, User } from "lucide-react";
+import { Bell, Globe, Link2, Mail, MapPin, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -25,15 +25,37 @@ import {
   type NotificationPreferences,
 } from "@/types/notificationPreferences";
 import { request } from "@/api/request";
+import { canManagePublicAuthorProfile } from "@/auth/roles";
+import { useAuth } from "@/auth/useAuth";
 import { uploadAdminMedia } from "@/services/admin/media";
 import toast from "react-hot-toast";
 import InputError from "@/components/input-error";
+import { getAuthorPath } from "@/lib/authorPaths";
+
+const optionalUrlField = z
+  .string()
+  .trim()
+  .refine((value) => value === "" || z.string().url().safeParse(value).success, {
+    message: "Enter a valid URL",
+  });
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
+  slug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens")
+    .or(z.literal("")),
   region: z.string().optional(),
-  bio: z.string().optional(),
+  bio: z.string().max(1000, "Bio must be 1000 characters or less").optional(),
+  publicTitle: z.string().max(255, "Title must be 255 characters or less").optional(),
+  facebook: optionalUrlField.optional(),
+  twitter: optionalUrlField.optional(),
+  linkedin: optionalUrlField.optional(),
+  instagram: optionalUrlField.optional(),
+  youtube: optionalUrlField.optional(),
+  website: optionalUrlField.optional(),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -97,6 +119,8 @@ function NotificationToggleRow({
 }
 
 export function UserProfileForm() {
+  const { user } = useAuth();
+  const showAuthorProfile = canManagePublicAuthorProfile(user);
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -106,22 +130,47 @@ export function UserProfileForm() {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    watch,
+    formState: { errors, isDirty },
   } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { name: "", email: "", region: "", bio: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      slug: "",
+      region: "",
+      bio: "",
+      publicTitle: "",
+      facebook: "",
+      twitter: "",
+      linkedin: "",
+      instagram: "",
+      youtube: "",
+      website: "",
+    },
   });
+
+  const profileSlug = watch("slug");
 
   React.useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await request.get("/admin/users/profile");
         const d = res.data.data;
+        const social = d.user_information?.social_links ?? {};
         reset({
           name: d.name ?? "",
           email: d.email ?? "",
+          slug: d.slug ?? "",
           region: d.user_information?.region ?? "",
           bio: d.user_information?.bio ?? "",
+          publicTitle: d.user_information?.public_title ?? "",
+          facebook: social.facebook ?? "",
+          twitter: social.twitter ?? "",
+          linkedin: social.linkedin ?? "",
+          instagram: social.instagram ?? "",
+          youtube: social.youtube ?? "",
+          website: social.website ?? "",
         });
         if (d.user_information?.profile_image) {
           setProfileImageUrl(resolveMediaUrl(d.user_information.profile_image));
@@ -154,17 +203,49 @@ export function UserProfileForm() {
         setProfileImageFile(null);
       }
 
-      const res = await request.put("/admin/users/profile/update", {
+      const payload: Record<string, string | undefined> = {
         name: data.name,
         email: data.email,
         region: data.region ?? "",
         bio: data.bio ?? "",
         profile_image: imageUrl ?? "",
-      });
+      };
 
-      const updatedImage = res.data?.data?.user_information?.profile_image;
-      if (typeof updatedImage === "string" && updatedImage.trim()) {
-        setProfileImageUrl(resolveMediaUrl(updatedImage));
+      if (showAuthorProfile) {
+        payload.slug = data.slug?.trim() || undefined;
+        payload.public_title = data.publicTitle ?? "";
+        payload.facebook = data.facebook ?? "";
+        payload.twitter = data.twitter ?? "";
+        payload.linkedin = data.linkedin ?? "";
+        payload.instagram = data.instagram ?? "";
+        payload.youtube = data.youtube ?? "";
+        payload.website = data.website ?? "";
+      }
+
+      const res = await request.put("/admin/users/profile/update", payload);
+
+      const updated = res.data?.data;
+      if (updated) {
+        const social = updated.user_information?.social_links ?? {};
+        reset({
+          name: updated.name ?? data.name,
+          email: updated.email ?? data.email,
+          slug: updated.slug ?? data.slug ?? "",
+          region: updated.user_information?.region ?? "",
+          bio: updated.user_information?.bio ?? "",
+          publicTitle: updated.user_information?.public_title ?? "",
+          facebook: social.facebook ?? "",
+          twitter: social.twitter ?? "",
+          linkedin: social.linkedin ?? "",
+          instagram: social.instagram ?? "",
+          youtube: social.youtube ?? "",
+          website: social.website ?? "",
+        });
+
+        const updatedImage = updated.user_information?.profile_image;
+        if (typeof updatedImage === "string" && updatedImage.trim()) {
+          setProfileImageUrl(resolveMediaUrl(updatedImage));
+        }
       }
 
       toast.success("Profile updated successfully.");
@@ -198,8 +279,9 @@ export function UserProfileForm() {
   }, []);
 
   React.useEffect(() => {
+    if (showAuthorProfile) return;
     void loadPreferences();
-  }, [loadPreferences]);
+  }, [loadPreferences, showAuthorProfile]);
 
   const handleToggle = (id: NotificationPreferenceKey, value: boolean) => {
     const updated = { ...(notifications ?? DEFAULT_NOTIFICATION_PREFERENCES), [id]: value };
@@ -221,13 +303,16 @@ export function UserProfileForm() {
     <div className="space-y-6">
       {/* Profile Information */}
       <UserDashboardCard>
-        <div className="w-full md:w-1/2">
+        <div className={cn("w-full", !showAuthorProfile && "md:w-1/2")}>
           <SettingsCardHeader
-            title="Profile Information"
-            subtitle="Update your personal details"
+            title={showAuthorProfile ? "Profile Information" : "Profile Information"}
+            subtitle={
+              showAuthorProfile
+                ? "Update your account and public author details"
+                : "Update your personal details"
+            }
           />
           <div className="space-y-6 px-6 pb-6">
-            {/* Avatar */}
             <ProfilePhotoField
               value={profileImageUrl}
               onChange={setProfileImageUrl}
@@ -237,10 +322,9 @@ export function UserProfileForm() {
 
             <div className="h-px bg-border" />
 
-            {/* Form */}
             {profileLoading ? (
               <div className="grid gap-6 sm:grid-cols-2">
-                {Array.from({ length: 4 }).map((_, i) => (
+                {Array.from({ length: showAuthorProfile ? 4 : 4 }).map((_, i) => (
                   <div
                     key={i}
                     className={cn(
@@ -251,77 +335,161 @@ export function UserProfileForm() {
                 ))}
               </div>
             ) : (
-              <form onSubmit={handleSubmit(onSubmit)}>
+              <form
+                onSubmit={handleSubmit(onSubmit)}
+                className={showAuthorProfile ? "space-y-8" : undefined}
+              >
                 <div className="grid gap-6 sm:grid-cols-2">
-                  {/* Name */}
                   <div className="space-y-2">
                     <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
                       <User className="size-4 text-admin-label" aria-hidden />
                       Full Name
                     </label>
                     <Input {...register("name")} className="h-9" />
-                    {errors.name && (
-                      <InputError message={errors.name.message!} />
-                    )}
+                    {errors.name ? <InputError message={errors.name.message!} /> : null}
                   </div>
 
-                  {/* Email */}
                   <div className="space-y-2">
                     <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
                       <Mail className="size-4 text-admin-label" aria-hidden />
                       Email
                     </label>
-                    <Input
-                      type="email"
-                      {...register("email")}
-                      className="h-9"
-                    />
-                    {errors.email && (
-                      <InputError message={errors.email.message!} />
-                    )}
+                    <Input type="email" {...register("email")} className="h-9" />
+                    {errors.email ? <InputError message={errors.email.message!} /> : null}
                   </div>
 
-                  {/* Region */}
                   <div className="space-y-2">
                     <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
                       <MapPin className="size-4 text-admin-label" aria-hidden />
                       Region
                     </label>
                     <Input {...register("region")} className="h-9" />
-                    {errors.region && (
-                      <InputError message={errors.region.message!} />
-                    )}
+                    {errors.region ? <InputError message={errors.region.message!} /> : null}
                   </div>
 
-                  {/* Bio */}
-                  <div className="space-y-2 sm:col-span-2">
-                    <label className="text-sm font-medium text-admin-heading">
-                      Bio
-                    </label>
-                    <textarea
-                      {...register("bio")}
-                      className="min-h-[100px] w-full rounded-lg border border-admin-input-border bg-card px-3 py-2 text-sm text-admin-heading placeholder:text-admin-label/60"
-                      placeholder="Tell us about yourself..."
-                    />
-                    {errors.bio && <InputError message={errors.bio.message!} />}
-                  </div>
+                  {!showAuthorProfile ? (
+                    <div className="space-y-2 sm:col-span-2">
+                      <label className="text-sm font-medium text-admin-heading">Bio</label>
+                      <textarea
+                        {...register("bio")}
+                        className="min-h-[100px] w-full rounded-lg border border-admin-input-border bg-card px-3 py-2 text-sm text-admin-heading placeholder:text-admin-label/60"
+                        placeholder="Tell us about yourself..."
+                      />
+                      {errors.bio ? <InputError message={errors.bio.message!} /> : null}
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-2">
+                {showAuthorProfile ? (
+                  <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-5">
+                    <div>
+                      <h3 className="text-base font-semibold text-admin-heading">
+                        Public Author Profile
+                      </h3>
+                      <p className="mt-1 text-sm text-admin-label">
+                        These details appear on your public author page.
+                        {profileSlug ? (
+                          <>
+                            {" "}
+                            Preview:{" "}
+                            <Link
+                              to={getAuthorPath(profileSlug)}
+                              className="font-medium text-primary underline-offset-2 hover:underline"
+                            >
+                              {getAuthorPath(profileSlug)}
+                            </Link>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
+                          <Link2 className="size-4 text-admin-label" aria-hidden />
+                          Public Slug
+                        </label>
+                        <Input
+                          {...register("slug")}
+                          className="h-9"
+                          placeholder="your-public-slug"
+                        />
+                        {errors.slug ? <InputError message={errors.slug.message!} /> : null}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-admin-heading">
+                          Public Title / Designation
+                        </label>
+                        <Input
+                          {...register("publicTitle")}
+                          className="h-9"
+                          placeholder="Senior Reporter"
+                        />
+                        {errors.publicTitle ? (
+                          <InputError message={errors.publicTitle.message!} />
+                        ) : null}
+                      </div>
+
+                      <div className="space-y-2 sm:col-span-2">
+                        <label className="text-sm font-medium text-admin-heading">
+                          Biography
+                        </label>
+                        <textarea
+                          {...register("bio")}
+                          className="min-h-[120px] w-full rounded-lg border border-admin-input-border bg-card px-3 py-2 text-sm text-admin-heading placeholder:text-admin-label/60"
+                          placeholder="Write a short public biography..."
+                        />
+                        {errors.bio ? <InputError message={errors.bio.message!} /> : null}
+                      </div>
+
+                      {(
+                        [
+                          ["facebook", "Facebook"],
+                          ["twitter", "X (Twitter)"],
+                          ["linkedin", "LinkedIn"],
+                          ["instagram", "Instagram"],
+                          ["youtube", "YouTube"],
+                          ["website", "Website"],
+                        ] as const
+                      ).map(([field, label]) => (
+                        <div key={field} className="space-y-2">
+                          <label className="inline-flex items-center gap-2 text-sm font-medium text-admin-heading">
+                            <Globe className="size-4 text-admin-label" aria-hidden />
+                            {label}
+                          </label>
+                          <Input
+                            {...register(field)}
+                            className="h-9"
+                            placeholder={`https://${field === "website" ? "example.com" : field + ".com/username"}`}
+                          />
+                          {errors[field] ? (
+                            <InputError message={errors[field]?.message ?? ""} />
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className={cn("flex flex-wrap gap-2", showAuthorProfile ? undefined : "mt-6")}>
                   <Button
                     type="submit"
                     variant="default"
                     className="bg-zbc-gray-700 text-white"
-                    disabled={saving}
+                    disabled={saving || (!isDirty && !profileImageFile)}
                   >
                     {saving ? "Saving..." : "Save Changes"}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
+                    disabled={saving || (!isDirty && !profileImageFile)}
                     onClick={() => {
+                      if (isDirty && !window.confirm("Discard unsaved profile changes?")) {
+                        return;
+                      }
                       reset();
-                      setProfileImageUrl(null);
                       setProfileImageFile(null);
                     }}
                   >
@@ -334,68 +502,72 @@ export function UserProfileForm() {
         </div>
       </UserDashboardCard>
 
-      {/* Notification Preferences */}
-      <UserDashboardCard>
-        <div id="notification-preferences" className="scroll-mt-6" />
-        <SettingsCardHeader
-          title="Notification Preferences"
-          subtitle="Manage how you receive updates"
-          icon={<Bell className="size-5" aria-hidden />}
-        />
-        <div className="space-y-1 px-6 pb-6">
-          {notifError ? (
-            <div className="flex items-center justify-between gap-3 py-2">
-              <p className="text-sm text-destructive">Could not load saved preferences.</p>
-              <Button type="button" size="sm" variant="outline" onClick={() => void loadPreferences()}>
-                Retry
-              </Button>
-            </div>
-          ) : null}
-          {notifLoading || !notifications
-            ? Array.from({ length: NOTIFICATION_PREFERENCE_OPTIONS.length }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between py-2">
-                  <div className="h-4 w-48 animate-pulse rounded bg-muted" />
-                  <div className="h-6 w-11 animate-pulse rounded-full bg-muted" />
+      {!showAuthorProfile ? (
+        <>
+          {/* Notification Preferences */}
+          <UserDashboardCard>
+            <div id="notification-preferences" className="scroll-mt-6" />
+            <SettingsCardHeader
+              title="Notification Preferences"
+              subtitle="Manage how you receive updates"
+              icon={<Bell className="size-5" aria-hidden />}
+            />
+            <div className="space-y-1 px-6 pb-6">
+              {notifError ? (
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <p className="text-sm text-destructive">Could not load saved preferences.</p>
+                  <Button type="button" size="sm" variant="outline" onClick={() => void loadPreferences()}>
+                    Retry
+                  </Button>
                 </div>
-              ))
-            : NOTIFICATION_PREFERENCE_OPTIONS.map((item) => (
-                <NotificationToggleRow
-                  key={item.id}
-                  id={`notif-${item.id}`}
-                  label={item.label}
-                  checked={notifications[item.id]}
-                  onChange={(v) => handleToggle(item.id, v)}
-                />
-              ))}
-        </div>
-      </UserDashboardCard>
-
-      {/* Account Status */}
-      <UserDashboardCard>
-        <SettingsCardHeader title="Account Status" compact />
-        <div className="space-y-3 px-6 pb-6">
-          <Link
-            to="/user/membership"
-            className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-muted/80 px-4 py-4 transition-colors hover:bg-muted"
-          >
-            <div>
-              <p className="text-base font-semibold text-admin-heading">
-                Membership Status
-              </p>
-              <p className="mt-1 text-sm text-admin-label">
-                Premium account active
-              </p>
+              ) : null}
+              {notifLoading || !notifications
+                ? Array.from({ length: NOTIFICATION_PREFERENCE_OPTIONS.length }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between py-2">
+                      <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+                      <div className="h-6 w-11 animate-pulse rounded-full bg-muted" />
+                    </div>
+                  ))
+                : NOTIFICATION_PREFERENCE_OPTIONS.map((item) => (
+                    <NotificationToggleRow
+                      key={item.id}
+                      id={`notif-${item.id}`}
+                      label={item.label}
+                      checked={notifications[item.id]}
+                      onChange={(v) => handleToggle(item.id, v)}
+                    />
+                  ))}
             </div>
-            <UserStatusBadge label="Premium" variant="account" />
-          </Link>
-          <div className="rounded-lg bg-muted/80 px-4 py-4">
-            <p className="text-base font-semibold text-admin-heading">
-              Member Since
-            </p>
-            <p className="mt-1 text-sm text-admin-label">January 2024</p>
-          </div>
-        </div>
-      </UserDashboardCard>
+          </UserDashboardCard>
+
+          {/* Account Status */}
+          <UserDashboardCard>
+            <SettingsCardHeader title="Account Status" compact />
+            <div className="space-y-3 px-6 pb-6">
+              <Link
+                to="/user/membership"
+                className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-muted/80 px-4 py-4 transition-colors hover:bg-muted"
+              >
+                <div>
+                  <p className="text-base font-semibold text-admin-heading">
+                    Membership Status
+                  </p>
+                  <p className="mt-1 text-sm text-admin-label">
+                    Premium account active
+                  </p>
+                </div>
+                <UserStatusBadge label="Premium" variant="account" />
+              </Link>
+              <div className="rounded-lg bg-muted/80 px-4 py-4">
+                <p className="text-base font-semibold text-admin-heading">
+                  Member Since
+                </p>
+                <p className="mt-1 text-sm text-admin-label">January 2024</p>
+              </div>
+            </div>
+          </UserDashboardCard>
+        </>
+      ) : null}
     </div>
   );
 }

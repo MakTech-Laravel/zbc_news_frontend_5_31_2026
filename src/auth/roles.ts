@@ -1,6 +1,6 @@
 import { isSpatieSuperAdmin } from '@/auth/adminSpatie'
 import { type AuthUser } from '@/auth/types'
-import { READER_ROLES } from '@/types/roles'
+import { PUBLIC_AUTHOR_PROFILE_ROLES, READER_ROLES } from '@/types/roles'
 
 export type Role = string
 
@@ -37,6 +37,15 @@ export function isUserPanelUser(user: AuthUser | null): boolean {
 export function isAdminPanelUser(user: AuthUser | null): boolean {
   if (!user) return false
   return !isUserPanelUser(user)
+}
+
+/** Content roles that edit a public /author/{slug} profile. */
+export function canManagePublicAuthorProfile(user: AuthUser | null): boolean {
+  if (!user) return false
+  const roles = getUserRoles(user)
+  return roles.some((role) =>
+    (PUBLIC_AUTHOR_PROFILE_ROLES as readonly string[]).includes(role),
+  )
 }
 
 /** @deprecated Prefer getPrimaryRouteRole or getUserRoleNames from usePermission. */

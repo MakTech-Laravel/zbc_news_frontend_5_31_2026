@@ -207,6 +207,39 @@ export async function permanentlyDeleteAdminArticle(slug: string): Promise<void>
   await request.delete(`/admin/articles/force/${encodedSlug}`);
 }
 
+export type ArticleAutoSaveResult = {
+  success: boolean;
+  id: number;
+  slug: string;
+  updated_at: string;
+};
+
+export async function autoSaveAdminArticle(
+  payload: Record<string, unknown>,
+  slug?: string,
+  signal?: AbortSignal,
+): Promise<ArticleAutoSaveResult> {
+  const url = slug
+    ? `/admin/articles/auto-save/${encodeURIComponent(slug)}`
+    : "/admin/articles/auto-save";
+
+  const response = await request.post(url, payload, { signal });
+  const data = response.data?.data;
+
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid auto-save response");
+  }
+
+  const record = data as Record<string, unknown>;
+
+  return {
+    success: Boolean(record.success ?? true),
+    id: Number(record.id),
+    slug: String(record.slug ?? ""),
+    updated_at: String(record.updated_at ?? new Date().toISOString()),
+  };
+}
+
 export function buildArticleCategoryFilterOptions(
   categories: AdminArticleApiCategory[],
   articles: AdminArticle[],

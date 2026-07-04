@@ -1,9 +1,10 @@
-import { ArrowLeft, Eye, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Check, Eye, Loader2, Save } from "lucide-react";
 
 import { AdminStatusBadge } from "@/components/admin/shared/AdminStatusBadge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ARTICLE_STATUS_LABELS } from "@/data/admin/articleWorkflow";
+import type { AutoSaveStatus } from "@/hooks/useArticleAutoSave";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
 
 type ArticleEditorTopBarProps = {
@@ -12,7 +13,7 @@ type ArticleEditorTopBarProps = {
   status: ArticleStatus | "";
   lastSavedLabel: string;
   isDirty?: boolean;
-  isAutoSaving?: boolean;
+  autoSaveStatus?: AutoSaveStatus;
   onBack?: () => void;
   onPreview?: () => void;
   onSave?: () => void;
@@ -33,7 +34,7 @@ export function ArticleEditorTopBar({
   status,
   lastSavedLabel,
   isDirty = false,
-  isAutoSaving = false,
+  autoSaveStatus = "idle",
   onBack,
   onPreview,
   onSave,
@@ -76,10 +77,21 @@ export function ArticleEditorTopBar({
                     Unsaved changes
                   </span>
                 ) : null}
-                {isAutoSaving ? (
+                {autoSaveStatus === "saving" ? (
                   <span className="inline-flex items-center gap-1 text-xs text-admin-label">
                     <Loader2 className="size-3 animate-spin" aria-hidden />
-                    Auto-saving…
+                    Saving…
+                  </span>
+                ) : null}
+                {autoSaveStatus === "saved" && !isDirty ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                    <Check className="size-3" aria-hidden />
+                    Saved
+                  </span>
+                ) : null}
+                {autoSaveStatus === "error" ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600">
+                    Failed to save
                   </span>
                 ) : null}
               </div>

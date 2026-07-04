@@ -95,6 +95,10 @@ function resolveSeoPage(seoPages: SeoPage[], path: string): SeoPage | undefined 
     return seoPages.find((page) => page.pageKey === "news-details");
   }
 
+  if (/^\/author\/[^/]+$/.test(normalized)) {
+    return seoPages.find((page) => page.pageKey === "author-profile");
+  }
+
   if (/^\/[^/]+$/.test(normalized)) {
     const segment = normalized.slice(1);
     if (RESERVED_SINGLE_SEGMENT_PATHS.has(segment)) {

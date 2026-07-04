@@ -11,10 +11,11 @@ import {
   MessageSquare,
   Settings,
   ShieldCheck,
+  UserCircle,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 import { useAuth } from "@/auth/useAuth";
 import { ZbcAdminLogo } from "@/components/partials/admin/ZbcAdminLogo";
@@ -22,6 +23,7 @@ import { HeaderAvatar } from "@/components/ui/HeaderAvatar";
 import { ADMIN_NAV_ITEMS } from "@/config/adminNav";
 import { usePermission } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
+import { PERMISSIONS } from "@/types/permissions";
 
 const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/dashboard": LayoutDashboard,
@@ -34,6 +36,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/newsletters": Megaphone,
   "/admin/announcements": Bell,
   "/admin/comments": MessageSquare,
+  "/admin/profile": UserCircle,
   "/admin/settings": Settings,
 };
 
@@ -76,6 +79,8 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
   const displayName = user?.name ?? user?.email ?? "Admin";
   const initials = getInitials(displayName);
   const avatarUrl = resolveAvatarUrl(user);
+
+  const canManageProfile = can(PERMISSIONS.USERS.PROFILE);
 
   const visibleNavItems = ADMIN_NAV_ITEMS.filter((item) =>
     item.permission ? can(item.permission) : true,
@@ -140,22 +145,67 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
         )}
       >
         {collapsed ? (
-          <span
-            className="relative inline-flex size-10 shrink-0 overflow-hidden rounded-full bg-zbc-blue"
-            title={displayName}
+          canManageProfile ? (
+            <Link
+              to="/admin/profile"
+              onClick={onNavigate}
+              title={displayName}
+              className="relative inline-flex size-10 shrink-0 overflow-hidden rounded-full bg-zbc-blue transition-opacity hover:opacity-90"
+            >
+              {avatarUrl ? (
+                <HeaderAvatar
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="size-10 rounded-full"
+                />
+              ) : (
+                <span className="inline-flex size-full items-center justify-center text-sm font-semibold">
+                  {initials}
+                </span>
+              )}
+            </Link>
+          ) : (
+            <span
+              className="relative inline-flex size-10 shrink-0 overflow-hidden rounded-full bg-zbc-blue"
+              title={displayName}
+            >
+              {avatarUrl ? (
+                <HeaderAvatar
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="size-10 rounded-full"
+                />
+              ) : (
+                <span className="inline-flex size-full items-center justify-center text-sm font-semibold">
+                  {initials}
+                </span>
+              )}
+            </span>
+          )
+        ) : canManageProfile ? (
+          <Link
+            to="/admin/profile"
+            onClick={onNavigate}
+            className="flex items-center gap-3 rounded-lg transition-colors hover:bg-white/10"
           >
-            {avatarUrl ? (
-              <HeaderAvatar
-                src={avatarUrl}
-                alt={displayName}
-                className="size-10 rounded-full"
-              />
-            ) : (
-              <span className="inline-flex size-full items-center justify-center text-sm font-semibold">
-                {initials}
-              </span>
-            )}
-          </span>
+            <span className="relative inline-flex size-10 shrink-0 overflow-hidden rounded-full bg-zbc-blue">
+              {avatarUrl ? (
+                <HeaderAvatar
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="size-10 rounded-full"
+                />
+              ) : (
+                <span className="inline-flex size-full items-center justify-center text-sm font-semibold">
+                  {initials}
+                </span>
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{displayName}</p>
+              <p className="truncate text-xs text-admin-nav-muted">{resolveRoleLabel(user)}</p>
+            </div>
+          </Link>
         ) : (
           <div className="flex items-center gap-3">
             <span className="relative inline-flex size-10 shrink-0 overflow-hidden rounded-full bg-zbc-blue">
