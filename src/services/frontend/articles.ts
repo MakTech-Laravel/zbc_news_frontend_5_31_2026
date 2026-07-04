@@ -18,6 +18,10 @@ export type ArticleDetail = {
   imageUrl: string;
   authorName: string;
   authorInitials: string;
+  /** Populated when the API returns author slug; otherwise derived from name in UI. */
+  authorSlug?: string;
+  /** Populated when the API returns author profile image. */
+  authorAvatarUrl?: string;
   publishedAtIso: string;
   updatedAtIso: string;
   showUpdated: boolean;
@@ -37,6 +41,30 @@ function resolveAuthorName(raw: Record<string, unknown>): string {
     if (typeof user.name === "string") return user.name;
   }
   return "ZBC News";
+}
+
+function resolveAuthorProfileFields(raw: Record<string, unknown>): {
+  authorSlug?: string;
+  authorAvatarUrl?: string;
+} {
+  if (!raw.user || typeof raw.user !== "object") {
+    return {};
+  }
+
+  const user = raw.user as Record<string, unknown>;
+  const authorSlug = typeof user.slug === "string" ? user.slug : undefined;
+
+  let authorAvatarUrl: string | undefined;
+  if (typeof user.profile_image === "string" && user.profile_image.trim()) {
+    authorAvatarUrl = resolveMediaUrl(user.profile_image);
+  } else if (user.user_information && typeof user.user_information === "object") {
+    const info = user.user_information as Record<string, unknown>;
+    if (typeof info.profile_image === "string" && info.profile_image.trim()) {
+      authorAvatarUrl = resolveMediaUrl(info.profile_image);
+    }
+  }
+
+  return { authorSlug, authorAvatarUrl };
 }
 
 function resolveCategoryLabel(raw: Record<string, unknown>): string {
@@ -108,6 +136,7 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
   );
   const scheduled = formatArticleTimestamp(record.scheduled_publishing);
   const authorName = resolveAuthorName(record);
+  const { authorSlug, authorAvatarUrl } = resolveAuthorProfileFields(record);
   const seo =
     record.seo && typeof record.seo === "object"
       ? (record.seo as Record<string, unknown>)
@@ -129,6 +158,8 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     ),
     authorName,
     authorInitials: toInitials(authorName),
+    authorSlug,
+    authorAvatarUrl,
     publishedAtIso: timestamps.published.iso,
     updatedAtIso: timestamps.updated.iso,
     showUpdated: timestamps.wasUpdated,

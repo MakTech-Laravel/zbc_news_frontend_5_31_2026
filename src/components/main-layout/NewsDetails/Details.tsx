@@ -7,6 +7,7 @@ import { ArticleComments } from "@/components/main-layout/NewsDetails/ArticleCom
 import { ArticleDetailToolbar } from "@/components/main-layout/NewsDetails/ArticleDetailToolbar";
 import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
 import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
+import { AuthorByline } from "@/components/main-layout/shared/AuthorByline";
 import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import NotFound from "@/pages/global/NotFound";
@@ -126,16 +127,12 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
           ) : null}
 
           <div className="flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary font-inter text-sm font-bold text-primary-foreground">
-                {article.authorInitials}
-              </span>
-              <span className="min-w-0">
-                <span className="block font-inter text-sm font-bold text-zbc-gray-1000">
-                  {article.authorName}
-                </span>
-              </span>
-            </div>
+            <AuthorByline
+              name={article.authorName}
+              initials={article.authorInitials}
+              slug={article.authorSlug}
+              avatarUrl={article.authorAvatarUrl}
+            />
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-inter text-sm text-zbc-gray-500">
               <ArticleTimestamps
