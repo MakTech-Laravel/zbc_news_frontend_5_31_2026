@@ -53,6 +53,8 @@ import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { getAuthErrorMessage, getAuthFieldErrors } from "@/features/auth/errorMessage";
 import { resolveArticleTagsFromRecord } from "@/lib/articleTags";
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
+import { useArticleAutoSave } from "@/hooks/useArticleAutoSave";
 
 type AdminArticleEditorPageProps = {
   mode: "create" | "edit";
@@ -300,6 +302,60 @@ function appendImageUrlsToPayload(
   payload.open_graph_image = openGraphImageUrl ?? "";
 }
 
+function buildAutoSavePayload(
+  data: ArticleFormInputValues,
+  featuredImageUrl: string | null,
+  openGraphImageUrl: string | null,
+  categories: CategoryRow[],
+): Record<string, unknown> | null {
+  const title = data.title.trim();
+  const content = stripHtml(data.article_description ?? "").trim();
+
+  if (!title && !content && !featuredImageUrl && !openGraphImageUrl) {
+    return null;
+  }
+
+  const categoryTitle =
+    categories.find((category) => String(category.id) === data.article_category_id)
+      ?.title ?? "";
+
+  const seoDefaults = buildArticleSeoDefaults({
+    title: data.title,
+    excerpt: data.excerpt,
+    articleDescription: data.article_description,
+    tags: data.tags,
+    categoryTitle,
+  });
+
+  const payload: Record<string, unknown> = {
+    title: data.title,
+    article_description: data.article_description,
+    slug: data.slug,
+    visibility: data.visibility,
+    excerpt: data.excerpt,
+    meta_title: data.meta_title.trim() || seoDefaults.meta_title,
+    meta_description: data.meta_description.trim() || seoDefaults.meta_description,
+    meta_keywords: data.meta_keywords.trim() || seoDefaults.meta_keywords,
+    tags: data.tags,
+    featured_image: featuredImageUrl ?? "",
+    open_graph_image: openGraphImageUrl ?? "",
+  };
+
+  if (data.article_category_id) {
+    payload.article_category_id = data.article_category_id;
+  }
+
+  if (data.scheduled_publishing.trim()) {
+    payload.scheduled_publishing = toApiDatetimeValue(data.scheduled_publishing);
+  }
+
+  if (data.published_at.trim()) {
+    payload.published_at = toApiDatetimeValue(data.published_at);
+  }
+
+  return payload;
+}
+
 const fieldLabelClassName =
   "block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm";
 
@@ -347,6 +403,7 @@ function applyServerErrors(
 
 export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageProps) {
   const navigate = useNavigate();
+  const { settings } = useSiteSettings();
   const { articleSlug } = useParams<{ articleSlug: string }>();
   const isEdit = mode === "edit";
   const articleSlugParam = articleSlug ? decodeURIComponent(articleSlug) : undefined;
@@ -366,6 +423,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const pendingLeaveRef = React.useRef<(() => void) | null>(null);
   const submitActionRef = React.useRef<"draft" | "publish" | "selected">("selected");
   const skipUnsavedPromptRef = React.useRef(false);
+  const featuredImageUrlRef = React.useRef<string | null>(null);
+  const openGraphImageUrlRef = React.useRef<string | null>(null);
+  const categoriesRef = React.useRef<CategoryRow[]>([]);
 
   // ── React Hook Form ────────────────────────────────────────────────────────
 
@@ -403,6 +463,48 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const watchedContent = watch("article_description");
   const watchedStatus = watch("status");
   const watchedValues = watch();
+
+  featuredImageUrlRef.current = featuredImageUrl;
+  openGraphImageUrlRef.current = openGraphImageUrl;
+  categoriesRef.current = categories;
+
+  const hasUnsavedChanges = isDirty || imagesDirty;
+
+  const autoSaveChangeSignature = React.useMemo(
+    () =>
+      JSON.stringify({
+        values: watchedValues,
+        featuredImageUrl,
+        openGraphImageUrl,
+      }),
+    [watchedValues, featuredImageUrl, openGraphImageUrl],
+  );
+
+  const handleAutoSaveSuccess = React.useCallback(
+    (result: { slug: string; updated_at: string }) => {
+      setLastSavedAt(result.updated_at);
+      reset(getValues(), { keepDirty: false });
+      setImagesDirty(false);
+    },
+    [getValues, reset],
+  );
+
+  const { autoSaveStatus, getPersistedSlug, setPersistedSlug, resetAutoSaveSnapshot } =
+    useArticleAutoSave({
+      enabled: settings.enableAutoSave,
+      initialSlug: isEdit ? articleSlugParam : undefined,
+      isDirty: hasUnsavedChanges,
+      isManualSaving: isSubmitting,
+      changeSignature: autoSaveChangeSignature,
+      getPayload: () =>
+        buildAutoSavePayload(
+          getValues(),
+          featuredImageUrlRef.current,
+          openGraphImageUrlRef.current,
+          categoriesRef.current,
+        ),
+      onSaved: handleAutoSaveSuccess,
+    });
 
   React.useEffect(() => {
     if (!slugTouched) {
@@ -447,6 +549,18 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       setOpenGraphImageUrl(resolveOpenGraphImageUrl(article));
       setImagesDirty(false);
       skipUnsavedPromptRef.current = false;
+      setLastSavedAt(
+        typeof article.updated_at === "string" ? article.updated_at : null,
+      );
+      setPersistedSlug(typeof article.slug === "string" ? article.slug : articleSlugParam ?? "");
+      resetAutoSaveSnapshot(
+        buildAutoSavePayload(
+          mapArticleToFormValues(article),
+          resolveFeaturedImageUrl(article),
+          resolveOpenGraphImageUrl(article),
+          categoriesRef.current,
+        ) ?? undefined,
+      );
     } catch (error) {
       console.error("Failed to fetch article:", error);
       toast.error("Failed to load article");
@@ -459,8 +573,6 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   React.useEffect(() => {
     void fetchArticle();
   }, [articleSlugParam, isEdit]);
-
-  const hasUnsavedChanges = isDirty || imagesDirty;
 
   const wordCount = React.useMemo(
     () => countWords(watchedContent ?? ""),
@@ -518,10 +630,13 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     const payload = buildArticlePayload(enriched, nextStatus);
     appendImageUrlsToPayload(payload, featuredImageUrl, openGraphImageUrl);
 
+    const persistedSlug = getPersistedSlug();
+    const updateSlug = isEdit ? articleSlugParam : persistedSlug;
+
     try {
-      if (isEdit && articleSlugParam) {
-        await request.post(`/admin/articles/update/${articleSlugParam}`, payload);
-        toast.success("Article updated successfully");
+      if (updateSlug) {
+        await request.post(`/admin/articles/update/${encodeURIComponent(updateSlug)}`, payload);
+        toast.success(isEdit || persistedSlug ? "Article updated successfully" : "Article created successfully");
       } else {
         await request.post("/admin/articles/store", payload);
         toast.success("Article created successfully");
@@ -530,6 +645,10 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       setLastSavedAt(new Date().toISOString());
       reset({ ...enriched, status: nextStatus }, { keepDirty: false });
       setImagesDirty(false);
+      resetAutoSaveSnapshot(
+        buildAutoSavePayload(enriched, featuredImageUrl, openGraphImageUrl, categories) ??
+          undefined,
+      );
       skipUnsavedPromptRef.current = true;
       setShowLeaveDialog(false);
       pendingLeaveRef.current = null;
@@ -616,13 +735,13 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
   React.useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!isDirty) return;
+      if (!hasUnsavedChanges) return;
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [isDirty]);
+  }, [hasUnsavedChanges]);
 
   if (isEdit && !articleSlugParam) {
     return <Navigate to="/admin/articles" replace />;
@@ -677,8 +796,8 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         charCount={charCount}
         status={displayStatus}
         lastSavedLabel={formatArticleLastSaved(lastSavedAt)}
-        isDirty={isDirty}
-        isAutoSaving={isSubmitting}
+        isDirty={hasUnsavedChanges}
+        autoSaveStatus={autoSaveStatus}
         onBack={() => requestLeave(() => navigate("/admin/articles"))}
         onPreview={() => setIsPreviewOpen(true)}
         onSave={saveWithSelectedStatus}
