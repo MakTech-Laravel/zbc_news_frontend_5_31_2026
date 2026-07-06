@@ -40,6 +40,8 @@ const NewsletterVerifyPage = lazyWithRetry(() => import("@/pages/newsletter/News
 const NewsletterUnsubscribePage = lazyWithRetry(() => import("@/pages/newsletter/NewsletterUnsubscribePage"));
 const NewsletterPreferencesPage = lazyWithRetry(() => import("@/pages/newsletter/NewsletterPreferencesPage"));
 const AdminComments = lazyWithRetry(() => import("@/pages/admin/AdminComments"));
+const AdminContactMessages = lazyWithRetry(() => import("@/pages/admin/AdminContactMessages"));
+const AdminContactMessageDetail = lazyWithRetry(() => import("@/pages/admin/AdminContactMessageDetail"));
 const AdminSettings = lazyWithRetry(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazyWithRetry(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminProfile = lazyWithRetry(() => import("@/pages/admin/AdminProfile"));
@@ -170,6 +172,14 @@ export const router = createBrowserRouter([
           {
             path: "comments",
             element: suspensePage(AdminComments),
+          },
+          {
+            path: "contact-messages",
+            element: suspensePage(AdminContactMessages),
+          },
+          {
+            path: "contact-messages/:id",
+            element: suspensePage(AdminContactMessageDetail),
           },
           {
             path: "settings",

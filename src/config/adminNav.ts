@@ -77,6 +77,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.COMMENTS.LIST,
   },
   {
+    label: 'Contact Messages',
+    path: '/admin/contact-messages',
+    segment: 'contact-messages',
+    permission: PERMISSIONS.CONTACT_INQUIRIES.LIST,
+  },
+  {
     label: 'My Profile',
     path: '/admin/profile',
     segment: 'profile',

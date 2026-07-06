@@ -31,6 +31,7 @@ type AdminMetricCardProps = {
   trendDirection?: "up" | "down";
   trendSuffix?: string | null;
   className?: string;
+  onClick?: () => void;
 };
 
 export function AdminMetricCard({
@@ -42,6 +43,7 @@ export function AdminMetricCard({
   trendDirection = "up",
   trendSuffix = "vs last week",
   className,
+  onClick,
 }: AdminMetricCardProps) {
   const tone = ICON_TONE_CLASSES[iconTone];
   const TrendIcon = trendDirection === "down" ? TrendingDown : TrendingUp;
@@ -50,8 +52,22 @@ export function AdminMetricCard({
     <article
       className={cn(
         "rounded-[10px] border border-border bg-card px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-6",
+        onClick ? "cursor-pointer transition-colors hover:bg-muted/40" : null,
         className,
       )}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
