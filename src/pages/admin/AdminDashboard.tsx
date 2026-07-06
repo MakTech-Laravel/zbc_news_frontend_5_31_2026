@@ -4,6 +4,7 @@ import {
   DollarSign,
   Eye,
   FileText,
+  Mail,
   Users,
 } from "lucide-react";
 
@@ -69,6 +70,12 @@ const SECONDARY_METRICS = [
     iconTone: "red" as const,
     Icon: Activity,
   },
+  {
+    label: "New Contact Messages",
+    value: "0",
+    iconTone: "blue" as const,
+    Icon: Mail,
+  },
 ];
 
 function formatMetricValue(label: string, value: string | number): string {
@@ -123,12 +130,17 @@ export default function AdminDashboard() {
         ))}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-3">
+      <section className="grid gap-6 lg:grid-cols-3 xl:grid-cols-4">
         {secondaryMetrics.map((metric) => (
           <AdminMetricCard
             key={metric.label}
             {...metric}
             trendDirection={trendDirection(metric.trend)}
+            onClick={
+              metric.label === "New Contact Messages"
+                ? () => navigate("/admin/contact-messages")
+                : undefined
+            }
           />
         ))}
       </section>
