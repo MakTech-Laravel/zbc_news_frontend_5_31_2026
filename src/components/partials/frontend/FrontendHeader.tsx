@@ -133,8 +133,8 @@ function BrandLogo({ compact }: { compact?: boolean }) {
       className={cn(
         "inline-flex shrink-0 items-center",
         compact
-          ? "min-w-0 max-w-[150px] sm:max-w-[180px]"
-          : "max-w-[220px] xl:max-w-[260px]",
+          ? "min-w-0 w-[220px] sm:w-[240px]"
+          : "w-[240px] xl:w-[280px]",
       )}
       aria-label={`${siteName} home`}
     >
@@ -143,7 +143,7 @@ function BrandLogo({ compact }: { compact?: boolean }) {
         alt={`${siteName} Logo`}
         className={cn(
           "block h-auto w-full object-contain",
-          compact ? "max-h-8 sm:max-h-10" : "max-h-10 lg:max-h-12 xl:max-h-14",
+          compact ? "h-12 sm:h-14" : "h-12 lg:h-14 xl:h-16",
         )}
       />
     </Link>
@@ -521,7 +521,7 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
 /** Desktop + tablet horizontal nav (Figma row 2) */
 function MainNavBar({ limit }: { limit?: number }) {
   return (
-    <nav className="block border-t border-border" aria-label="Main navigation">
+    <nav className="" aria-label="Main navigation">
       <div className="mx-auto flex w-full container items-center justify-start gap-0 overflow-x-auto px-4 py-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <MainNavLinks limit={limit} />
         {limit ? <MoreMenuDropdown limit={limit} /> : null}
@@ -777,9 +777,20 @@ export function FrontendHeader() {
           </div>
 
           {/* Logo */}
-          <div className="min-w-0 lg:hidden">
+          {/* <div className="min-w-0 lg:hidden">
             <BrandLogo compact />
-          </div>
+          </div> */}
+
+<div
+  className="
+    min-w-0
+    absolute left-1/2 -translate-x-1/2
+    md:left-auto md:translate-x-0 md:static
+    lg:hidden
+  "
+>
+  <BrandLogo compact />
+</div>
 
           <div className="hidden lg:block" data-header-logo-start="true">
             <BrandLogo />
@@ -787,7 +798,7 @@ export function FrontendHeader() {
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:gap-4">
             {/* Search - now only inline on desktop (1024+), grows to fill the gap */}
-            <div className="hidden min-w-0 lg:flex lg:flex-1">
+            <div className="hidden min-w-0 md:flex md:flex-1">
               <SearchField className="w-full" onOpen={() => setSearchOpen(true)} />
             </div>
 
@@ -811,13 +822,13 @@ export function FrontendHeader() {
         </div>
 
         {/* Mobile search below logo row - shown up to 1023px */}
-        <div className="mb-2 p-0 lg:hidden lg:p-3">
+        <div className="mb-2 p-0 md:hidden md:p-3">
           <SearchField onOpen={() => setSearchOpen(true)} />
         </div>
       </div>
 
       {/* Mobile main nav row - shown up to 1023px */}
-      <div className="block lg:hidden">
+      <div className="border-t border-border block lg:hidden">
         <MainNavBar />
       </div>
 
