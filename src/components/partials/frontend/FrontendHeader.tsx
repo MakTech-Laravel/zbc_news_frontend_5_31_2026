@@ -495,7 +495,7 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
                       key={item.id}
                       to={item.to}
                       onClick={() => setOpen(false)}
-                      className="truncate rounded-lg px-2.5 py-2 text-center font-sans text-sm font-medium text-zbc-gray-700 transition-colors hover:bg-muted hover:text-primary"
+                      className="truncate rounded-lg px-2.5 py-2 font-sans text-sm font-medium text-zbc-gray-700 transition-colors hover:bg-muted hover:text-primary"
                     >
                       {item.label}
                     </Link>
