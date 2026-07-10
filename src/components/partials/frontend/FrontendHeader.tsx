@@ -380,11 +380,6 @@ function MainNavLinks({
   );
 }
 
-/** "More" nav item — hover reveals remaining categories in a 5-column grid.
- *  The panel is rendered via a portal because the nav row uses
- *  `overflow-x-auto` (for mobile scrolling), which would otherwise clip
- *  the dropdown vertically. Position/width are clamped to the header's
- *  `.container` so the panel never spills outside it. */
 function MoreMenuDropdown({ limit }: { limit: number }) {
   const { navItems } = useMainNav();
   const [open, setOpen] = useState(false);
@@ -412,17 +407,14 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
     const logoRect = logoEl?.getBoundingClientRect();
     const accountRect = accountEl?.getBoundingClientRect();
 
-    const boundsLeft = logoRect
-      ? logoRect.left + window.scrollX
-      : rect.left + window.scrollX;
-    const boundsRight = accountRect
-      ? accountRect.right + window.scrollX
-      : rect.left + window.scrollX + 640;
+    // Viewport-relative coordinates only — this element is `position: fixed`.
+    const boundsLeft = logoRect ? logoRect.left : rect.left;
+    const boundsRight = accountRect ? accountRect.right : rect.left + 640;
 
     const panelWidth = Math.max(boundsRight - boundsLeft, 0);
 
     setCoords({
-      top: rect.bottom + window.scrollY + 8,
+      top: rect.bottom + 8,
       left: boundsLeft,
       width: panelWidth,
     });
@@ -496,7 +488,7 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
               onMouseEnter={handleEnter}
               onMouseLeave={handleLeave}
             >
-              <div className="rounded-xl border border-border bg-background p-4 shadow-2xl">
+              <div className="h-[400px] overflow-y-auto rounded-xl border border-border bg-background p-4 shadow-2xl">
                 <div className="grid grid-cols-5 gap-1.5">
                   {remainingItems.map((item) => (
                     <Link
@@ -777,20 +769,16 @@ export function FrontendHeader() {
           </div>
 
           {/* Logo */}
-          {/* <div className="min-w-0 lg:hidden">
+          <div
+            className="
+              min-w-0
+              absolute left-1/2 -translate-x-1/2
+              md:left-auto md:translate-x-0 md:static
+              lg:hidden
+            "
+          >
             <BrandLogo compact />
-          </div> */}
-
-<div
-  className="
-    min-w-0
-    absolute left-1/2 -translate-x-1/2
-    md:left-auto md:translate-x-0 md:static
-    lg:hidden
-  "
->
-  <BrandLogo compact />
-</div>
+          </div>
 
           <div className="hidden lg:block" data-header-logo-start="true">
             <BrandLogo />
