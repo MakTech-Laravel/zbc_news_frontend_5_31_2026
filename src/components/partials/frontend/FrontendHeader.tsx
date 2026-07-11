@@ -822,7 +822,7 @@ export function FrontendHeader() {
 
       <SubNavBar />
 
-      {/* <p>mahfuj bhai amare bujlo na dfgsdfhgdfgdfg</p> */}
+      {/* <p>mahfuj bhai amare bujlo na</p> */}
     </header>
   );
 }
