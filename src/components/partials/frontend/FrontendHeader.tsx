@@ -488,7 +488,7 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
               onMouseEnter={handleEnter}
               onMouseLeave={handleLeave}
             >
-              <div className="h-[400px] overflow-y-auto rounded-xl border border-border bg-background p-4 shadow-2xl">
+              <div className="h-[400px] overflow-y-auto rounded-xl border border-border bg-background p-4 shadow-2xl"      >
                 <div className="grid grid-cols-5 gap-1.5">
                   {remainingItems.map((item) => (
                     <Link
