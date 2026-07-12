@@ -16,6 +16,7 @@ function extractPayload<T>(body: unknown): T {
 export async function fetchAdminSiteSettings(): Promise<{
   settings: AdminSettingsForm;
   logoUrl: string | null;
+  faviconUrl: string | null;
   raw: SiteSettingsApi;
 }> {
   const response = await request.get("/admin/site-settings");
@@ -24,6 +25,7 @@ export async function fetchAdminSiteSettings(): Promise<{
   return {
     settings: mapSiteSettingsToForm(raw),
     logoUrl: raw.site_logo,
+    faviconUrl: raw.favicon,
     raw,
   };
 }
@@ -31,6 +33,7 @@ export async function fetchAdminSiteSettings(): Promise<{
 export async function updateAdminSiteSettings(
   form: AdminSettingsForm,
   logoUrl?: string | null,
+  faviconUrl?: string | null,
 ): Promise<SiteSettingsApi> {
   const formData = new FormData();
 
@@ -70,6 +73,10 @@ export async function updateAdminSiteSettings(
 
   if (logoUrl !== undefined) {
     formData.append("site_logo", logoUrl ?? "");
+  }
+
+  if (faviconUrl !== undefined) {
+    formData.append("favicon", faviconUrl ?? "");
   }
 
   const response = await request.post("/admin/site-settings/update", formData, {

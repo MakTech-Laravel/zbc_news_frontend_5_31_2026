@@ -3,6 +3,7 @@ export type SiteSettingsApi = {
   site_name: string | null;
   site_tag: string | null;
   site_logo: string | null;
+  favicon: string | null;
   timezone: string | null;
   language: string | null;
   meta_title: string | null;
@@ -38,6 +39,7 @@ export type PublicSiteSettings = {
   siteName: string;
   siteTag: string;
   siteLogo: string | null;
+  siteFavicon: string | null;
   timezone: string;
   language: string;
   defaultCategoryId: number | null;
@@ -126,6 +128,7 @@ export function mapPublicSiteSettings(raw: SiteSettingsApi): PublicSiteSettings 
     siteName: raw.site_name ?? "ZBC News",
     siteTag: raw.site_tag ?? "",
     siteLogo: raw.site_logo,
+    siteFavicon: raw.favicon ?? null,
     timezone: raw.timezone ?? "America/New_York",
     language: raw.language ?? "en",
     defaultCategoryId: raw.default_category_id,

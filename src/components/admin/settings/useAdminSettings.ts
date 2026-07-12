@@ -19,6 +19,7 @@ export function useAdminSettings() {
   const [activeTab, setActiveTab] = React.useState<SettingsTabId>("general");
   const [form, setForm] = React.useState<AdminSettingsForm>(DEFAULT_ADMIN_SETTINGS);
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
+  const [faviconUrl, setFaviconUrl] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
 
@@ -33,10 +34,11 @@ export function useAdminSettings() {
     let cancelled = false;
 
     fetchAdminSiteSettings()
-      .then(({ settings, logoUrl: loadedLogoUrl }) => {
+      .then(({ settings, logoUrl: loadedLogoUrl, faviconUrl: loadedFaviconUrl }) => {
         if (cancelled) return;
         setForm(settings);
         if (loadedLogoUrl) setLogoUrl(resolveMediaUrl(loadedLogoUrl));
+        if (loadedFaviconUrl) setFaviconUrl(resolveMediaUrl(loadedFaviconUrl));
       })
       .catch(() => {
         if (!cancelled) toast.error("Failed to load site settings");
@@ -53,10 +55,11 @@ export function useAdminSettings() {
   const save = React.useCallback(async () => {
     setSaving(true);
     try {
-      const raw = await updateAdminSiteSettings(form, logoUrl);
+      const raw = await updateAdminSiteSettings(form, logoUrl, faviconUrl);
       const nextForm = mapSiteSettingsToForm(raw);
       setForm(nextForm);
-      if (raw.site_logo) setLogoUrl(resolveMediaUrl(raw.site_logo));
+      setLogoUrl(raw.site_logo ? resolveMediaUrl(raw.site_logo) : null);
+      setFaviconUrl(raw.favicon ? resolveMediaUrl(raw.favicon) : null);
       await queryClient.invalidateQueries({ queryKey: ["public-site-settings"] });
       toast.success("Settings saved successfully");
     } catch {
@@ -64,7 +67,7 @@ export function useAdminSettings() {
     } finally {
       setSaving(false);
     }
-  }, [form, logoUrl, queryClient]);
+  }, [form, logoUrl, faviconUrl, queryClient]);
 
   return {
     activeTab,
@@ -73,6 +76,8 @@ export function useAdminSettings() {
     setField,
     logoUrl,
     setLogoUrl,
+    faviconUrl,
+    setFaviconUrl,
     save,
     loading,
     saving,

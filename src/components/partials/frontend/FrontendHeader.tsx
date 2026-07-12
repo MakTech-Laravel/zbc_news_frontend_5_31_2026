@@ -39,6 +39,7 @@ import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
 import { UserNotificationsDropdown } from "@/components/user/shared/UserNotificationsDropdown";
 import { Input } from "@/components/ui/input";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 import { formatPublishDate } from "@/lib/publishDate";
 import { request } from "@/api/request";
@@ -149,7 +150,9 @@ const FALLBACK_LOGO = "/images/home/logo.png";
 
 function BrandLogo({ compact }: { compact?: boolean }) {
   const { settings } = useSiteSettings();
-  const logoSrc = settings.siteLogo ?? FALLBACK_LOGO;
+  const logoSrc = settings.siteLogo
+    ? resolveMediaUrl(settings.siteLogo) || FALLBACK_LOGO
+    : FALLBACK_LOGO;
   const siteName = settings.siteName || "ZBC News";
 
   return (

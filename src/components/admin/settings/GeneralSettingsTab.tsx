@@ -11,7 +11,7 @@ type GeneralSettingsTabProps = {
 };
 
 export function GeneralSettingsTab({ settings }: GeneralSettingsTabProps) {
-  const { form, setField, logoUrl, setLogoUrl } = settings;
+  const { form, setField, logoUrl, setLogoUrl, faviconUrl, setFaviconUrl } = settings;
 
   return (
     <AdminPanel className="space-y-6">
@@ -43,6 +43,19 @@ export function GeneralSettingsTab({ settings }: GeneralSettingsTabProps) {
           previewAlt="Site logo preview"
           urlPlaceholder="Or paste logo URL"
         />
+      </AdminFormField>
+
+      <AdminFormField label="Favicon">
+        <MediaImageField
+          value={faviconUrl}
+          onChange={setFaviconUrl}
+          uploadLabel="Select favicon"
+          previewAlt="Favicon preview"
+          urlPlaceholder="Or paste favicon URL"
+        />
+        <p className="mt-2 text-xs text-admin-trend-muted">
+          Shown in browser tabs. Prefer a square PNG or SVG (32×32 or larger).
+        </p>
       </AdminFormField>
 
       <AdminFormField label="Timezone" htmlFor="site-timezone">

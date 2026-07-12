@@ -2,9 +2,11 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { setRuntimePublicUrls } from "@/lib/appOrigins";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { fetchPublicSeoPages } from "@/services/admin/seoPages";
 import { fetchPublicSiteSettings } from "@/services/frontend/siteSettings";
 import type { PublicSiteSettings, SeoPage } from "@/types/siteSettings";
+import { setFavicon } from "@/utils/favicon";
 
 type SiteSettingsContextValue = {
   settings: PublicSiteSettings;
@@ -17,6 +19,7 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
   siteName: "ZBC News",
   siteTag: "Breaking news and analysis from around the world",
   siteLogo: null,
+  siteFavicon: null,
   timezone: "America/New_York",
   language: "en",
   defaultCategoryId: null,
@@ -67,6 +70,10 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   React.useEffect(() => {
     if (!settingsQuery.data) return;
     setRuntimePublicUrls(settingsQuery.data.frontendUrl, settingsQuery.data.apiUrl);
+    const faviconUrl = settingsQuery.data.siteFavicon
+      ? resolveMediaUrl(settingsQuery.data.siteFavicon)
+      : "";
+    setFavicon(faviconUrl || undefined);
   }, [settingsQuery.data]);
 
   const value = React.useMemo<SiteSettingsContextValue>(
