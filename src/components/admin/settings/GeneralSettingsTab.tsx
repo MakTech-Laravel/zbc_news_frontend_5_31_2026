@@ -39,6 +39,7 @@ export function GeneralSettingsTab({ settings }: GeneralSettingsTabProps) {
         <MediaImageField
           value={logoUrl}
           onChange={setLogoUrl}
+          variant="logo"
           uploadLabel="Select site logo"
           previewAlt="Site logo preview"
           urlPlaceholder="Or paste logo URL"
@@ -49,6 +50,7 @@ export function GeneralSettingsTab({ settings }: GeneralSettingsTabProps) {
         <MediaImageField
           value={faviconUrl}
           onChange={setFaviconUrl}
+          variant="logo"
           uploadLabel="Select favicon"
           previewAlt="Favicon preview"
           urlPlaceholder="Or paste favicon URL"

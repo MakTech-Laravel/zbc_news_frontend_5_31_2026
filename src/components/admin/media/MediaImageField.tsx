@@ -16,7 +16,7 @@ type MediaImageFieldProps = {
   previewAlt?: string;
   urlPlaceholder?: string;
   pickerFilter?: "image" | "all";
-  variant?: "default" | "avatar";
+  variant?: "default" | "avatar" | "logo";
 };
 
 export function MediaImageField({
@@ -47,6 +47,11 @@ export function MediaImageField({
     onChange(trimmed || null);
   };
 
+  const clearImage = () => {
+    onChange(null);
+    setUrlDraft("");
+  };
+
   return (
     <div className={cn("space-y-3", className)}>
       {previewUrl ? (
@@ -55,29 +60,39 @@ export function MediaImageField({
             <img src={previewUrl} alt={previewAlt} className="size-full object-cover" />
             <button
               type="button"
-              onClick={() => {
-                onChange(null);
-                setUrlDraft("");
-              }}
+              onClick={clearImage}
               className="absolute inset-0 flex items-center justify-center bg-black/0 text-transparent transition hover:bg-black/50 hover:text-white"
               aria-label="Remove image"
             >
               <X className="size-4" aria-hidden />
             </button>
           </div>
-        ) : (
-          <div className="relative overflow-hidden rounded-[10px] border border-admin-input-border">
+        ) : variant === "logo" ? (
+          <div className="relative inline-flex max-h-24 max-w-full items-center justify-center overflow-hidden rounded-[10px] border border-admin-input-border bg-muted/20 p-3">
             <img
               src={previewUrl}
               alt={previewAlt}
-              className="aspect-[16/10] w-full object-cover"
+              className="max-h-16 w-auto max-w-[220px] object-contain"
             />
             <button
               type="button"
-              onClick={() => {
-                onChange(null);
-                setUrlDraft("");
-              }}
+              onClick={clearImage}
+              className="absolute right-2 top-2 inline-flex size-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+              aria-label="Remove image"
+            >
+              <X className="size-3.5" aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <div className="relative max-h-48 overflow-hidden rounded-[10px] border border-admin-input-border">
+            <img
+              src={previewUrl}
+              alt={previewAlt}
+              className="mx-auto max-h-48 w-auto max-w-full object-contain"
+            />
+            <button
+              type="button"
+              onClick={clearImage}
               className="absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
               aria-label="Remove image"
             >
@@ -88,6 +103,14 @@ export function MediaImageField({
       ) : variant === "avatar" ? (
         <div className="inline-flex size-20 items-center justify-center rounded-full border border-dashed border-admin-input-border bg-muted/30 text-xs text-admin-trend-muted">
           No photo
+        </div>
+      ) : variant === "logo" ? (
+        <div className="flex h-24 max-w-xs flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-admin-input-border bg-white px-4 text-center">
+          <FolderOpen className="size-6 text-admin-label" aria-hidden />
+          <span className="text-sm font-medium text-admin-heading">No image selected</span>
+          <span className="text-xs text-admin-trend-muted">
+            Choose from the media library or paste a URL below
+          </span>
         </div>
       ) : (
         <div className="flex w-full flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-admin-input-border bg-white px-4 py-8 text-center">
