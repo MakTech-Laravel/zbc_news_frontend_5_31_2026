@@ -15,7 +15,7 @@ export default [
     route("careers", "pages/frontend/Careers.tsx"),
     route("newsletter", "pages/frontend/Newsletter.tsx"),
     layout("routes/layouts/MainLayoutRoute.tsx", [
-      index("pages/frontend/Home.tsx"),
+      index("routes/public/HomeRoute.tsx"),
       route("tag/:tagSlug", "pages/frontend/TagArticles.tsx"),
       route("author/:authorSlug", "pages/frontend/AuthorProfile.tsx"),
       route("news-details/:articleSlug", "routes/public/LegacyArticleRedirect.tsx"),
