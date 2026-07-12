@@ -193,6 +193,22 @@ Phase 3: full curl matrix across all six public types in one pass (raw pasted); 
 
 ---
 
+## 8a. Implementation status (Phase 2/3 — code complete, curl-verified)
+
+All six public route types server-render real `<title>`/meta/JSON-LD in raw HTML (verified by `curl`, backend live):
+
+- [x] **Scaffold** (`907f1b9`) — framework mode boots; `curl /` returns a real SSR document.
+- [x] **`/:slug`** (`2499454`) — server article-vs-category disambiguation; article emits full NewsArticle JSON-LD + SSR body; category emits title/OG.
+- [x] **home** (`bfd3bac`) — Organization + WebSite (SearchAction) JSON-LD.
+- [x] **author** (`575dc9d`), **tag** (`531d71e`) — loader + meta().
+- [x] **static pages** (`c40a1cc`) — one shared `StaticSeoLayout` resolves SEO by request path for all eight.
+
+**Phase 3 cross-check:** full six-type curl matrix passes; `/user`, `/admin`, auth pages + their layouts + `ProtectedRoute`/`GuestGate` are **byte-identical** to base (`git diff --stat` empty) — registered as client-only shells, behavior unchanged; `react-router dev` starts and SSRs; `build` + `react-router-serve` verified end-to-end. `tsc` clean, lint parity (99, zero new).
+
+**Still open (not code):** the **Node-host deployment** — the frontend can no longer ship as static `dist/`; `react-router-serve` (or a Node container behind nginx) is required. This is the operational dependency being taken to the hosting owner separately; the task is not done-done until that lands.
+
+**Follow-up cleanups (non-blocking):** public page components still call the client-side `useDocumentHead`; now that `meta()` owns SSR head, that client path is redundant (harmless — same values, `upsertMeta` updates in place) and can be removed per page. A stale `package-lock.json` remains from the npm→pnpm history; the project uses pnpm.
+
 ## 9. Open risks / flags
 
 - **Infra/deploy** (persistent Node process, Dockerfile/nginx) — the biggest non-code change; needs owner sign-off before it can actually ship.
