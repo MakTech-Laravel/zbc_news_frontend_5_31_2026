@@ -47,6 +47,7 @@ export async function updateAdminSeoPage(
     metaKeywords: string;
     canonicalUrl: string;
     noindex: boolean;
+    ogImage: string;
   },
 ): Promise<SeoPage> {
   const response = await request.post(
@@ -57,6 +58,7 @@ export async function updateAdminSeoPage(
       meta_keywords: patch.metaKeywords,
       canonical_url: patch.canonicalUrl || null,
       noindex: patch.noindex,
+      og_image: patch.ogImage || null,
     },
   );
   const raw = extractPayload<SeoPageApi>(response.data);

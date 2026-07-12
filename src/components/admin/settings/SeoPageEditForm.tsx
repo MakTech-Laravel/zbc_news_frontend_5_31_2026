@@ -1,4 +1,5 @@
 import { AdminFormField } from "@/components/admin/forms/AdminFormField";
+import { MediaImageField } from "@/components/admin/media/MediaImageField";
 import {
   settingsInputClassName,
   settingsTextareaClassName,
@@ -13,11 +14,13 @@ type SeoPageEditFormProps = {
   metaKeywords: string;
   canonicalUrl: string;
   noindex: boolean;
+  ogImage: string;
   onMetaTitleChange: (value: string) => void;
   onMetaDescriptionChange: (value: string) => void;
   onMetaKeywordsChange: (value: string) => void;
   onCanonicalUrlChange: (value: string) => void;
   onNoindexChange: (value: boolean) => void;
+  onOgImageChange: (value: string) => void;
 };
 
 export function SeoPageEditForm({
@@ -27,11 +30,13 @@ export function SeoPageEditForm({
   metaKeywords,
   canonicalUrl,
   noindex,
+  ogImage,
   onMetaTitleChange,
   onMetaDescriptionChange,
   onMetaKeywordsChange,
   onCanonicalUrlChange,
   onNoindexChange,
+  onOgImageChange,
 }: SeoPageEditFormProps) {
   return (
     <div className="space-y-6">
@@ -78,6 +83,16 @@ export function SeoPageEditForm({
             placeholder="e.g. technology, news, gadgets, innovation"
             className={settingsTextareaClassName}
             rows={4}
+          />
+        </AdminFormField>
+
+        <AdminFormField label="Social share image (Open Graph)" htmlFor="og-image">
+          <MediaImageField
+            value={ogImage || null}
+            onChange={(url) => onOgImageChange(url ?? "")}
+            uploadLabel="Select share image"
+            previewAlt="Social share image preview"
+            urlPlaceholder="Or paste an image URL (Cloudinary, etc.)"
           />
         </AdminFormField>
 
