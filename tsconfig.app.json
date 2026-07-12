@@ -20,6 +20,7 @@
       ]
     },
     "moduleResolution": "bundler",
+    "rootDirs": [".", "./.react-router/types"],
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
@@ -33,6 +34,7 @@
     "noUncheckedSideEffectImports": true
   },
   "include": [
-    "src"
+    "src",
+    ".react-router/types/**/*"
   ]
 }
