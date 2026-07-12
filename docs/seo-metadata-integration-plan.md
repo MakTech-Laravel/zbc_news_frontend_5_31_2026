@@ -211,7 +211,34 @@ Each unit: backend `php artisan test` + `pint`; frontend `tsc -b` + `lint` + `bu
 
 ---
 
+## 9a. Implementation status (Phase 2/3 — complete)
+
+- [x] **Unit 1** — Backend `SeoResolverService` + `ResolvedSeoResource`, rewired `/resolve`, NewsArticle/Organization/WebSite JSON-LD with headline ≤110 truncation and ISO-8601+offset date validation. 15 tests.
+- [x] **Unit 2** — Seeded `tag` template + 8 static-page rows; resolver branches for `/tag/{slug}` and static exacts. 17 tests.
+- [x] **Unit 3** — Frontend `useResolvedSeo` (per-path query) + `useDocumentHead` rewrite consuming the server payload, rendering robots + `<script type="application/ld+json">`. Deleted the duplicated client-side resolution ladder and the dead public `seoPages` bulk fetch. Keyword-normalization fix (dangling comma) surfaced by live verification.
+- [x] **Unit 4** — `canonical_url` + `noindex` columns (additive migration), resolver honoring both, admin canonical input + accessible noindex toggle. 17 tests.
+- [x] **Unit 5** — `og_image` column (additive migration), resolver OG/Twitter image override, admin picker reusing `MediaImageField` (Cloudinary). 18 tests.
+- [x] **Phase 3** — Full backend suite **92 passed / 341 assertions**; frontend `tsc -b` clean, `build` green, lint parity with `main` (99 pre-existing issues, 0 introduced). Live sweep across `/`, category, newsletter, author, tag, article all resolve to the correct entity/page_key.
+
+### Coverage re-diff (admin page list ↔ frontend routes) — 1:1
+
+| seo_pages page_key | Frontend route | Consumer | Status |
+|---|---|---|---|
+| home | `/` | `Home.tsx` | ✅ |
+| category (template) + per-category rows | `/:slug` | `CategoryArticlesView` | ✅ |
+| article-detail (template) | `/:slug` (real) & `/news-details/:slug` (redirect) | `ArticleContent` | ✅ now applies at `/:slug` |
+| author-profile (template) | `/author/:slug` | `AuthorProfileView` | ✅ |
+| tag (template) | `/tag/:slug` | `TagArticlesView` | ✅ new |
+| newsletter | `/newsletter` | `Newsletter` | ✅ |
+| about, contact, privacy, terms, cookie-policy, accessibility-statement, advertise, careers | matching static routes | each page | ✅ new |
+| news-details | `/news-details` (redirects to `/`) | — | ⚠️ vestigial row, harmless |
+
+No public content route lacks a SEO source; no template lacks a consumer. Auth/utility routes (`/login`, `/register`, …) intentionally have no seo_pages row and keep their hardcoded titles via `STATIC_PAGE_TITLES`.
+
 ## 10. Open items / flags
+
+- **Seeder must run per environment** to create the new `tag` + static rows. Note `SeoPageSeeder` uses `updateOrCreate`, so re-running it **overwrites existing rows' meta** with seeder defaults — on environments with admin-customized SEO, seed once or add only the missing rows. (The shared dev DB was deliberately **not** re-seeded during this work to avoid clobbering existing edits.)
+- **Browser DOM verification not run**: no `claude-in-chrome`/browser-automation MCP is available in this environment. Backend verified live via curl against the real DB + full feature suite; frontend verified via tsc/build. Post-hydration DOM (and real non-JS-crawler coverage) remains for the SSR follow-on.
 
 - **`isAccessibleForFree`** hardcoded `true` until membership paywall gating exists — add a column then.
 - **Duplicated resolution logic** (backend `SeoPageService::resolveForPath` vs FE `resolveSeoPage`) collapses into the server resolver; delete the FE copy after parity is proven.
