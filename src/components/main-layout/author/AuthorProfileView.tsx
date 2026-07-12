@@ -60,10 +60,6 @@ export function AuthorProfileView({ authorSlug }: AuthorProfileViewProps) {
       author?.bio?.trim() ||
       `Read published articles by ${author?.name || authorSlug.replace(/-/g, " ")} on ZBC News.`,
     image: author?.profileImageUrl,
-    replacements: {
-      author: author?.name || authorSlug.replace(/-/g, " "),
-      bio: author?.bio?.trim() || "",
-    },
   });
 
   useEffect(() => {

@@ -3,14 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { setRuntimePublicUrls } from "@/lib/appOrigins";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
-import { fetchPublicSeoPages } from "@/services/admin/seoPages";
 import { fetchPublicSiteSettings } from "@/services/frontend/siteSettings";
-import type { PublicSiteSettings, SeoPage } from "@/types/siteSettings";
+import type { PublicSiteSettings } from "@/types/siteSettings";
 import { setFavicon } from "@/utils/favicon";
 
 type SiteSettingsContextValue = {
   settings: PublicSiteSettings;
-  seoPages: SeoPage[];
   isLoading: boolean;
   refresh: () => Promise<void>;
 };
@@ -40,7 +38,6 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
 
 const SiteSettingsContext = React.createContext<SiteSettingsContextValue>({
   settings: DEFAULT_SETTINGS,
-  seoPages: [],
   isLoading: true,
   refresh: async () => {},
 });
@@ -54,16 +51,10 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
     staleTime: 60_000,
   });
 
-  const seoQuery = useQuery({
-    queryKey: ["public-seo-pages"],
-    queryFn: fetchPublicSeoPages,
-    staleTime: 60_000,
-  });
-
   const refresh = React.useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["public-site-settings"] }),
-      queryClient.invalidateQueries({ queryKey: ["public-seo-pages"] }),
+      queryClient.invalidateQueries({ queryKey: ["seo-resolve"] }),
     ]);
   }, [queryClient]);
 
@@ -79,11 +70,10 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
   const value = React.useMemo<SiteSettingsContextValue>(
     () => ({
       settings: settingsQuery.data ?? DEFAULT_SETTINGS,
-      seoPages: seoQuery.data ?? [],
-      isLoading: settingsQuery.isLoading || seoQuery.isLoading,
+      isLoading: settingsQuery.isLoading,
       refresh,
     }),
-    [settingsQuery.data, settingsQuery.isLoading, seoQuery.data, seoQuery.isLoading, refresh],
+    [settingsQuery.data, settingsQuery.isLoading, refresh],
   );
 
   return (

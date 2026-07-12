@@ -1,5 +1,10 @@
 import { request } from "@/api/request";
 import {
+  mapResolvedSeo,
+  type ResolvedSeo,
+  type ResolvedSeoApi,
+} from "@/types/resolvedSeo";
+import {
   mapSeoPageFromApi,
   type SeoPage,
   type SeoPageApi,
@@ -59,13 +64,18 @@ export async function fetchPublicSeoPages(): Promise<SeoPage[]> {
   return extractRows(response.data).map(mapSeoPageFromApi);
 }
 
-export async function resolvePublicSeoPage(path: string): Promise<SeoPage | null> {
+/**
+ * Fetch the fully-resolved (server-interpolated) SEO metadata for a path.
+ * The backend owns entity data and does all placeholder interpolation, so the
+ * client receives final title/description/keywords/canonical/OG/JSON-LD.
+ */
+export async function fetchResolvedSeo(path: string): Promise<ResolvedSeo | null> {
   try {
     const response = await request.get("/seo-pages/resolve", {
       params: { path },
     });
-    const raw = extractPayload<SeoPageApi>(response.data);
-    return mapSeoPageFromApi(raw);
+    const raw = extractPayload<ResolvedSeoApi>(response.data);
+    return mapResolvedSeo(raw);
   } catch {
     return null;
   }
