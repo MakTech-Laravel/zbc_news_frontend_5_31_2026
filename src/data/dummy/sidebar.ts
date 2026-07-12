@@ -25,7 +25,7 @@ export const sidebarNavItems: NavItem[] = [
   { label: "Creators", href: "/technology", icon: "creators" },
   { label: "Entertainment", href: "/entertainment", icon: "entertainment" },
   { label: "Technology", href: "/technology", icon: "technology" },
-  { label: "Newsletters", href: "/", icon: "newsletters" },
+  { label: "Newsletters", href: "/newsletter", icon: "newsletters" },
   { label: "Feedback", href: "/", icon: "feedback" },
 ];
 

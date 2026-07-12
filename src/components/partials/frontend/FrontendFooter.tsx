@@ -12,6 +12,7 @@ const FOOTER_STATIC_COLUMNS: { title: string; links: readonly FooterLink[] }[] =
       { label: "About Us", to: "/about" },
       { label: "Careers", to: "/careers" },
       { label: "Contact", to: "/contact" },
+      { label: "Newsletter", to: "/newsletter" },
       { label: "Advertise", to: "/advertise" },
     ],
   },

@@ -49,6 +49,7 @@ const RESERVED_SINGLE_SEGMENT_PATHS = new Set([
   "accessibility-statement",
   "advertise",
   "careers",
+  "newsletter",
   "admin",
   "user",
 ]);
@@ -61,6 +62,7 @@ const STATIC_PAGE_TITLES: Record<string, string> = {
   "/otp-verification": "Verify Code",
   "/reset-password": "Reset Password",
   "/unauthorized": "Unauthorized",
+  "/newsletter": "Newsletter",
 };
 
 function hasUnresolvedPlaceholders(value: string) {

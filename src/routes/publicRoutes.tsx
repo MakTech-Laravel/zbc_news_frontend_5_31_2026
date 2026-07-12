@@ -12,6 +12,7 @@ import {
   Contact,
   CookiePolicy,
   Home,
+  Newsletter,
   TagArticles,
   AuthorProfile,
   PrivacyPolicy,
@@ -41,6 +42,7 @@ export const publicRoutes: RouteObject = {
     { path: "/accessibility-statement", element: suspensePage(AccessibilityStatement) },
     { path: "/advertise", element: suspensePage(Advertise) },
     { path: "/careers", element: suspensePage(Careers) },
+    { path: "/newsletter", element: suspensePage(Newsletter) },
     {
       element: <MainLayout />,
       children: [
