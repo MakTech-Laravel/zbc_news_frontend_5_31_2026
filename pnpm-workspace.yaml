@@ -1,2 +1,6 @@
 packages:
   - '.'
+
+onlyBuiltDependencies:
+  - msw
+  - unrs-resolver

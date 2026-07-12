@@ -33,7 +33,7 @@ export function buildCategorySeoDefaults(
   slug: string,
   siteName = "ZBC News",
 ) {
-  const meta_title = `${title} News — ${siteName}`.slice(0, META_TITLE_MAX_LENGTH);
+  const meta_title = `${title} News`.slice(0, META_TITLE_MAX_LENGTH);
   const meta_description = `Latest ${title.toLowerCase()} news, analysis, and updates from ${siteName}.`.slice(
     0,
     META_DESCRIPTION_MAX_LENGTH,

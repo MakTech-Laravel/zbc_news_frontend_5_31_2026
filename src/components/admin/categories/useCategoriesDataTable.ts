@@ -10,9 +10,14 @@ export type AdminCategoryRow = {
   slug: string;
   description?: string;
   status: AdminCategoryStatus;
+  sort_order: number;
+  is_featured: boolean;
   articleCount: number;
   created_at: string;
   updated_at: string;
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
 };
 
 type Options = {

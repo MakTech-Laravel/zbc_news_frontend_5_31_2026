@@ -250,7 +250,7 @@ function resolveCategorySeo(body: unknown, fallbackTitle: string) {
     metaTitle:
       (typeof category?.meta_title === "string" && category.meta_title) ||
       (typeof seo?.meta_title === "string" ? seo.meta_title : "") ||
-      `${fallbackTitle} News — ZBC News`,
+      `${fallbackTitle} News`,
     metaDescription:
       (typeof category?.meta_description === "string" && category.meta_description) ||
       (typeof seo?.meta_description === "string" ? seo.meta_description : "") ||

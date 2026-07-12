@@ -55,13 +55,16 @@ function normalizeCategory(raw: RawCategory): AdminCategoryRow {
     slug: raw.slug ?? "",
     description: raw.description,
     status,
+    sort_order: raw.sort_order ?? 0,
+    is_featured: Boolean(raw.is_featured),
     articleCount: raw.articleCount ?? 0,
     created_at: raw.created_at ?? raw.createdAt ?? "",
     updated_at: raw.updated_at ?? raw.updatedAt ?? "",
   };
 }
 
-function compareCategoryTitle(a: AdminCategoryRow, b: AdminCategoryRow) {
+function compareCategoryOrder(a: AdminCategoryRow, b: AdminCategoryRow) {
+  if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
   return (a.title || "").localeCompare(b.title || "");
 }
 
@@ -90,7 +93,7 @@ export function loadAdminCategories(): AdminCategoryRow[] {
   return withArticleCounts(
     Array.from(merged.values())
       .map((category) => normalizeCategory(category))
-      .sort(compareCategoryTitle),
+      .sort(compareCategoryOrder),
   );
 }
 

@@ -46,7 +46,7 @@ export function SeoPageEditForm({
             type="text"
             value={metaTitle}
             onChange={(e) => onMetaTitleChange(e.target.value)}
-            placeholder="e.g. Technology News — ZBC News"
+            placeholder="e.g. Technology News"
             className={settingsInputClassName}
           />
         </AdminFormField>

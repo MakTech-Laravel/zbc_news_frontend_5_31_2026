@@ -49,27 +49,45 @@ import {
 
 type NavItem = { id: string; label: string; to: string };
 
+const HOME_NAV_ITEM: NavItem = { id: "home", label: "Home", to: "/" };
+
 export function useMainNav() {
-  const [navItems, setNavItems] = useState<NavItem[]>([]);
+  const [featuredItems, setFeaturedItems] = useState<NavItem[]>([]);
+  const [allItems, setAllItems] = useState<NavItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchNavItems = async () => {
     try {
       setLoading(true);
       const response = await request.get("/categories");
-      const categories = response.data.data;
+      const categories = Array.isArray(response.data?.data) ? response.data.data : [];
 
-      const dynamic: NavItem[] = categories
-        .filter((cat: any) => cat.status === "active")
-        .map((cat: any) => ({
+      const active = categories.filter(
+        (cat: { status?: string }) => cat.status === "active",
+      );
+
+      const mapped: NavItem[] = active.map(
+        (cat: { id?: number | string; title?: string; slug?: string }) => ({
           id: String(cat.id),
-          label: cat.title,
+          label: cat.title ?? "Category",
+          to: cat.slug ? `/${cat.slug}` : "/",
+        }),
+      );
+
+      const featured: NavItem[] = active
+        .filter((cat: { is_featured?: boolean }) => Boolean(cat.is_featured))
+        .map((cat: { id?: number | string; title?: string; slug?: string }) => ({
+          id: String(cat.id),
+          label: cat.title ?? "Category",
           to: cat.slug ? `/${cat.slug}` : "/",
         }));
 
-      setNavItems(dynamic);
+      setAllItems(mapped);
+      setFeaturedItems(featured);
     } catch (error) {
       console.error("Failed to fetch nav categories:", error);
+      setAllItems([]);
+      setFeaturedItems([]);
     } finally {
       setLoading(false);
     }
@@ -79,7 +97,14 @@ export function useMainNav() {
     fetchNavItems();
   }, []);
 
-  return { navItems, loading };
+  return {
+    homeItem: HOME_NAV_ITEM,
+    featuredItems,
+    allItems,
+    /** @deprecated Prefer allItems / featuredItems; kept for drawer fallbacks */
+    navItems: allItems,
+    loading,
+  };
 }
 
 const QUICK_LINK_FALLBACK = [
@@ -347,14 +372,11 @@ function LiveDateTime() {
 
 function MainNavLinks({
   onNavigate,
-  limit,
 }: {
   onNavigate?: () => void;
-  limit?: number;
 }) {
-  const { navItems } = useMainNav();
-
-  const items = limit ? navItems.slice(0, limit) : navItems;
+  const { homeItem, featuredItems } = useMainNav();
+  const items = [homeItem, ...featuredItems];
 
   return (
     <>
@@ -380,8 +402,8 @@ function MainNavLinks({
   );
 }
 
-function MoreMenuDropdown({ limit }: { limit: number }) {
-  const { navItems } = useMainNav();
+function MoreMenuDropdown() {
+  const { allItems } = useMainNav();
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{
     top: number;
@@ -390,8 +412,6 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
   } | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const remainingItems = navItems.slice(limit);
 
   const updateCoords = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -437,7 +457,7 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
     };
   }, []);
 
-  if (remainingItems.length === 0) return null;
+  if (allItems.length === 0) return null;
 
   const handleEnter = () => {
     if (closeTimerRef.current) {
@@ -490,7 +510,7 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
             >
               <div className="h-[400px] overflow-y-auto rounded-xl border border-border bg-background p-4 shadow-2xl"      >
                 <div className="grid grid-cols-5 gap-1.5">
-                  {remainingItems.map((item) => (
+                  {allItems.map((item) => (
                     <Link
                       key={item.id}
                       to={item.to}
@@ -511,12 +531,12 @@ function MoreMenuDropdown({ limit }: { limit: number }) {
 }
 
 /** Desktop + tablet horizontal nav (Figma row 2) */
-function MainNavBar({ limit }: { limit?: number }) {
+function MainNavBar() {
   return (
     <nav className="" aria-label="Main navigation">
       <div className="mx-auto flex w-full container items-center justify-start gap-0 overflow-x-auto px-4 py-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <MainNavLinks limit={limit} />
-        {limit ? <MoreMenuDropdown limit={limit} /> : null}
+        <MainNavLinks />
+        <MoreMenuDropdown />
       </div>
     </nav>
   );
@@ -562,10 +582,11 @@ function SubNavBar() {
 
 function MobileMenu() {
   const [open, setOpen] = useState(false);
-  const { navItems } = useMainNav();
+  const { homeItem, allItems } = useMainNav();
   const quickLinks = useQuickLinks();
   const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
+  const drawerItems = [homeItem, ...allItems];
 
   useEffect(() => {
     setOpen(false);
@@ -617,7 +638,7 @@ function MobileMenu() {
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
             <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
-              {navItems.map((item) => {
+              {drawerItems.map((item) => {
                 const isActive =
                   location.pathname === item.to ||
                   (item.to === "/" && location.pathname === "/");
@@ -792,7 +813,7 @@ export function FrontendHeader() {
 
             {/* Desktop Menu (1024+) */}
             <div className="hidden shrink-0 lg:block">
-              <MainNavBar limit={3} />
+              <MainNavBar />
             </div>
 
             {/* Account - full label only at 1024+, compact below */}
