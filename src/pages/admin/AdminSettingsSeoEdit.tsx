@@ -59,9 +59,13 @@ export default function AdminSettingsSeoEdit() {
         metaTitle={editor.metaTitle}
         metaDescription={editor.metaDescription}
         metaKeywords={editor.metaKeywords}
+        canonicalUrl={editor.canonicalUrl}
+        noindex={editor.noindex}
         onMetaTitleChange={editor.setMetaTitle}
         onMetaDescriptionChange={editor.setMetaDescription}
         onMetaKeywordsChange={editor.setMetaKeywords}
+        onCanonicalUrlChange={editor.setCanonicalUrl}
+        onNoindexChange={editor.setNoindex}
       />
 
       <SettingsSaveBar onSave={handleSave} saving={editor.saving} />

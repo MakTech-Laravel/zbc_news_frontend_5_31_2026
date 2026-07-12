@@ -67,6 +67,8 @@ export type SeoPageApi = {
   meta_title: string | null;
   meta_description: string | null;
   meta_keywords: string | null;
+  canonical_url?: string | null;
+  noindex?: boolean;
 };
 
 export type SeoPage = {
@@ -78,6 +80,8 @@ export type SeoPage = {
   metaTitle: string;
   metaDescription: string;
   metaKeywords: string;
+  canonicalUrl: string;
+  noindex: boolean;
 };
 
 export function mapSeoPageFromApi(raw: SeoPageApi): SeoPage {
@@ -90,6 +94,8 @@ export function mapSeoPageFromApi(raw: SeoPageApi): SeoPage {
     metaTitle: raw.meta_title ?? "",
     metaDescription: raw.meta_description ?? "",
     metaKeywords: raw.meta_keywords ?? "",
+    canonicalUrl: raw.canonical_url ?? "",
+    noindex: raw.noindex ?? false,
   };
 }
 
