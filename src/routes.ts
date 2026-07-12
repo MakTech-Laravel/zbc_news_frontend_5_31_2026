@@ -16,7 +16,7 @@ export default [
     route("newsletter", "pages/frontend/Newsletter.tsx"),
     layout("routes/layouts/MainLayoutRoute.tsx", [
       index("routes/public/HomeRoute.tsx"),
-      route("tag/:tagSlug", "pages/frontend/TagArticles.tsx"),
+      route("tag/:tagSlug", "routes/public/TagRoute.tsx"),
       route("author/:authorSlug", "routes/public/AuthorRoute.tsx"),
       route("news-details/:articleSlug", "routes/public/LegacyArticleRedirect.tsx"),
       route("news-details", "routes/redirects/toHome.tsx"),
