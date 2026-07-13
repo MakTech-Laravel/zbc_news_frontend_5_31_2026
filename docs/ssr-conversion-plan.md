@@ -215,6 +215,10 @@ All six public route types server-render real `<title>`/meta/JSON-LD in raw HTML
 - [ ] Set `VITE_API_BASE_URL` (frontend) to the real API origin the **SSR Node process** can reach server-side (loaders fetch it directly, bypassing the dev `/api` proxy).
 - [ ] Set `OG_DEFAULT_IMAGE` (backend, optional) if a branded default social card is wanted.
 
+## 8c. Vite plugin note: no `react()` alongside `reactRouter()`
+
+`@vitejs/plugin-react`'s `react()` plugin **must not** be registered in `vite.config.ts` next to `@react-router/dev/vite`'s `reactRouter()`. Both inject the React Fast Refresh preamble, so `npm run dev` throws `Uncaught SyntaxError: Identifier 'RefreshRuntime' has already been declared` and the page hangs (weather widget and ad slots never resolve). `reactRouter()` already provides the React transform + Fast Refresh. React Compiler stays enabled through `reactCompilerPreset()` (the babel *preset*, imported from `@vitejs/plugin-react` but independent of the plugin instance) fed to `@rolldown/plugin-babel`. Verified after removal: `compiler-runtime` chunk present in both `npm run build` output and dev, and `dev`/`build`/`start` all green. The `react()` line + its default import are removed (not commented) with an inline warning so it isn't re-added.
+
 ## 9. Open risks / flags
 
 - **Infra/deploy** (persistent Node process, Dockerfile/nginx) — the biggest non-code change; needs owner sign-off before it can actually ship.
