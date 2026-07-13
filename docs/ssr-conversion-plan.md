@@ -209,6 +209,12 @@ All six public route types server-render real `<title>`/meta/JSON-LD in raw HTML
 
 **Follow-up cleanups (non-blocking):** public page components still call the client-side `useDocumentHead`; now that `meta()` owns SSR head, that client path is redundant (harmless — same values, `upsertMeta` updates in place) and can be removed per page. A stale `package-lock.json` remains from the npm→pnpm history; the project uses pnpm.
 
+## 8b. Pre-deploy checklist (config, not code)
+
+- [ ] **Set `FRONTEND_URL` on the backend** (`.env`, backend repo) to the real production/staging origin (e.g. `https://zbc.news`) **before launch**. This is the single source of truth for `canonical`, `og:url`, `article:*`, and every JSON-LD `url`/`mainEntityOfPage` — `SeoResolverService::frontendUrl()` reads `config('app.frontend_url')`; `ArticleSharePreviewController` uses the same value. **Until it is set, those URLs point at the dev SPA port** (`http://localhost:5173`, the config default) and are wrong. This is a deployment-config item, **not a code bug** — verified: no host is hardcoded in `SeoResolverService` or the frontend `src/` (`grep` for `localhost:5173` in both returns only the `config/app.php` env default). The wrong host seen in a dev `curl` (served from `:3000`/`:5173` while `FRONTEND_URL` was still the dev value) is exactly this: the config wasn't pointed at the serving origin.
+- [ ] Set `VITE_API_BASE_URL` (frontend) to the real API origin the **SSR Node process** can reach server-side (loaders fetch it directly, bypassing the dev `/api` proxy).
+- [ ] Set `OG_DEFAULT_IMAGE` (backend, optional) if a branded default social card is wanted.
+
 ## 9. Open risks / flags
 
 - **Infra/deploy** (persistent Node process, Dockerfile/nginx) — the biggest non-code change; needs owner sign-off before it can actually ship.
