@@ -215,6 +215,34 @@ All six public route types server-render real `<title>`/meta/JSON-LD in raw HTML
 - [ ] Set `VITE_API_BASE_URL` (frontend) to the real API origin the **SSR Node process** can reach server-side (loaders fetch it directly, bypassing the dev `/api` proxy).
 - [ ] Set `OG_DEFAULT_IMAGE` (backend, optional) if a branded default social card is wanted.
 
+### Every consumer of `config('app.frontend_url')` that reaches SEO output (grep-verified)
+
+The frontend origin has **exactly one source of truth**: the config key `app.frontend_url`,
+defined once in `config/app.php:136` as `env('FRONTEND_URL', 'http://localhost:5173')` — the
+only hardcoded fallback in the codebase. Every SEO-output URL flows from it:
+
+| Consumer (`grep -rn "app.frontend_url" app`) | Feeds |
+|---|---|
+| `app/Services/SeoResolverService.php:543` (`frontendUrl()`) | `canonical`, `og:url`, JSON-LD `mainEntityOfPage`, `publisher.url`, author/Organization/WebSite `url`, `SearchAction.target`, **and every sitemap `<loc>`** (SitemapService calls `$this->seo->frontendUrl()`) |
+| `app/Http/Controllers/SitemapController.php:43` | `robots.txt` `Sitemap:` lines |
+| `app/Http/Controllers/ArticleSharePreviewController.php:24` | `/share/` crawler-preview canonical/OG |
+
+Confirmed single source, no disagreeing fallback:
+- These three read `config('app.frontend_url')` with **no** secondary fallback.
+- Sitemap `<loc>`: spatie's `url.blade.php` wraps in `url()`, which is a **no-op for the
+  absolute URL** `frontendUrl()` returns — verified by curl (`<loc>` shows the
+  `frontend_url` host, not `APP_URL`/`localhost:8000`). It is **not** a second source.
+- The **only** place with a secondary fallback is the newsletter link builders
+  (`NewsletterService.php`, `NewsletterTrackingService.php`: `config('app.frontend_url', config('app.url'))`).
+  That fallback (a) does not touch SEO output and (b) never fires — `config/app.php` always
+  defines `frontend_url`. Flagged for completeness; harmless here.
+- **Frontend client-side head** (`useDocumentHead` → `getPublicSiteOrigin()`): in production
+  this resolves to the **same** backend value, because the public site-settings API returns
+  `config('app.frontend_url')` (`PublicSiteSettingsResource::publicAppUrl`, which returns
+  `null` for a localhost host). `VITE_SITE_URL` is only the dev/last-resort origin. So the
+  raw SSR HTML (what crawlers read) is single-sourced from `app.frontend_url`; the hydrated
+  head agrees **provided `FRONTEND_URL` is a real public domain and `VITE_SITE_URL` matches it**.
+
 ## 8c. Vite plugin note: no `react()` alongside `reactRouter()`
 
 `@vitejs/plugin-react`'s `react()` plugin **must not** be registered in `vite.config.ts` next to `@react-router/dev/vite`'s `reactRouter()`. Both inject the React Fast Refresh preamble, so `npm run dev` throws `Uncaught SyntaxError: Identifier 'RefreshRuntime' has already been declared` and the page hangs (weather widget and ad slots never resolve). `reactRouter()` already provides the React transform + Fast Refresh. React Compiler stays enabled through `reactCompilerPreset()` (the babel *preset*, imported from `@vitejs/plugin-react` but independent of the plugin instance) fed to `@rolldown/plugin-babel`. Verified after removal: `compiler-runtime` chunk present in both `npm run build` output and dev, and `dev`/`build`/`start` all green. The `react()` line + its default import are removed (not commented) with an inline warning so it isn't re-added.
