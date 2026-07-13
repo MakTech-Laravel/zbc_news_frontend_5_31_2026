@@ -70,6 +70,39 @@ export async function fetchPublicSeoPages(): Promise<SeoPage[]> {
   return extractRows(response.data).map(mapSeoPageFromApi);
 }
 
+/** Admin: force-rebuild the cached sitemaps (same as `php artisan sitemap:refresh`). */
+export async function refreshSitemapCache(): Promise<void> {
+  await request.post("/admin/seo/sitemap/refresh");
+}
+
+function triggerBlobDownload(data: Blob, filename: string): void {
+  const url = URL.createObjectURL(data);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Admin: download the current cached general or news sitemap for inspection. */
+export async function downloadSitemapFile(type: "general" | "news"): Promise<void> {
+  const response = await request.get("/admin/seo/sitemap/download", {
+    params: { type },
+    responseType: "blob",
+  });
+  triggerBlobDownload(response.data as Blob, type === "news" ? "news-sitemap.xml" : "sitemap.xml");
+}
+
+/** Admin: download the current robots.txt for inspection. */
+export async function downloadRobotsFile(): Promise<void> {
+  const response = await request.get("/admin/seo/robots/download", {
+    responseType: "blob",
+  });
+  triggerBlobDownload(response.data as Blob, "robots.txt");
+}
+
 /**
  * Fetch the fully-resolved (server-interpolated) SEO metadata for a path.
  * The backend owns entity data and does all placeholder interpolation, so the
