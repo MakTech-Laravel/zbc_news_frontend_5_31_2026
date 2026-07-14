@@ -451,6 +451,36 @@
   animation: mobile-menu-overlay-out 380ms ease-in forwards;
 }
 
+@keyframes mega-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mega-menu-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@utility mega-menu-in {
+  animation: mega-menu-in 220ms ease-out forwards;
+}
+
+@utility mega-menu-out {
+  animation: mega-menu-out 160ms ease-in forwards;
+}
+
 @keyframes news-ticker {
   from {
     transform: translateX(0);

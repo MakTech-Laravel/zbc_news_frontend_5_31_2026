@@ -375,80 +375,20 @@ function FeaturedNavItem({
   item: NavItem;
   onNavigate?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const children = item.children ?? [];
-  const hasChildren = children.length > 0;
-
-  const handleEnter = () => {
-    if (!hasChildren) return;
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setOpen(true);
-  };
-
-  const handleLeave = () => {
-    if (!hasChildren) return;
-    closeTimerRef.current = setTimeout(() => setOpen(false), 120);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    };
-  }, []);
-
   return (
-    <div
-      className="relative shrink-0"
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
+    <NavLink
+      to={item.to}
+      end={item.to === "/"}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        cn(
+          "relative inline-flex shrink-0 items-center whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
+          isActive ? "text-primary" : "text-zbc-gray-700 hover:text-primary",
+        )
+      }
     >
-      <NavLink
-        to={item.to}
-        end={item.to === "/"}
-        onClick={onNavigate}
-        onFocus={handleEnter}
-        className={({ isActive }) =>
-          cn(
-            "relative inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
-            isActive
-              ? "text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-primary"
-              : "text-zbc-gray-700 hover:text-primary",
-          )
-        }
-      >
-        {item.label}
-        {hasChildren ? (
-          <ChevronDown
-            className={cn(
-              "size-3.5 shrink-0 transition-transform",
-              open && "rotate-180",
-            )}
-            aria-hidden
-          />
-        ) : null}
-      </NavLink>
-
-      {hasChildren && open ? (
-        <div className="absolute top-full left-0 z-[210] min-w-[11rem] pt-1">
-          <div className="rounded-lg border border-border bg-background py-1 shadow-lg">
-            {children.map((child) => (
-              <Link
-                key={child.id}
-                to={child.to}
-                onClick={onNavigate}
-                className="block truncate px-3 py-2 font-sans text-sm text-zbc-gray-700 transition-colors hover:bg-muted hover:text-primary"
-              >
-                {child.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
+      {item.label}
+    </NavLink>
   );
 }
 
@@ -469,7 +409,7 @@ function MainNavLinks({
           cn(
             "relative shrink-0 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
             isActive
-              ? "text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-primary"
+              ? "text-primary"
               : "text-zbc-gray-700 hover:text-primary",
           )
         }
@@ -486,6 +426,7 @@ function MainNavLinks({
 function MoreMenuDropdown() {
   const { allItems } = useMainNav();
   const [open, setOpen] = useState(false);
+  const [rendered, setRendered] = useState(false);
   const [coords, setCoords] = useState<{
     top: number;
     left: number;
@@ -493,6 +434,7 @@ function MoreMenuDropdown() {
   } | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const updateCoords = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -521,8 +463,36 @@ function MoreMenuDropdown() {
     });
   };
 
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const openMenu = () => {
+    clearCloseTimer();
+    if (exitTimerRef.current) {
+      clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+    updateCoords();
+    setRendered(true);
+    setOpen(true);
+  };
+
+  const closeMenu = () => {
+    clearCloseTimer();
+    setOpen(false);
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = setTimeout(() => {
+      setRendered(false);
+      exitTimerRef.current = null;
+    }, 160);
+  };
+
   useEffect(() => {
-    if (!open) return;
+    if (!rendered) return;
     updateCoords();
     window.addEventListener("scroll", updateCoords, true);
     window.addEventListener("resize", updateCoords);
@@ -530,26 +500,48 @@ function MoreMenuDropdown() {
       window.removeEventListener("scroll", updateCoords, true);
       window.removeEventListener("resize", updateCoords);
     };
+  }, [rendered]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const panel = document.getElementById("desktop-mega-menu");
+      if (triggerRef.current?.contains(target) || panel?.contains(target)) {
+        return;
+      }
+      closeMenu();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
   useEffect(() => {
     return () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      clearCloseTimer();
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
     };
   }, []);
 
   if (allItems.length === 0) return null;
 
   const handleEnter = () => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setOpen(true);
+    openMenu();
   };
 
   const handleLeave = () => {
-    closeTimerRef.current = setTimeout(() => setOpen(false), 150);
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => closeMenu(), 150);
   };
 
   return (
@@ -563,39 +555,44 @@ function MoreMenuDropdown() {
         type="button"
         className={cn(
           "relative flex shrink-0 items-center gap-1 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
-          open
-            ? "text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-primary"
-            : "text-zbc-gray-700 hover:text-primary",
+          open ? "text-primary" : "text-zbc-gray-700 hover:text-primary",
         )}
         aria-haspopup="true"
         aria-expanded={open}
-        onFocus={handleEnter}
+        onClick={() => {
+          if (open) closeMenu();
+          else openMenu();
+        }}
       >
         More
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 transition-transform",
+            "size-4 shrink-0 transition-transform duration-200",
             open && "rotate-180",
           )}
           aria-hidden
         />
       </button>
 
-      {open && coords
+      {rendered && coords
         ? createPortal(
             <div
-              className="fixed z-[200]"
+              id="desktop-mega-menu"
+              className={cn(
+                "fixed z-[200]",
+                open ? "mega-menu-in" : "mega-menu-out",
+              )}
               style={{ top: coords.top, left: coords.left, width: coords.width }}
               onMouseEnter={handleEnter}
               onMouseLeave={handleLeave}
             >
-              <div className="h-[400px] overflow-y-auto rounded-xl border border-border bg-background p-4 shadow-2xl"      >
+              <div className="h-[400px] overflow-y-auto rounded-xl border border-border bg-background p-4 shadow-2xl">
                 <div className="grid grid-cols-5 gap-1.5">
                   {allItems.map((item) => (
                     <div key={item.id} className="min-w-0">
                       <Link
                         to={item.to}
-                        onClick={() => setOpen(false)}
+                        onClick={closeMenu}
                         className="block truncate rounded-lg px-2.5 py-2 font-sans text-sm font-medium text-zbc-gray-700 transition-colors hover:bg-muted hover:text-primary"
                       >
                         {item.label}
@@ -604,7 +601,7 @@ function MoreMenuDropdown() {
                         <Link
                           key={child.id}
                           to={child.to}
-                          onClick={() => setOpen(false)}
+                          onClick={closeMenu}
                           className="block truncate rounded-lg px-2.5 py-1.5 pl-4 font-sans text-xs font-medium text-zbc-gray-500 transition-colors hover:bg-muted hover:text-primary"
                         >
                           {child.label}
