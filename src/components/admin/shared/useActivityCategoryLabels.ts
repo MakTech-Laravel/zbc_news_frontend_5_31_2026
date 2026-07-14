@@ -1,34 +1,40 @@
 import * as React from "react";
 
 import { request } from "@/api/request";
+import {
+  flattenCategoryTree,
+  type CategoryTreeNode,
+} from "@/lib/categoryTree";
 
-function unwrapCategories(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) return payload;
+function unwrapCategories(payload: unknown): CategoryTreeNode[] {
+  if (Array.isArray(payload)) return payload as CategoryTreeNode[];
   if (payload && typeof payload === "object" && "data" in payload) {
     const inner = (payload as { data: unknown }).data;
-    if (Array.isArray(inner)) return inner;
+    if (Array.isArray(inner)) return inner as CategoryTreeNode[];
   }
   return [];
 }
 
 export async function fetchCategoryLabelMap(): Promise<Record<string, string>> {
   const response = await request.get("/categories");
-  const items = unwrapCategories(response.data);
+  const items = flattenCategoryTree(unwrapCategories(response.data));
   const map: Record<string, string> = {};
 
   for (const item of items) {
-    if (!item || typeof item !== "object") continue;
-    const record = item as Record<string, unknown>;
-    const id = record.id;
+    const id = item.id;
     const title =
-      typeof record.title === "string"
-        ? record.title
-        : typeof record.name === "string"
-          ? record.name
+      typeof item.title === "string"
+        ? item.title
+        : typeof item.name === "string"
+          ? item.name
           : null;
 
     if (id != null && title) {
-      map[String(id)] = title;
+      const parentTitle =
+        item.parent_id != null
+          ? map[String(item.parent_id)]
+          : undefined;
+      map[String(id)] = parentTitle ? `${parentTitle} / ${title}` : title;
     }
   }
 

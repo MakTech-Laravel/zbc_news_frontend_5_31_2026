@@ -121,4 +121,6 @@ export type DataTableProps<T> = {
   selection?: DataTableSelection;
   emptyMessage?: string;
   minWidth?: number | string;
+  /** Optional className for each body row (e.g. nested / child rows). */
+  getRowClassName?: (row: T) => string | undefined;
 };

@@ -43,12 +43,19 @@ import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 import { formatPublishDate } from "@/lib/publishDate";
 import { request } from "@/api/request";
+import { mapTreeToNavItems, type CategoryTreeNode } from "@/lib/categoryTree";
 import {
   fetchQuickLinks,
   type QuickLink,
 } from "@/services/frontend/navigation";
 
-type NavItem = { id: string; label: string; to: string };
+type NavChild = { id: string; label: string; to: string };
+type NavItem = {
+  id: string;
+  label: string;
+  to: string;
+  children?: NavChild[];
+};
 
 const HOME_NAV_ITEM: NavItem = { id: "home", label: "Home", to: "/" };
 
@@ -61,27 +68,15 @@ export function useMainNav() {
     try {
       setLoading(true);
       const response = await request.get("/categories");
-      const categories = Array.isArray(response.data?.data) ? response.data.data : [];
+      const categories: CategoryTreeNode[] = Array.isArray(response.data?.data)
+        ? response.data.data
+        : [];
 
-      const active = categories.filter(
-        (cat: { status?: string }) => cat.status === "active",
-      );
-
-      const mapped: NavItem[] = active.map(
-        (cat: { id?: number | string; title?: string; slug?: string }) => ({
-          id: String(cat.id),
-          label: cat.title ?? "Category",
-          to: cat.slug ? `/${cat.slug}` : "/",
-        }),
-      );
-
-      const featured: NavItem[] = active
-        .filter((cat: { is_featured?: boolean }) => Boolean(cat.is_featured))
-        .map((cat: { id?: number | string; title?: string; slug?: string }) => ({
-          id: String(cat.id),
-          label: cat.title ?? "Category",
-          to: cat.slug ? `/${cat.slug}` : "/",
-        }));
+      const mapped = mapTreeToNavItems(categories);
+      const featured = mapped.filter((item) => {
+        const match = categories.find((cat) => String(cat.id) === item.id);
+        return Boolean(match?.is_featured);
+      });
 
       setAllItems(mapped);
       setFeaturedItems(featured);
@@ -373,33 +368,116 @@ function LiveDateTime() {
   );
 }
 
+function FeaturedNavItem({
+  item,
+  onNavigate,
+}: {
+  item: NavItem;
+  onNavigate?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const children = item.children ?? [];
+  const hasChildren = children.length > 0;
+
+  const handleEnter = () => {
+    if (!hasChildren) return;
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setOpen(true);
+  };
+
+  const handleLeave = () => {
+    if (!hasChildren) return;
+    closeTimerRef.current = setTimeout(() => setOpen(false), 120);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  return (
+    <div
+      className="relative shrink-0"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      <NavLink
+        to={item.to}
+        end={item.to === "/"}
+        onClick={onNavigate}
+        onFocus={handleEnter}
+        className={({ isActive }) =>
+          cn(
+            "relative inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
+            isActive
+              ? "text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-primary"
+              : "text-zbc-gray-700 hover:text-primary",
+          )
+        }
+      >
+        {item.label}
+        {hasChildren ? (
+          <ChevronDown
+            className={cn(
+              "size-3.5 shrink-0 transition-transform",
+              open && "rotate-180",
+            )}
+            aria-hidden
+          />
+        ) : null}
+      </NavLink>
+
+      {hasChildren && open ? (
+        <div className="absolute top-full left-0 z-[210] min-w-[11rem] pt-1">
+          <div className="rounded-lg border border-border bg-background py-1 shadow-lg">
+            {children.map((child) => (
+              <Link
+                key={child.id}
+                to={child.to}
+                onClick={onNavigate}
+                className="block truncate px-3 py-2 font-sans text-sm text-zbc-gray-700 transition-colors hover:bg-muted hover:text-primary"
+              >
+                {child.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MainNavLinks({
   onNavigate,
 }: {
   onNavigate?: () => void;
 }) {
   const { homeItem, featuredItems } = useMainNav();
-  const items = [homeItem, ...featuredItems];
 
   return (
     <>
-      {items.map((item) => (
-        <NavLink
-          key={item.id}
-          to={item.to}
-          end={item.to === "/"}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              "relative shrink-0 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
-              isActive
-                ? "text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-primary"
-                : "text-zbc-gray-700 hover:text-primary",
-            )
-          }
-        >
-          {item.label}
-        </NavLink>
+      <NavLink
+        to={homeItem.to}
+        end
+        onClick={onNavigate}
+        className={({ isActive }) =>
+          cn(
+            "relative shrink-0 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
+            isActive
+              ? "text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:rounded-full after:bg-primary"
+              : "text-zbc-gray-700 hover:text-primary",
+          )
+        }
+      >
+        {homeItem.label}
+      </NavLink>
+      {featuredItems.map((item) => (
+        <FeaturedNavItem key={item.id} item={item} onNavigate={onNavigate} />
       ))}
     </>
   );
@@ -514,14 +592,25 @@ function MoreMenuDropdown() {
               <div className="h-[400px] overflow-y-auto rounded-xl border border-border bg-background p-4 shadow-2xl"      >
                 <div className="grid grid-cols-5 gap-1.5">
                   {allItems.map((item) => (
-                    <Link
-                      key={item.id}
-                      to={item.to}
-                      onClick={() => setOpen(false)}
-                      className="truncate rounded-lg px-2.5 py-2 font-sans text-sm font-medium text-zbc-gray-700 transition-colors hover:bg-muted hover:text-primary"
-                    >
-                      {item.label}
-                    </Link>
+                    <div key={item.id} className="min-w-0">
+                      <Link
+                        to={item.to}
+                        onClick={() => setOpen(false)}
+                        className="block truncate rounded-lg px-2.5 py-2 font-sans text-sm font-medium text-zbc-gray-700 transition-colors hover:bg-muted hover:text-primary"
+                      >
+                        {item.label}
+                      </Link>
+                      {(item.children ?? []).map((child) => (
+                        <Link
+                          key={child.id}
+                          to={child.to}
+                          onClick={() => setOpen(false)}
+                          className="block truncate rounded-lg px-2.5 py-1.5 pl-4 font-sans text-xs font-medium text-zbc-gray-500 transition-colors hover:bg-muted hover:text-primary"
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -585,15 +674,24 @@ function SubNavBar() {
 
 function MobileMenu() {
   const [open, setOpen] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const { homeItem, allItems } = useMainNav();
   const quickLinks = useQuickLinks();
   const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
-  const drawerItems = [homeItem, ...allItems];
 
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -641,24 +739,88 @@ function MobileMenu() {
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
             <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
-              {drawerItems.map((item) => {
+              <DialogClose asChild>
+                <Link
+                  to={homeItem.to}
+                  className={cn(
+                    "rounded-lg px-3 py-2.5 font-sans text-[14px] font-medium transition-colors",
+                    location.pathname === "/"
+                      ? "bg-accent text-primary"
+                      : "text-foreground hover:bg-muted",
+                  )}
+                >
+                  {homeItem.label}
+                </Link>
+              </DialogClose>
+
+              {allItems.map((item) => {
+                const children = item.children ?? [];
+                const hasChildren = children.length > 0;
+                const isExpanded = expandedIds.has(item.id);
                 const isActive =
                   location.pathname === item.to ||
-                  (item.to === "/" && location.pathname === "/");
+                  children.some((child) => location.pathname === child.to);
+
                 return (
-                  <DialogClose asChild key={item.id}>
-                    <Link
-                      to={item.to}
-                      className={cn(
-                        "rounded-lg px-3 py-2.5 font-sans text-[14px] font-medium transition-colors",
-                        isActive
-                          ? "bg-accent text-primary"
-                          : "text-foreground hover:bg-muted",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  </DialogClose>
+                  <div key={item.id} className="flex flex-col">
+                    <div className="flex items-center gap-0.5">
+                      <DialogClose asChild>
+                        <Link
+                          to={item.to}
+                          className={cn(
+                            "min-w-0 flex-1 rounded-lg px-3 py-2.5 font-sans text-[14px] font-medium transition-colors",
+                            isActive
+                              ? "bg-accent text-primary"
+                              : "text-foreground hover:bg-muted",
+                          )}
+                        >
+                          {item.label}
+                        </Link>
+                      </DialogClose>
+                      {hasChildren ? (
+                        <button
+                          type="button"
+                          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                          aria-expanded={isExpanded}
+                          aria-label={
+                            isExpanded
+                              ? `Collapse ${item.label}`
+                              : `Expand ${item.label}`
+                          }
+                          onClick={() => toggleExpanded(item.id)}
+                        >
+                          <ChevronDown
+                            className={cn(
+                              "size-4 transition-transform",
+                              isExpanded && "rotate-180",
+                            )}
+                            aria-hidden
+                          />
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {hasChildren && isExpanded
+                      ? children.map((child) => {
+                          const childActive = location.pathname === child.to;
+                          return (
+                            <DialogClose asChild key={child.id}>
+                              <Link
+                                to={child.to}
+                                className={cn(
+                                  "rounded-lg py-2 pr-3 pl-6 font-sans text-[13px] font-medium transition-colors",
+                                  childActive
+                                    ? "bg-accent/70 text-primary"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                                )}
+                              >
+                                {child.label}
+                              </Link>
+                            </DialogClose>
+                          );
+                        })
+                      : null}
+                  </div>
                 );
               })}
             </nav>

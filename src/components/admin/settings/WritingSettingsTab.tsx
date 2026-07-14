@@ -7,6 +7,10 @@ import type { UseAdminSettingsReturn } from "@/components/admin/settings/useAdmi
 import { POST_FORMAT_OPTIONS } from "@/components/admin/settings/types";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { request } from "@/api/request";
+import {
+  flattenCategoryTree,
+  type CategoryTreeNode,
+} from "@/lib/categoryTree";
 
 type WritingSettingsTabProps = {
   settings: UseAdminSettingsReturn;
@@ -22,16 +26,28 @@ export function WritingSettingsTab({ settings }: WritingSettingsTabProps) {
     request
       .get("/categories")
       .then((response) => {
-        const categories = response.data?.data ?? [];
-        if (!Array.isArray(categories)) return;
+        const categories: CategoryTreeNode[] = Array.isArray(response.data?.data)
+          ? response.data.data
+          : [];
+
+        const byId = new Map(
+          flattenCategoryTree(categories).map((cat) => [String(cat.id), cat]),
+        );
 
         setCategoryOptions(
-          categories
-            .filter((cat: { status?: string }) => cat.status === "active")
-            .map((cat: { id: number; title?: string; name?: string }) => ({
-              value: String(cat.id),
-              label: cat.title ?? cat.name ?? `Category ${cat.id}`,
-            })),
+          flattenCategoryTree(categories)
+            .filter((cat) => cat.status === "active")
+            .map((cat) => {
+              const parent =
+                cat.parent_id != null ? byId.get(String(cat.parent_id)) : null;
+              const title = cat.title ?? cat.name ?? `Category ${cat.id}`;
+              return {
+                value: String(cat.id),
+                label: parent
+                  ? `${parent.title ?? parent.name} / ${title}`
+                  : title,
+              };
+            }),
         );
       })
       .catch(() => {});

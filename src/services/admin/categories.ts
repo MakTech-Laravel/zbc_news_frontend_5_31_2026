@@ -10,11 +10,13 @@ export type AdminCategory = {
   sort_order: number;
   is_featured?: boolean;
   parent_id?: number | null;
+  parent?: { id: number; title: string; slug?: string } | null;
   meta_title?: string | null;
   meta_description?: string | null;
   meta_keywords?: string | null;
   created_at?: string;
   updated_at?: string;
+  children?: AdminCategory[];
 };
 
 export type CategoryPayload = {
@@ -35,7 +37,7 @@ function unwrapList(response: { data?: { data?: unknown } }): AdminCategory[] {
 }
 
 export async function fetchCategories(): Promise<AdminCategory[]> {
-  const response = await request.get("/categories");
+  const response = await request.get("/admin/categories");
   return unwrapList(response);
 }
 
@@ -56,9 +58,13 @@ export async function deleteCategory(slug: string): Promise<void> {
   await request.delete(`/admin/categories/delete/${slug}`);
 }
 
-export async function reorderCategories(ids: Array<number | string>): Promise<AdminCategory[]> {
+export async function reorderCategories(
+  ids: Array<number | string>,
+  parentId: number | string | null = null,
+): Promise<AdminCategory[]> {
   const response = await request.post("/admin/categories/reorder", {
     ids: ids.map((id) => Number(id)),
+    parent_id: parentId === null || parentId === undefined ? null : Number(parentId),
   });
   return unwrapList(response);
 }

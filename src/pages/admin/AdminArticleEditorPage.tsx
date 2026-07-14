@@ -64,6 +64,8 @@ type CategoryRow = {
   id: string | number;
   title: string;
   status?: string;
+  parent_id?: number | string | null;
+  parent_title?: string;
 };
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
@@ -517,7 +519,29 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const fetchCategories = async () => {
     try {
       const response = await request.get("/categories");
-      setCategories(Array.isArray(response.data.data) ? response.data.data : []);
+      const rows = Array.isArray(response.data.data) ? response.data.data : [];
+      const flat: CategoryRow[] = [];
+
+      for (const parent of rows) {
+        flat.push({
+          id: parent.id,
+          title: parent.title,
+          status: parent.status,
+          parent_id: null,
+        });
+        const children = Array.isArray(parent.children) ? parent.children : [];
+        for (const child of children) {
+          flat.push({
+            id: child.id,
+            title: child.title,
+            status: child.status,
+            parent_id: parent.id,
+            parent_title: parent.title,
+          });
+        }
+      }
+
+      setCategories(flat);
     } catch (error) {
       console.error("Failed to fetch categories:", error);
       toast.error("Failed to load categories");
@@ -964,7 +988,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                           .filter((category) => category.status === "active")
                           .map((category) => (
                             <SelectItem key={category.id} value={String(category.id)}>
-                              {category.title}
+                              {category.parent_title
+                                ? `${category.parent_title} / ${category.title}`
+                                : category.title}
                             </SelectItem>
                           ))}
                       </SelectContent>
