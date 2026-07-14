@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 
 import { request } from "@/api/request";
+import {
+  flattenCategoryTree,
+  type CategoryTreeNode,
+} from "@/lib/categoryTree";
 
 const iconMap: Record<string, LucideIcon> = {
   finance: Wallet,
@@ -43,10 +47,12 @@ export function SidebarNav() {
     request
       .get("/categories")
       .then((response) => {
-        const rows = Array.isArray(response.data?.data) ? response.data.data : [];
-        const mapped = rows
-          .filter((cat: { status?: string }) => cat.status === "active")
-          .map((cat: { title?: string; slug?: string }) => ({
+        const rows: CategoryTreeNode[] = Array.isArray(response.data?.data)
+          ? response.data.data
+          : [];
+        const mapped = flattenCategoryTree(rows)
+          .filter((cat) => cat.status === "active")
+          .map((cat) => ({
             label: cat.title ?? "Category",
             href: cat.slug ? `/${cat.slug}` : "/",
             icon: (cat.slug ?? "").toLowerCase(),

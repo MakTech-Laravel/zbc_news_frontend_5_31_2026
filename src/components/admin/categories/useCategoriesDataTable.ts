@@ -12,6 +12,8 @@ export type AdminCategoryRow = {
   status: AdminCategoryStatus;
   sort_order: number;
   is_featured: boolean;
+  parent_id: string | null;
+  parent_title?: string;
   articleCount: number;
   created_at: string;
   updated_at: string;

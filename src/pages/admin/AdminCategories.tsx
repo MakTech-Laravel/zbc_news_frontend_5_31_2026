@@ -2,9 +2,12 @@ import * as React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ListOrdered, Plus, Save } from "lucide-react";
+import { ChevronDown, ChevronRight, ListOrdered, Plus, Save } from "lucide-react";
 
-import { CategoryReorderList } from "@/components/admin/categories/CategoryReorderList";
+import {
+  CategoryReorderList,
+  type CategoryReorderGroup,
+} from "@/components/admin/categories/CategoryReorderList";
 import {
   useCategoriesDataTable,
   type AdminCategoryRow,
@@ -50,10 +53,12 @@ import {
   type AdminCategory,
 } from "@/services/admin/categories";
 import { AdminToggle } from "@/components/admin/monetization/AdminToggle";
+import { usePermission, PERMISSIONS } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const PAGE_SIZE = 10;
+const NONE_PARENT = "__none__";
 
 function mapApiCategory(category: AdminCategory): AdminCategoryRow {
   return {
@@ -63,6 +68,8 @@ function mapApiCategory(category: AdminCategory): AdminCategoryRow {
     status: category.status,
     sort_order: Number(category.sort_order ?? 0),
     is_featured: Boolean(category.is_featured),
+    parent_id: category.parent_id != null ? String(category.parent_id) : null,
+    parent_title: category.parent?.title,
     articleCount: 0,
     created_at: category.created_at ?? "",
     updated_at: category.updated_at ?? "",
@@ -83,53 +90,67 @@ function formatCreatedAt(value: string | null | undefined): string {
   });
 }
 
-const BASE_CATEGORY_TABLE_COLUMNS: DataTableColumn<AdminCategoryRow>[] = [
-  {
-    id: "sort_order",
-    header: "Pos",
-    type: "custom",
-    render: (row) => (
-      <span className="text-sm tabular-nums text-admin-trend-muted">{row.sort_order}</span>
-    ),
-    className: "w-14 whitespace-nowrap",
-  },
-  {
-    id: "title",
-    header: "Category",
-    type: "stack",
-    primary: (row) => row.title,
-    secondary: (row) => `/${row.slug}`,
-    className: "min-w-[160px]",
-  },
-  {
-    id: "status",
-    header: "Status",
-    hideOnMobile: true,
-    type: "badge",
-    badge: (row) => ({
-      variant: row.status,
-      label: row.status === "active" ? "Active" : "Inactive",
-    }),
-    className: "whitespace-nowrap",
-  },
-  {
-    id: "created_at",
-    header: "Created",
-    hideOnMobile: true,
-    type: "custom",
-    render: (row) => (
-      <span className="text-sm text-admin-trend-muted">
-        {formatCreatedAt(row.created_at)}
-      </span>
-    ),
-    className: "whitespace-nowrap text-admin-trend-muted",
-  },
-];
+function sortByPosition(rows: AdminCategoryRow[]): AdminCategoryRow[] {
+  return [...rows].sort((a, b) => {
+    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+    return Number(a.id) - Number(b.id);
+  });
+}
+
+/** Roots in order, each followed by its children in order. */
+function sortHierarchical(rows: AdminCategoryRow[]): AdminCategoryRow[] {
+  const roots = sortByPosition(rows.filter((row) => !row.parent_id));
+  const childrenByParent = new Map<string, AdminCategoryRow[]>();
+
+  for (const row of rows) {
+    if (!row.parent_id) continue;
+    const list = childrenByParent.get(row.parent_id) ?? [];
+    list.push(row);
+    childrenByParent.set(row.parent_id, list);
+  }
+
+  const out: AdminCategoryRow[] = [];
+  for (const root of roots) {
+    out.push(root);
+    out.push(...sortByPosition(childrenByParent.get(root.id) ?? []));
+  }
+
+  const placed = new Set(out.map((row) => row.id));
+  for (const row of sortByPosition(rows)) {
+    if (!placed.has(row.id)) out.push(row);
+  }
+
+  return out;
+}
+
+function buildReorderGroups(rows: AdminCategoryRow[]): CategoryReorderGroup[] {
+  const roots = sortByPosition(rows.filter((row) => !row.parent_id));
+  const groups: CategoryReorderGroup[] = [
+    {
+      parentId: null,
+      heading: null,
+      items: roots,
+    },
+  ];
+
+  for (const root of roots) {
+    const children = sortByPosition(rows.filter((row) => row.parent_id === root.id));
+    if (children.length === 0) continue;
+    groups.push({
+      parentId: root.id,
+      heading: root.title,
+      items: children,
+    });
+  }
+
+  return groups;
+}
 
 const categoryFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   slug: z.string().min(1, "Slug is required"),
   status: z.enum(["active", "inactive"]),
+  parent_id: z.string().nullable(),
   is_featured: z.boolean(),
   meta_title: z.string().max(META_TITLE_MAX_LENGTH),
   meta_description: z.string().max(META_DESCRIPTION_MAX_LENGTH),
@@ -144,18 +165,19 @@ function matchesSearch(category: AdminCategoryRow, query: string) {
   return (
     category.title.toLowerCase().includes(q) ||
     category.slug.toLowerCase().includes(q) ||
+    (category.parent_title?.toLowerCase().includes(q) ?? false) ||
     (category.description?.toLowerCase().includes(q) ?? false)
   );
 }
 
-function sortByPosition(rows: AdminCategoryRow[]): AdminCategoryRow[] {
-  return [...rows].sort((a, b) => {
-    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
-    return Number(a.id) - Number(b.id);
-  });
-}
-
 export default function AdminCategories() {
+  const { can } = usePermission();
+  const canCreate = can(PERMISSIONS.CATEGORIES.CREATE);
+  const canUpdate = can(PERMISSIONS.CATEGORIES.UPDATE);
+  const canDelete = can(PERMISSIONS.CATEGORIES.DELETE);
+  const canReorder =
+    can(PERMISSIONS.CATEGORIES.REORDER) || can(PERMISSIONS.CATEGORIES.UPDATE);
+
   const [categories, setCategories] = React.useState<AdminCategoryRow[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [reorderMode, setReorderMode] = React.useState(false);
@@ -170,8 +192,10 @@ export default function AdminCategories() {
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingCategoryId, setEditingCategoryId] = React.useState<string | null>(null);
+  const [editingRowId, setEditingRowId] = React.useState<string | null>(null);
   const [slugTouched, setSlugTouched] = React.useState(false);
   const [togglingFeaturedIds, setTogglingFeaturedIds] = React.useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
 
   const isEditing = editingCategoryId !== null;
 
@@ -189,6 +213,7 @@ export default function AdminCategories() {
       title: "",
       slug: "",
       status: "active",
+      parent_id: null,
       is_featured: false,
       meta_title: "",
       meta_description: "",
@@ -197,17 +222,26 @@ export default function AdminCategories() {
   });
 
   const nameValue = watch("title");
+  const parentIdValue = watch("parent_id");
+  const isChildForm = Boolean(parentIdValue);
+
   React.useEffect(() => {
     if (!slugTouched) {
       setValue("slug", slugifyCategoryName(nameValue ?? ""));
     }
   }, [nameValue, slugTouched, setValue]);
 
+  React.useEffect(() => {
+    if (isChildForm) {
+      setValue("is_featured", false);
+    }
+  }, [isChildForm, setValue]);
+
   const loadCategories = React.useCallback(async () => {
     try {
       setLoading(true);
       const rows = await fetchCategories();
-      setCategories(sortByPosition(rows.map(mapApiCategory)));
+      setCategories(sortHierarchical(rows.map(mapApiCategory)));
     } catch {
       toast.error("Failed to load categories");
     } finally {
@@ -227,32 +261,42 @@ export default function AdminCategories() {
     return () => window.removeEventListener("focus", onFocus);
   }, [loadCategories, reorderMode]);
 
+  const rootOptions = React.useMemo(() => {
+    return categories.filter((row) => {
+      if (row.parent_id) return false;
+      if (editingRowId && row.id === editingRowId) return false;
+      return true;
+    });
+  }, [categories, editingRowId]);
+
   const enterReorderMode = () => {
-    setReorderDraft(sortByPosition(categories));
+    setReorderDraft(sortHierarchical(categories));
     setOrderDirty(false);
     setReorderMode(true);
   };
 
-  const exitReorderMode = () => {
+  const cancelReorderMode = () => {
     setReorderMode(false);
     setOrderDirty(false);
     setReorderDraft([]);
   };
 
   const applyServerOrder = (rows: AdminCategory[]) => {
-    const mapped = sortByPosition(rows.map(mapApiCategory));
+    const mapped = sortHierarchical(rows.map(mapApiCategory));
     setCategories(mapped);
     setReorderDraft(mapped);
     setOrderDirty(false);
   };
 
-  const handleLocalReorder = (next: AdminCategoryRow[]) => {
-    setReorderDraft(
-      next.map((row, index) => ({
-        ...row,
-        sort_order: index + 1,
-      })),
+  const handleGroupReorder = (parentId: string | null, next: AdminCategoryRow[]) => {
+    const renumbered = next.map((row, index) => ({
+      ...row,
+      sort_order: index + 1,
+    }));
+    const other = reorderDraft.filter((row) =>
+      parentId === null ? Boolean(row.parent_id) : row.parent_id !== parentId,
     );
+    setReorderDraft(sortHierarchical([...other, ...renumbered]));
     setOrderDirty(true);
   };
 
@@ -272,9 +316,19 @@ export default function AdminCategories() {
   const handleSaveOrder = async () => {
     try {
       setSavingOrder(true);
-      const rows = await reorderCategories(reorderDraft.map((row) => row.id));
-      applyServerOrder(rows);
+      const groups = buildReorderGroups(reorderDraft);
+      let latest: AdminCategory[] = [];
+      for (const group of groups) {
+        if (group.items.length === 0) continue;
+        latest = await reorderCategories(
+          group.items.map((row) => row.id),
+          group.parentId,
+        );
+      }
+      applyServerOrder(latest);
       toast.success("Category order saved");
+      setReorderMode(false);
+      setReorderDraft([]);
     } catch {
       toast.error("Failed to save order");
     } finally {
@@ -284,15 +338,20 @@ export default function AdminCategories() {
 
   const onSubmit = async (data: CategoryFormValues) => {
     const seoDefaults = buildCategorySeoDefaults(data.title, data.slug);
+    const parentId = data.parent_id ? Number(data.parent_id) : null;
     const payload = {
-      ...data,
+      title: data.title,
+      slug: data.slug,
+      status: data.status,
+      parent_id: parentId,
+      is_featured: parentId ? false : data.is_featured,
       meta_title: data.meta_title.trim() || seoDefaults.meta_title,
       meta_description: data.meta_description.trim() || seoDefaults.meta_description,
       meta_keywords: data.meta_keywords.trim() || seoDefaults.meta_keywords,
     };
 
     try {
-      if (isEditing) {
+      if (isEditing && editingCategoryId) {
         await updateCategory(editingCategoryId, payload);
         toast.success("Category updated successfully");
       } else {
@@ -311,52 +370,76 @@ export default function AdminCategories() {
       await deleteCategoryRequest(category.slug);
       toast.success("Category deleted successfully");
       await loadCategories();
-    } catch {
-      toast.error("Failed to delete category");
+    } catch (error: unknown) {
+      const message =
+        error &&
+        typeof error === "object" &&
+        "response" in error &&
+        error.response &&
+        typeof error.response === "object" &&
+        "data" in error.response &&
+        error.response.data &&
+        typeof error.response.data === "object" &&
+        "message" in error.response.data &&
+        typeof (error.response.data as { message?: unknown }).message === "string"
+          ? (error.response.data as { message: string }).message
+          : "Failed to delete category";
+      toast.error(message);
     }
   };
 
-  const toggleFeatured = React.useCallback(async (category: AdminCategoryRow, next: boolean) => {
-    const rowId = String(category.id);
-    setTogglingFeaturedIds((prev) => new Set(prev).add(rowId));
-    setCategories((prev) =>
-      prev.map((row) => (row.id === rowId ? { ...row, is_featured: next } : row)),
-    );
+  const toggleFeatured = React.useCallback(
+    async (category: AdminCategoryRow, next: boolean) => {
+      if (category.parent_id) {
+        toast.error("Only top-level categories can be featured");
+        return;
+      }
 
-    try {
-      await updateCategory(category.slug, {
-        title: category.title,
-        slug: category.slug,
-        status: category.status,
-        is_featured: next,
-        meta_title: category.meta_title ?? "",
-        meta_description: category.meta_description ?? "",
-        meta_keywords: category.meta_keywords ?? "",
-      });
-      toast.success(next ? "Category featured in header" : "Category removed from featured");
-    } catch {
+      const rowId = String(category.id);
+      setTogglingFeaturedIds((prev) => new Set(prev).add(rowId));
       setCategories((prev) =>
-        prev.map((row) =>
-          row.id === rowId ? { ...row, is_featured: category.is_featured } : row,
-        ),
+        prev.map((row) => (row.id === rowId ? { ...row, is_featured: next } : row)),
       );
-      toast.error("Failed to update featured status");
-    } finally {
-      setTogglingFeaturedIds((prev) => {
-        const nextSet = new Set(prev);
-        nextSet.delete(rowId);
-        return nextSet;
-      });
-    }
-  }, []);
+
+      try {
+        await updateCategory(category.slug, {
+          title: category.title,
+          slug: category.slug,
+          status: category.status,
+          parent_id: category.parent_id ? Number(category.parent_id) : null,
+          is_featured: next,
+          meta_title: category.meta_title ?? "",
+          meta_description: category.meta_description ?? "",
+          meta_keywords: category.meta_keywords ?? "",
+        });
+        toast.success(next ? "Category featured in header" : "Category removed from featured");
+      } catch {
+        setCategories((prev) =>
+          prev.map((row) =>
+            row.id === rowId ? { ...row, is_featured: category.is_featured } : row,
+          ),
+        );
+        toast.error("Failed to update featured status");
+      } finally {
+        setTogglingFeaturedIds((prev) => {
+          const nextSet = new Set(prev);
+          nextSet.delete(rowId);
+          return nextSet;
+        });
+      }
+    },
+    [],
+  );
 
   const openCreateModal = () => {
     setEditingCategoryId(null);
+    setEditingRowId(null);
     setSlugTouched(false);
     reset({
       title: "",
       slug: "",
       status: "active",
+      parent_id: null,
       is_featured: false,
       meta_title: "",
       meta_description: "",
@@ -367,11 +450,13 @@ export default function AdminCategories() {
 
   const openEditModal = (category: AdminCategoryRow) => {
     setEditingCategoryId(category.slug);
+    setEditingRowId(category.id);
     setSlugTouched(true);
     reset({
       title: category.title,
       slug: category.slug,
       status: category.status,
+      parent_id: category.parent_id,
       is_featured: category.is_featured,
       meta_title: category.meta_title ?? "",
       meta_description: category.meta_description ?? "",
@@ -380,39 +465,172 @@ export default function AdminCategories() {
     setIsModalOpen(true);
   };
 
-  const filtered = React.useMemo(() => {
-    return categories.filter((category) => {
-      if (!matchesSearch(category, search)) return false;
-      if (statusFilter !== "all" && category.status !== statusFilter) return false;
-      return true;
-    });
-  }, [categories, search, statusFilter]);
+  const childrenByParent = React.useMemo(() => {
+    const map = new Map<string, AdminCategoryRow[]>();
+    for (const row of categories) {
+      if (!row.parent_id) continue;
+      const list = map.get(row.parent_id) ?? [];
+      list.push(row);
+      map.set(row.parent_id, list);
+    }
+    for (const [parentId, list] of map) {
+      map.set(parentId, sortByPosition(list));
+    }
+    return map;
+  }, [categories]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const filteredParents = React.useMemo(() => {
+    const roots = sortByPosition(categories.filter((row) => !row.parent_id));
+
+    return roots.filter((parent) => {
+      const children = childrenByParent.get(parent.id) ?? [];
+      const parentStatusOk =
+        statusFilter === "all" || parent.status === statusFilter;
+      const childMatchesStatus = children.some(
+        (child) => statusFilter === "all" || child.status === statusFilter,
+      );
+
+      if (!search.trim()) {
+        if (statusFilter === "all") return true;
+        return parentStatusOk || childMatchesStatus;
+      }
+
+      const parentMatches = matchesSearch(parent, search);
+      const childMatches = children.some((child) => matchesSearch(child, search));
+      if (!parentMatches && !childMatches) return false;
+
+      if (statusFilter === "all") return true;
+      return parentStatusOk || childMatchesStatus;
+    });
+  }, [categories, childrenByParent, search, statusFilter]);
+
+  React.useEffect(() => {
+    if (!search.trim()) return;
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      for (const parent of filteredParents) {
+        const children = childrenByParent.get(parent.id) ?? [];
+        if (children.some((child) => matchesSearch(child, search))) {
+          next.add(parent.id);
+        }
+      }
+      return next;
+    });
+  }, [search, filteredParents, childrenByParent]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredParents.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
   React.useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pagedParents = filteredParents.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  const displayRows = React.useMemo(() => {
+    const rows: AdminCategoryRow[] = [];
+    for (const parent of pagedParents) {
+      rows.push(parent);
+      if (!expandedIds.has(parent.id)) continue;
+
+      const children = childrenByParent.get(parent.id) ?? [];
+      for (const child of children) {
+        if (statusFilter !== "all" && child.status !== statusFilter) continue;
+        if (
+          search.trim() &&
+          !matchesSearch(parent, search) &&
+          !matchesSearch(child, search)
+        ) {
+          continue;
+        }
+        rows.push(child);
+      }
+    }
+    return rows;
+  }, [pagedParents, expandedIds, childrenByParent, statusFilter, search]);
+
+  const toggleExpanded = React.useCallback((parentId: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(parentId)) next.delete(parentId);
+      else next.add(parentId);
+      return next;
+    });
+  }, []);
 
   const columns = React.useMemo<DataTableColumn<AdminCategoryRow>[]>(() => {
+    const posColumn: DataTableColumn<AdminCategoryRow> = {
+      id: "sort_order",
+      header: "Pos",
+      type: "custom",
+      render: (row) => (
+        <span className="text-sm tabular-nums text-admin-trend-muted">{row.sort_order}</span>
+      ),
+      className: "w-14 whitespace-nowrap",
+    };
+
+    const titleColumn: DataTableColumn<AdminCategoryRow> = {
+      id: "title",
+      header: "Category",
+      type: "custom",
+      render: (row) => {
+        if (row.parent_id) {
+          return (
+            <div className="relative ml-2 flex items-start gap-3 border-l-2 border-zbc-blue/30 py-0.5 pl-4 sm:ml-4 sm:pl-5">
+              <div className="min-w-0">
+                <div className="mb-0.5 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex rounded bg-zbc-blue/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zbc-blue uppercase">
+                    Sub
+                  </span>
+                  <p className="text-sm font-medium text-admin-heading">{row.title}</p>
+                </div>
+                <p className="text-xs text-admin-trend-muted">/{row.slug}</p>
+              </div>
+            </div>
+          );
+        }
+
+        const childCount = (childrenByParent.get(row.id) ?? []).length;
+
+        return (
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-admin-heading">{row.title}</p>
+            <p className="text-xs text-admin-trend-muted">
+              /{row.slug}
+              {childCount > 0
+                ? ` · ${childCount} subcategor${childCount === 1 ? "y" : "ies"}`
+                : ""}
+            </p>
+          </div>
+        );
+      },
+      className: "min-w-[200px]",
+    };
+
     const featuredColumn: DataTableColumn<AdminCategoryRow> = {
       id: "is_featured",
       header: "Featured",
       hideOnMobile: true,
       type: "custom",
       render: (row) => {
+        if (row.parent_id) {
+          return <span className="text-xs text-admin-trend-muted">—</span>;
+        }
         const busy = togglingFeaturedIds.has(String(row.id));
         return (
           <AdminToggle
             id={`category-featured-${row.id}`}
             checked={row.is_featured}
             aria-label={`Toggle featured for ${row.title}`}
-            className={cn(busy && "pointer-events-none opacity-60")}
+            className={cn(
+              busy && "pointer-events-none opacity-60",
+              !canUpdate && "pointer-events-none opacity-50",
+            )}
             onCheckedChange={(checked) => {
-              if (busy) return;
+              if (busy || !canUpdate) return;
               void toggleFeatured(row, checked);
             }}
           />
@@ -421,16 +639,36 @@ export default function AdminCategories() {
       className: "whitespace-nowrap",
     };
 
-    return [
-      BASE_CATEGORY_TABLE_COLUMNS[0],
-      BASE_CATEGORY_TABLE_COLUMNS[1],
-      featuredColumn,
-      ...BASE_CATEGORY_TABLE_COLUMNS.slice(2),
-    ];
-  }, [togglingFeaturedIds, toggleFeatured]);
+    const statusColumn: DataTableColumn<AdminCategoryRow> = {
+      id: "status",
+      header: "Status",
+      hideOnMobile: true,
+      type: "badge",
+      badge: (row) => ({
+        variant: row.status,
+        label: row.status === "active" ? "Active" : "Inactive",
+      }),
+      className: "whitespace-nowrap",
+    };
+
+    const createdColumn: DataTableColumn<AdminCategoryRow> = {
+      id: "created_at",
+      header: "Created",
+      hideOnMobile: true,
+      type: "custom",
+      render: (row) => (
+        <span className="text-sm text-admin-trend-muted">
+          {formatCreatedAt(row.created_at)}
+        </span>
+      ),
+      className: "whitespace-nowrap text-admin-trend-muted",
+    };
+
+    return [posColumn, titleColumn, featuredColumn, statusColumn, createdColumn];
+  }, [togglingFeaturedIds, toggleFeatured, canUpdate, childrenByParent]);
 
   const table = useCategoriesDataTable({
-    data: paged,
+    data: displayRows,
     columns,
     selectedIds,
     onSelectionChange: setSelectedIds,
@@ -438,14 +676,67 @@ export default function AdminCategories() {
     onDelete: deleteCategory,
   });
 
+  const tableWithPermissions = React.useMemo(() => {
+    const hasChildren = (row: AdminCategoryRow) =>
+      !row.parent_id && (childrenByParent.get(row.id) ?? []).length > 0;
+
+    const foldUnfoldActions = [
+      {
+        id: "unfold",
+        label: "Unfold category",
+        icon: ChevronRight,
+        variant: "primary" as const,
+        hidden: (row: AdminCategoryRow) =>
+          !hasChildren(row) || expandedIds.has(row.id),
+        onClick: (row: AdminCategoryRow) => toggleExpanded(row.id),
+      },
+      {
+        id: "fold",
+        label: "Fold category",
+        icon: ChevronDown,
+        variant: "primary" as const,
+        hidden: (row: AdminCategoryRow) =>
+          !hasChildren(row) || !expandedIds.has(row.id),
+        onClick: (row: AdminCategoryRow) => toggleExpanded(row.id),
+      },
+    ];
+
+    const permissionActions = (table.actions ?? []).filter((action) => {
+      if (action.id === "edit") return canUpdate;
+      if (action.id === "delete") return canDelete;
+      return true;
+    });
+
+    return {
+      ...table,
+      getRowClassName: (row: AdminCategoryRow) =>
+        row.parent_id
+          ? "bg-zbc-blue/[0.04] hover:bg-zbc-blue/[0.07]"
+          : undefined,
+      actions: [...foldUnfoldActions, ...permissionActions],
+    };
+  }, [
+    table,
+    canUpdate,
+    canDelete,
+    childrenByParent,
+    expandedIds,
+    toggleExpanded,
+  ]);
+
+  const reorderGroups = React.useMemo(
+    () => buildReorderGroups(reorderDraft),
+    [reorderDraft],
+  );
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <AdminPageHeader
         title="Categories"
         description={
           reorderMode
-            ? "Drag rows or set a position number, then save the order"
-            : "Manage news categories"
+            ? "Reorder main categories and subcategories in separate groups — Cancel discards changes"
+            : "Manage categories — expand a row to view its subcategories"
         }
         actions={
           <>
@@ -455,10 +746,10 @@ export default function AdminCategories() {
                   type="button"
                   variant="outline"
                   className="h-10 w-full sm:w-auto"
-                  onClick={exitReorderMode}
+                  onClick={cancelReorderMode}
                   disabled={savingOrder}
                 >
-                  Done
+                  Cancel
                 </Button>
                 <Button
                   type="button"
@@ -472,24 +763,28 @@ export default function AdminCategories() {
               </>
             ) : (
               <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 w-full gap-2 sm:w-auto"
-                  onClick={enterReorderMode}
-                  disabled={loading || categories.length === 0}
-                >
-                  <ListOrdered className="size-5" aria-hidden />
-                  Reorder
-                </Button>
-                <Button
-                  type="button"
-                  onClick={openCreateModal}
-                  className="h-10 w-full gap-2 rounded-[10px] bg-zbc-blue px-4 text-base font-medium hover:bg-zbc-blue/90 sm:w-auto"
-                >
-                  <Plus className="size-5" aria-hidden />
-                  New Category
-                </Button>
+                {canReorder ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full gap-2 sm:w-auto"
+                    onClick={enterReorderMode}
+                    disabled={loading || categories.length === 0}
+                  >
+                    <ListOrdered className="size-5" aria-hidden />
+                    Reorder
+                  </Button>
+                ) : null}
+                {canCreate ? (
+                  <Button
+                    type="button"
+                    onClick={openCreateModal}
+                    className="h-10 w-full gap-2 rounded-[10px] bg-zbc-blue px-4 text-base font-medium hover:bg-zbc-blue/90 sm:w-auto"
+                  >
+                    <Plus className="size-5" aria-hidden />
+                    New Category
+                  </Button>
+                ) : null}
               </>
             )}
           </>
@@ -523,15 +818,15 @@ export default function AdminCategories() {
           </div>
         ) : reorderMode ? (
           <CategoryReorderList
-            items={reorderDraft}
-            onReorder={handleLocalReorder}
+            groups={reorderGroups}
+            onGroupReorder={handleGroupReorder}
             onMoveToPosition={(category, position) => {
               void handleMoveToPosition(category, position);
             }}
             disabled={savingOrder}
           />
         ) : (
-          <DataTable {...table} />
+          <DataTable {...tableWithPermissions} />
         )}
       </AdminPanel>
 
@@ -539,7 +834,7 @@ export default function AdminCategories() {
         <AdminPagination
           page={safePage}
           totalPages={totalPages}
-          totalItems={filtered.length}
+          totalItems={filteredParents.length}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
         />
@@ -590,6 +885,39 @@ export default function AdminCategories() {
 
               <div className="space-y-1">
                 <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
+                  Parent category
+                </label>
+                <Controller
+                  name="parent_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ?? NONE_PARENT}
+                      onValueChange={(value) =>
+                        field.onChange(value === NONE_PARENT ? null : value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Top-level (no parent)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE_PARENT}>None — top-level</SelectItem>
+                        {rootOptions.map((root) => (
+                          <SelectItem key={root.id} value={root.id}>
+                            {root.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-xs text-admin-trend-muted">
+                  Subcategories appear under their parent in the site navigation.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm">
                   Status
                 </label>
                 <Controller
@@ -613,32 +941,34 @@ export default function AdminCategories() {
                 <InputError message={errors.status?.message} />
               </div>
 
-              <div className="flex items-start gap-3 rounded-lg border border-border bg-admin-surface/40 px-4 py-3">
-                <Controller
-                  name="is_featured"
-                  control={control}
-                  render={({ field }) => (
-                    <input
-                      id="category-featured"
-                      type="checkbox"
-                      checked={field.value}
-                      onChange={(event) => field.onChange(event.target.checked)}
-                      className="mt-0.5 size-4 rounded border-border text-zbc-blue focus:ring-zbc-blue"
-                    />
-                  )}
-                />
-                <div className="min-w-0">
-                  <label
-                    htmlFor="category-featured"
-                    className="block text-sm font-semibold text-admin-heading"
-                  >
-                    Featured in header
-                  </label>
-                  <p className="mt-0.5 text-xs text-admin-trend-muted">
-                    Featured categories appear next to Home in the main navigation.
-                  </p>
+              {!isChildForm ? (
+                <div className="flex items-start gap-3 rounded-lg border border-border bg-admin-surface/40 px-4 py-3">
+                  <Controller
+                    name="is_featured"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        id="category-featured"
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(event) => field.onChange(event.target.checked)}
+                        className="mt-0.5 size-4 rounded border-border text-zbc-blue focus:ring-zbc-blue"
+                      />
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <label
+                      htmlFor="category-featured"
+                      className="block text-sm font-semibold text-admin-heading"
+                    >
+                      Featured in header
+                    </label>
+                    <p className="mt-0.5 text-xs text-admin-trend-muted">
+                      Featured parent categories appear next to Home. Each links to /{`{slug}`}.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               <div className="space-y-3 rounded-lg border border-border bg-admin-surface/40 p-4">
                 <div className="flex items-center justify-between gap-3">

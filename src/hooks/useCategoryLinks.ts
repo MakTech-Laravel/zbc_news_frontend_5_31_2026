@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 
 import { request } from "@/api/request";
+import {
+  flattenCategoryTree,
+  type CategoryTreeNode,
+} from "@/lib/categoryTree";
 
 export type CategoryLink = {
   label: string;
@@ -16,11 +20,13 @@ export function useCategoryLinks(): CategoryLink[] {
     request
       .get("/categories")
       .then((response) => {
-        const rows = Array.isArray(response.data?.data) ? response.data.data : [];
-        const mapped = rows
-          .filter((cat: { status?: string }) => cat.status === "active")
-          .map((cat: { title?: string; slug?: string }) => ({
-            label: cat.title ?? "Category",
+        const rows: CategoryTreeNode[] = Array.isArray(response.data?.data)
+          ? response.data.data
+          : [];
+        const mapped = flattenCategoryTree(rows)
+          .filter((cat) => cat.status === "active")
+          .map((cat) => ({
+            label: cat.title ?? cat.name ?? "Category",
             to: cat.slug ? `/${cat.slug}` : "/",
           }));
 

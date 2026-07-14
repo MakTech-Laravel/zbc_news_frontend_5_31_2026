@@ -57,6 +57,7 @@ function normalizeCategory(raw: RawCategory): AdminCategoryRow {
     status,
     sort_order: raw.sort_order ?? 0,
     is_featured: Boolean(raw.is_featured),
+    parent_id: raw.parent_id != null ? String(raw.parent_id) : null,
     articleCount: raw.articleCount ?? 0,
     created_at: raw.created_at ?? raw.createdAt ?? "",
     updated_at: raw.updated_at ?? raw.updatedAt ?? "",

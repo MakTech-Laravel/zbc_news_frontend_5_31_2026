@@ -51,6 +51,7 @@ export function DataTable<T>({
   actionsColumnHeader,
   emptyMessage,
   minWidth,
+  getRowClassName,
   className,
 }: DataTableProps<T> & { className?: string }) {
   const isMobile = useIsMobile();
@@ -125,7 +126,12 @@ export function DataTable<T>({
 
             return (
               <React.Fragment key={rowId}>
-                <tr className="border-b border-border last:border-b-0 hover:bg-admin-surface/80">
+                <tr
+                  className={cn(
+                    "border-b border-border last:border-b-0 hover:bg-admin-surface/80",
+                    getRowClassName?.(row),
+                  )}
+                >
                   {visibleColumns.map((column) => (
                     <td
                       key={column.id}
