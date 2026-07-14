@@ -683,6 +683,17 @@ function MobileMenu() {
     setOpen(false);
   }, [location.pathname]);
 
+  // Open the first category that has sub-items by default (and whenever menu opens).
+  useEffect(() => {
+    if (!open) return;
+    const firstWithChildren = allItems.find(
+      (item) => (item.children?.length ?? 0) > 0,
+    );
+    setExpandedIds(
+      firstWithChildren ? new Set([firstWithChildren.id]) : new Set(),
+    );
+  }, [open, allItems]);
+
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -738,6 +749,7 @@ function MobileMenu() {
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
             <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
+              {/* Home is always shown first on mobile / small screens */}
               <DialogClose asChild>
                 <Link
                   to={homeItem.to}
@@ -790,7 +802,7 @@ function MobileMenu() {
                         >
                           <ChevronDown
                             className={cn(
-                              "size-4 transition-transform",
+                              "size-4 transition-transform duration-300 ease-out",
                               isExpanded && "rotate-180",
                             )}
                             aria-hidden
@@ -799,26 +811,44 @@ function MobileMenu() {
                       ) : null}
                     </div>
 
-                    {hasChildren && isExpanded
-                      ? children.map((child) => {
-                          const childActive = location.pathname === child.to;
-                          return (
-                            <DialogClose asChild key={child.id}>
-                              <Link
-                                to={child.to}
-                                className={cn(
-                                  "rounded-lg py-2 pr-3 pl-6 font-sans text-[13px] font-medium transition-colors",
-                                  childActive
-                                    ? "bg-accent/70 text-primary"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                                )}
-                              >
-                                {child.label}
-                              </Link>
-                            </DialogClose>
-                          );
-                        })
-                      : null}
+                    {hasChildren ? (
+                      <div
+                        className={cn(
+                          "grid transition-[grid-template-rows] duration-300 ease-out",
+                          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                        )}
+                      >
+                        <div className="overflow-hidden">
+                          <div
+                            className={cn(
+                              "flex flex-col gap-0.5 pb-1 transition-opacity duration-300 ease-out",
+                              isExpanded ? "opacity-100" : "opacity-0",
+                            )}
+                          >
+                            {children.map((child) => {
+                              const childActive =
+                                location.pathname === child.to;
+                              return (
+                                <DialogClose asChild key={child.id}>
+                                  <Link
+                                    to={child.to}
+                                    tabIndex={isExpanded ? undefined : -1}
+                                    className={cn(
+                                      "rounded-lg py-2 pr-3 pl-6 font-sans text-[13px] font-medium transition-colors",
+                                      childActive
+                                        ? "bg-accent/70 text-primary"
+                                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                                    )}
+                                  >
+                                    {child.label}
+                                  </Link>
+                                </DialogClose>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
