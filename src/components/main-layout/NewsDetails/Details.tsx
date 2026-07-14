@@ -14,7 +14,6 @@ import NotFound from "@/pages/global/NotFound";
 import { cn } from "@/lib/utils";
 import { getTagPath } from "@/lib/tagPaths";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
-import { useDocumentHead } from "@/hooks/useDocumentHead";
 import {
   fetchArticleBySlug,
   fetchRelatedArticles,
@@ -23,9 +22,6 @@ import {
 import type { Article } from "@/data/dummy/types";
 import { AdUnit } from "../shared/AdUnit";
 import { useArticleTracking } from "@/hooks/useArticleTracking";
-import {
-  getArticlePageUrl,
-} from "@/lib/articleShare";
 
 
 const articleBodyClassName = cn(
@@ -70,21 +66,6 @@ export function DetailsSkeleton() {
 export function ArticleContent({ article }: { article: ArticleDetail }) {
   const { settings } = useSiteSettings();
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
-
-  useDocumentHead({
-    path: `/${article.slug}`,
-    title: article.metaTitle,
-    description: article.metaDescription,
-    keywords: article.metaKeywords,
-    image: article.shareImageUrl || article.imageUrl,
-    url: getArticlePageUrl(article.slug),
-    type: "article",
-    publishedAt: article.publishedAtIso || undefined,
-    modifiedAt:
-      article.showUpdated && article.updatedAtIso
-        ? article.updatedAtIso
-        : undefined,
-  });
 
   useEffect(() => {
     if (settings.relatedArticlesCount <= 0) {

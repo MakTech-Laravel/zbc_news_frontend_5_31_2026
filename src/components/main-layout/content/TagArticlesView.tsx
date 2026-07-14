@@ -5,8 +5,6 @@ import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
 import { AdUnit } from "@/components/main-layout/shared/AdUnit";
 import type { Article } from "@/data/dummy/types";
-import { useDocumentHead } from "@/hooks/useDocumentHead";
-import { formatTagLabel } from "@/lib/tagPaths";
 import NotFound from "@/pages/global/NotFound";
 import {
   fetchArticlesByTag,
@@ -29,13 +27,6 @@ export function TagArticlesView({ tagSlug }: TagArticlesViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notFound, setNotFound] = useState(false);
-
-  const tagLabel = formatTagLabel(tagSlug.replace(/-/g, " "));
-
-  useDocumentHead({
-    path: `/tag/${tagSlug}`,
-    title: `${tagLabel} Articles`,
-  });
 
   useEffect(() => {
     let cancelled = false;

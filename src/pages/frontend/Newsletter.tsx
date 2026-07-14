@@ -1,15 +1,8 @@
 import { Mail } from "lucide-react";
 
 import { NewsletterSignupForm } from "@/components/newsletter/NewsletterSignupForm";
-import { useDocumentHead } from "@/hooks/useDocumentHead";
 
 export default function NewsletterPage() {
-  useDocumentHead({
-    path: "/newsletter",
-    description:
-      "Subscribe to the ZBC News daily newsletter for top headlines and category updates tailored to your interests.",
-  });
-
   return (
     <div className="bg-white">
       <section className="border-b border-zbc-gray-200 bg-linear-to-br from-zbc-gray-50 to-brand-soft py-16 md:py-20">
