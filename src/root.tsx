@@ -32,9 +32,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="UTF-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />  
         <Meta />
         <Links />
+
+        {/* Google tag (gtag.js) */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-K8J2BJMV83" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-K8J2BJMV83');`,
+          }}
+        />
       </head>
       <body>
         {children}
