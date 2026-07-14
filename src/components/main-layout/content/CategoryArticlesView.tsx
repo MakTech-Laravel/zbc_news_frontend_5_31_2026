@@ -34,7 +34,6 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
     title: categorySeo.metaTitle || undefined,
     description: categorySeo.metaDescription || undefined,
     keywords: categorySeo.metaKeywords || undefined,
-    replacements: { category: categoryTitle || categorySlug.replace(/-/g, " ") },
   });
 
   useEffect(() => {

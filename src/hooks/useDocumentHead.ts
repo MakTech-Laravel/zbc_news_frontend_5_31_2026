@@ -4,17 +4,16 @@ import { useLocation } from "react-router-dom";
 import { getPublicSiteOrigin } from "@/lib/appOrigins";
 import { toAbsoluteUrl } from "@/lib/articleShare";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
-import type { SeoPage } from "@/types/siteSettings";
+import { useResolvedSeo } from "@/hooks/useResolvedSeo";
 
 type DocumentHeadOptions = {
   title?: string;
   description?: string;
   keywords?: string;
   path?: string;
-  replacements?: Record<string, string>;
   /** Absolute or site-relative image URL for social previews. */
   image?: string;
-  /** Canonical page URL for og:url (defaults to current location). */
+  /** Canonical page URL for og:url (defaults to the resolved/current location). */
   url?: string;
   /** Open Graph type (e.g. article, website). */
   type?: string;
@@ -24,36 +23,10 @@ type DocumentHeadOptions = {
   modifiedAt?: string;
 };
 
-function applyReplacements(value: string, replacements: Record<string, string>) {
-  return Object.entries(replacements).reduce(
-    (result, [key, replacement]) =>
-      result.replaceAll(`{${key}}`, replacement).replaceAll(`{${key.toLowerCase()}}`, replacement),
-    value,
-  );
-}
-
-const RESERVED_SINGLE_SEGMENT_PATHS = new Set([
-  "login",
-  "register",
-  "forget-password",
-  "otp-verification",
-  "reset-password",
-  "unauthorized",
-  "dashboard",
-  "ws-test",
-  "about",
-  "contact",
-  "privacy",
-  "terms",
-  "cookie-policy",
-  "accessibility-statement",
-  "advertise",
-  "careers",
-  "newsletter",
-  "admin",
-  "user",
-]);
-
+/**
+ * Static titles for auth/utility routes that have no seo_pages row.
+ * Public content pages resolve their title server-side via useResolvedSeo.
+ */
 const STATIC_PAGE_TITLES: Record<string, string> = {
   "/login": "Login",
   "/login/email": "Login",
@@ -62,59 +35,15 @@ const STATIC_PAGE_TITLES: Record<string, string> = {
   "/otp-verification": "Verify Code",
   "/reset-password": "Reset Password",
   "/unauthorized": "Unauthorized",
-  "/newsletter": "Newsletter",
 };
-
-function hasUnresolvedPlaceholders(value: string) {
-  return /\{[a-zA-Z_]+\}/.test(value);
-}
 
 function normalizePath(path: string) {
   return path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
 }
 
 function resolveStaticPageTitle(path: string, siteName: string) {
-  const normalized = normalizePath(path);
-  const label = STATIC_PAGE_TITLES[normalized];
+  const label = STATIC_PAGE_TITLES[normalizePath(path)];
   return label ? `${label} — ${siteName}` : "";
-}
-
-function resolveSeoPage(seoPages: SeoPage[], path: string): SeoPage | undefined {
-  const normalized = normalizePath(path);
-
-  const exact = seoPages.find((page) => !page.isTemplate && page.url === normalized);
-  if (exact) return exact;
-
-  if (/^\/(user|admin)(\/|$)/.test(normalized) || normalized.startsWith("/newsletter/")) {
-    return undefined;
-  }
-
-  if (/^\/news-details\/[^/]+$/.test(normalized)) {
-    return seoPages.find((page) => page.pageKey === "article-detail");
-  }
-
-  if (normalized === "/news-details") {
-    return seoPages.find((page) => page.pageKey === "news-details");
-  }
-
-  if (/^\/author\/[^/]+$/.test(normalized)) {
-    return seoPages.find((page) => page.pageKey === "author-profile");
-  }
-
-  if (/^\/[^/]+$/.test(normalized)) {
-    const segment = normalized.slice(1);
-    if (RESERVED_SINGLE_SEGMENT_PATHS.has(segment)) {
-      return undefined;
-    }
-
-    const categoryPage = seoPages.find(
-      (page) => !page.isTemplate && page.url === normalized,
-    );
-    if (categoryPage) return categoryPage;
-    return seoPages.find((page) => page.pageKey === "category");
-  }
-
-  return seoPages.find((page) => page.pageKey === "home");
 }
 
 function upsertMeta(name: string, content: string, attribute: "name" | "property" = "name") {
@@ -147,53 +76,70 @@ function upsertLink(rel: string, href: string) {
   element.href = href;
 }
 
+const JSON_LD_ID = "seo-jsonld";
+
+function upsertJsonLd(nodes: Array<Record<string, unknown>>) {
+  let element = document.getElementById(JSON_LD_ID) as HTMLScriptElement | null;
+
+  if (!nodes.length) {
+    element?.remove();
+    return;
+  }
+
+  if (!element) {
+    element = document.createElement("script");
+    element.type = "application/ld+json";
+    element.id = JSON_LD_ID;
+    document.head.appendChild(element);
+  }
+
+  element.textContent = JSON.stringify(nodes.length === 1 ? nodes[0] : nodes);
+}
+
 export function useDocumentHead(options: DocumentHeadOptions = {}) {
-  const { settings, seoPages } = useSiteSettings();
+  const { settings } = useSiteSettings();
+  const path =
+    options.path ?? (typeof window !== "undefined" ? window.location.pathname : "/");
+  const { data: resolved } = useResolvedSeo(path);
 
   React.useEffect(() => {
-    const path = options.path ?? window.location.pathname;
-    const seoPage = resolveSeoPage(seoPages, path);
-    const replacements = options.replacements ?? {};
+    const siteName = settings.siteName;
 
-    const titleTemplate = options.title
-      ?? (resolveStaticPageTitle(path, settings.siteName)
-        || (seoPage?.metaTitle
-          ? applyReplacements(seoPage.metaTitle, replacements)
-          : settings.siteName));
+    // Precedence: explicit page override -> server-resolved value -> site default.
+    const pageTitle =
+      options.title?.trim() ||
+      resolveStaticPageTitle(path, siteName) ||
+      resolved?.title ||
+      siteName;
 
-    const description = options.description
-      ?? (seoPage?.metaDescription
-        ? applyReplacements(seoPage.metaDescription, replacements)
-        : settings.siteTag);
+    const description =
+      options.description?.trim() || resolved?.description || settings.siteTag;
 
-    const keywords = options.keywords
-      ?? (seoPage?.metaKeywords
-        ? applyReplacements(seoPage.metaKeywords, replacements)
-        : "");
+    const keywords = options.keywords?.trim() || resolved?.keywords || "";
 
-    const resolvedTitle = hasUnresolvedPlaceholders(titleTemplate)
-      ? (resolveStaticPageTitle(path, settings.siteName) || settings.siteName)
-      : titleTemplate;
-    const pageTitle = resolvedTitle.trim() || settings.siteName;
     const siteOrigin = getPublicSiteOrigin();
     const canonicalUrl =
       options.url?.trim() ||
-      (siteOrigin && options.path
-        ? `${siteOrigin}${options.path.startsWith("/") ? options.path : `/${options.path}`}`
-        : window.location.href.split("#")[0]);
-    const imageUrl = options.image ? toAbsoluteUrl(options.image) : "";
-    const ogType = options.type?.trim() || "website";
+      resolved?.canonical ||
+      (siteOrigin ? `${siteOrigin}${normalizePath(path)}` : window.location.href.split("#")[0]);
+
+    const imageUrl = options.image ? toAbsoluteUrl(options.image) : resolved?.og?.image ?? "";
+    const ogType = options.type?.trim() || resolved?.og?.type || "website";
     const twitterCard = imageUrl ? "summary_large_image" : "summary";
+    const robots = resolved?.robots || "index,follow";
+    const publishedAt = options.publishedAt ?? resolved?.og?.published_time;
+    const modifiedAt = options.modifiedAt ?? resolved?.og?.modified_time;
 
     document.title = pageTitle;
 
     upsertMeta("description", description);
     upsertMeta("keywords", keywords);
+    upsertMeta("robots", robots);
     upsertLink("canonical", canonicalUrl);
 
     upsertMeta("og:title", pageTitle, "property");
     upsertMeta("og:description", description, "property");
-    upsertMeta("og:site_name", settings.siteName, "property");
+    upsertMeta("og:site_name", siteName, "property");
     upsertMeta("og:url", canonicalUrl, "property");
     upsertMeta("og:type", ogType, "property");
     if (imageUrl) {
@@ -201,11 +147,11 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
       upsertMeta("og:image:alt", pageTitle, "property");
     }
 
-    if (options.publishedAt) {
-      upsertMeta("article:published_time", options.publishedAt, "property");
+    if (publishedAt) {
+      upsertMeta("article:published_time", publishedAt, "property");
     }
-    if (options.modifiedAt) {
-      upsertMeta("article:modified_time", options.modifiedAt, "property");
+    if (modifiedAt) {
+      upsertMeta("article:modified_time", modifiedAt, "property");
     }
 
     upsertMeta("twitter:card", twitterCard);
@@ -215,6 +161,8 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
       upsertMeta("twitter:image", imageUrl);
       upsertMeta("twitter:image:alt", pageTitle);
     }
+
+    upsertJsonLd(resolved?.jsonLd ?? []);
   }, [
     options.description,
     options.image,
@@ -222,11 +170,11 @@ export function useDocumentHead(options: DocumentHeadOptions = {}) {
     options.path,
     options.publishedAt,
     options.modifiedAt,
-    options.replacements,
     options.title,
     options.type,
     options.url,
-    seoPages,
+    path,
+    resolved,
     settings,
   ]);
 }

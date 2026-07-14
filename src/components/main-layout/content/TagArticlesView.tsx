@@ -35,7 +35,6 @@ export function TagArticlesView({ tagSlug }: TagArticlesViewProps) {
   useDocumentHead({
     path: `/tag/${tagSlug}`,
     title: `${tagLabel} Articles`,
-    replacements: { tag: tagLabel },
   });
 
   useEffect(() => {

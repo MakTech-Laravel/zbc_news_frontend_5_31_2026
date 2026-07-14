@@ -1,4 +1,5 @@
 import { AdminFormField } from "@/components/admin/forms/AdminFormField";
+import { MediaImageField } from "@/components/admin/media/MediaImageField";
 import {
   settingsInputClassName,
   settingsTextareaClassName,
@@ -11,9 +12,15 @@ type SeoPageEditFormProps = {
   metaTitle: string;
   metaDescription: string;
   metaKeywords: string;
+  canonicalUrl: string;
+  noindex: boolean;
+  ogImage: string;
   onMetaTitleChange: (value: string) => void;
   onMetaDescriptionChange: (value: string) => void;
   onMetaKeywordsChange: (value: string) => void;
+  onCanonicalUrlChange: (value: string) => void;
+  onNoindexChange: (value: boolean) => void;
+  onOgImageChange: (value: string) => void;
 };
 
 export function SeoPageEditForm({
@@ -21,9 +28,15 @@ export function SeoPageEditForm({
   metaTitle,
   metaDescription,
   metaKeywords,
+  canonicalUrl,
+  noindex,
+  ogImage,
   onMetaTitleChange,
   onMetaDescriptionChange,
   onMetaKeywordsChange,
+  onCanonicalUrlChange,
+  onNoindexChange,
+  onOgImageChange,
 }: SeoPageEditFormProps) {
   return (
     <div className="space-y-6">
@@ -72,6 +85,54 @@ export function SeoPageEditForm({
             rows={4}
           />
         </AdminFormField>
+
+        <AdminFormField label="Social share image (Open Graph)" htmlFor="og-image">
+          <MediaImageField
+            value={ogImage || null}
+            onChange={(url) => onOgImageChange(url ?? "")}
+            uploadLabel="Select share image"
+            previewAlt="Social share image preview"
+            urlPlaceholder="Or paste an image URL (Cloudinary, etc.)"
+          />
+        </AdminFormField>
+
+        <AdminFormField label="Canonical URL" htmlFor="canonical-url">
+          <input
+            id="canonical-url"
+            type="url"
+            value={canonicalUrl}
+            onChange={(e) => onCanonicalUrlChange(e.target.value)}
+            placeholder="Leave blank to use this page's own URL"
+            className={settingsInputClassName}
+          />
+        </AdminFormField>
+
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+          <div>
+            <p className="text-base font-medium text-admin-heading">
+              Hide from search engines
+            </p>
+            <p className="mt-1 text-sm text-admin-label">
+              Adds a <code>noindex, nofollow</code> robots tag so this page is not indexed.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={noindex}
+            aria-label="Hide from search engines"
+            onClick={() => onNoindexChange(!noindex)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              noindex ? "bg-primary" : "bg-input"
+            }`}
+          >
+            <span
+              className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${
+                noindex ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
       </AdminPanel>
     </div>
   );

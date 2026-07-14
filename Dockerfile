@@ -6,7 +6,8 @@ WORKDIR /app
 # pnpm is not bundled in node:22-alpine — enable via corepack
 RUN corepack enable
 
-# Declare build-time env vars (Coolify passes these from Environment Variables)
+# Build-time env vars for the client bundle. Vite inlines VITE_* at build time,
+# so these must be present as build args (docker-compose passes them).
 ARG VITE_ENVIRONMENT_MODE
 ARG VITE_API_BASE_URL
 ARG VITE_AUTH_STRATEGY
@@ -41,22 +42,38 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts && \
     pnpm rebuild lightningcss @tailwindcss/oxide
 
-# Copy source and build
+# Copy source and build. React Router Framework Mode outputs:
+#   build/client  (browser assets + merged public/ files)
+#   build/server  (SSR bundle: index.js + assets)
 COPY . .
 RUN pnpm run build
 
-# ─── Stage 2: Serve ──────────────────────────────────────────────────────────
-FROM nginx:1.27-alpine AS runner
+# ─── Stage 2: Serve — Framework Mode SSR via react-router-serve ───────────────
+# A persistent Node process, NOT static nginx: the SSR app renders per request.
+FROM node:22-alpine AS runner
 
-RUN rm /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-COPY nginx.conf /etc/nginx/conf.d/app.conf
+RUN corepack enable
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+ENV NODE_ENV=production
+# Listen on port 80 so docker-compose's existing "3000:80" mapping stays valid
+# with no VM-side change. (Runs as root — required to bind the privileged port,
+# same as the previous nginx runtime.)
+ENV PORT=80
 
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chmod -R 755 /usr/share/nginx/html
+# Production-only dependencies: react-router-serve + the packages the server
+# bundle externalizes (react, react-router, axios, …). devDependencies
+# (@react-router/dev etc.) are build-only and intentionally excluded.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+
+# Build output only — no source, no dev tooling. public/ is already merged into
+# build/client by the build, so it needs no separate COPY.
+COPY --from=builder /app/build ./build
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Single source of truth for how the app starts: package.json "start"
+# (react-router-serve ./build/server/index.js).
+CMD ["pnpm", "start"]

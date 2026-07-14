@@ -14,6 +14,9 @@ export function useSeoPageEditor(pageKey: string | undefined) {
   const [metaTitle, setMetaTitle] = React.useState("");
   const [metaDescription, setMetaDescription] = React.useState("");
   const [metaKeywords, setMetaKeywords] = React.useState("");
+  const [canonicalUrl, setCanonicalUrl] = React.useState("");
+  const [noindex, setNoindex] = React.useState(false);
+  const [ogImage, setOgImage] = React.useState("");
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
 
@@ -33,6 +36,9 @@ export function useSeoPageEditor(pageKey: string | undefined) {
         setMetaTitle(result.metaTitle);
         setMetaDescription(result.metaDescription);
         setMetaKeywords(result.metaKeywords);
+        setCanonicalUrl(result.canonicalUrl);
+        setNoindex(result.noindex);
+        setOgImage(result.ogImage);
       })
       .catch(() => {
         if (!cancelled) toast.error("Failed to load SEO page");
@@ -55,9 +61,13 @@ export function useSeoPageEditor(pageKey: string | undefined) {
         metaTitle,
         metaDescription,
         metaKeywords,
+        canonicalUrl,
+        noindex,
+        ogImage,
       });
       setPage(updated);
-      await queryClient.invalidateQueries({ queryKey: ["public-seo-pages"] });
+      // Public pages resolve SEO per-path; drop those caches so edits take effect.
+      await queryClient.invalidateQueries({ queryKey: ["seo-resolve"] });
       toast.success("SEO page saved successfully");
       return true;
     } catch {
@@ -66,7 +76,7 @@ export function useSeoPageEditor(pageKey: string | undefined) {
     } finally {
       setSaving(false);
     }
-  }, [pageKey, metaTitle, metaDescription, metaKeywords, queryClient]);
+  }, [pageKey, metaTitle, metaDescription, metaKeywords, canonicalUrl, noindex, ogImage, queryClient]);
 
   return {
     page,
@@ -76,6 +86,12 @@ export function useSeoPageEditor(pageKey: string | undefined) {
     setMetaDescription,
     metaKeywords,
     setMetaKeywords,
+    canonicalUrl,
+    setCanonicalUrl,
+    noindex,
+    setNoindex,
+    ogImage,
+    setOgImage,
     save,
     loading,
     saving,

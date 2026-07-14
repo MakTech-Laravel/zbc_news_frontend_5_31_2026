@@ -96,12 +96,35 @@ function normalizeApiBaseUrl(raw: string): string {
   }
 }
 
+/**
+ * API base URL for the axios client.
+ *
+ * On the **server** (SSR under `react-router-serve`, `typeof window === 'undefined'`)
+ * prefer `INTERNAL_API_BASE_URL` when set, read from `process.env` at **runtime**
+ * (not inlined by Vite). This lets loader/SSR requests reach the backend over the
+ * internal Docker network (e.g. `http://backend/api/v1`) instead of round-tripping
+ * out through the public reverse proxy. It is used verbatim (no http→https upgrade,
+ * since internal traffic is plain HTTP). When unset — and always in the browser —
+ * fall back to the build-time `VITE_API_BASE_URL`, so nothing changes unless the
+ * runtime env var is provided.
+ */
+function resolveApiBaseUrl(): string {
+  if (typeof window === 'undefined' && typeof process !== 'undefined') {
+    const internal = process.env?.INTERNAL_API_BASE_URL?.trim()
+    if (internal) {
+      return internal.replace(/\/+$/, '')
+    }
+  }
+
+  return normalizeApiBaseUrl(required('VITE_API_BASE_URL'))
+}
+
 export const env = {
   mode: import.meta.env.MODE,
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
   // Vite only exposes env vars to the client when prefixed with VITE_
-  apiBaseUrl: normalizeApiBaseUrl(required('VITE_API_BASE_URL')),
+  apiBaseUrl: resolveApiBaseUrl(),
   /** Public site URL for canonical links and OG tags (optional; defaults to window.location.origin). */
   siteUrl: optionalViteString('VITE_SITE_URL'),
   /** Optional Meta app id for Facebook Share Dialog (recommended for reliable sharing). */

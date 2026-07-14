@@ -1,5 +1,10 @@
 import { request } from "@/api/request";
 import {
+  mapResolvedSeo,
+  type ResolvedSeo,
+  type ResolvedSeoApi,
+} from "@/types/resolvedSeo";
+import {
   mapSeoPageFromApi,
   type SeoPage,
   type SeoPageApi,
@@ -40,6 +45,9 @@ export async function updateAdminSeoPage(
     metaTitle: string;
     metaDescription: string;
     metaKeywords: string;
+    canonicalUrl: string;
+    noindex: boolean;
+    ogImage: string;
   },
 ): Promise<SeoPage> {
   const response = await request.post(
@@ -48,6 +56,9 @@ export async function updateAdminSeoPage(
       meta_title: patch.metaTitle,
       meta_description: patch.metaDescription,
       meta_keywords: patch.metaKeywords,
+      canonical_url: patch.canonicalUrl || null,
+      noindex: patch.noindex,
+      og_image: patch.ogImage || null,
     },
   );
   const raw = extractPayload<SeoPageApi>(response.data);
@@ -59,13 +70,51 @@ export async function fetchPublicSeoPages(): Promise<SeoPage[]> {
   return extractRows(response.data).map(mapSeoPageFromApi);
 }
 
-export async function resolvePublicSeoPage(path: string): Promise<SeoPage | null> {
+/** Admin: force-rebuild the cached sitemaps (same as `php artisan sitemap:refresh`). */
+export async function refreshSitemapCache(): Promise<void> {
+  await request.post("/admin/seo/sitemap/refresh");
+}
+
+function triggerBlobDownload(data: Blob, filename: string): void {
+  const url = URL.createObjectURL(data);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Admin: download the current cached general or news sitemap for inspection. */
+export async function downloadSitemapFile(type: "general" | "news"): Promise<void> {
+  const response = await request.get("/admin/seo/sitemap/download", {
+    params: { type },
+    responseType: "blob",
+  });
+  triggerBlobDownload(response.data as Blob, type === "news" ? "news-sitemap.xml" : "sitemap.xml");
+}
+
+/** Admin: download the current robots.txt for inspection. */
+export async function downloadRobotsFile(): Promise<void> {
+  const response = await request.get("/admin/seo/robots/download", {
+    responseType: "blob",
+  });
+  triggerBlobDownload(response.data as Blob, "robots.txt");
+}
+
+/**
+ * Fetch the fully-resolved (server-interpolated) SEO metadata for a path.
+ * The backend owns entity data and does all placeholder interpolation, so the
+ * client receives final title/description/keywords/canonical/OG/JSON-LD.
+ */
+export async function fetchResolvedSeo(path: string): Promise<ResolvedSeo | null> {
   try {
     const response = await request.get("/seo-pages/resolve", {
       params: { path },
     });
-    const raw = extractPayload<SeoPageApi>(response.data);
-    return mapSeoPageFromApi(raw);
+    const raw = extractPayload<ResolvedSeoApi>(response.data);
+    return mapResolvedSeo(raw);
   } catch {
     return null;
   }
