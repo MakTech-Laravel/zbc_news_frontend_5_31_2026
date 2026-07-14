@@ -337,10 +337,12 @@ function AccountActions({ showLabel = true }: { showLabel?: boolean }) {
 
 function LiveDateTime() {
   const [formatted, setFormatted] = useState("");
+  const [iso, setIso] = useState("");
 
   useEffect(() => {
     function update() {
       const now = new Date();
+      setIso(now.toISOString());
       setFormatted(
         now
           .toLocaleString("en-US", {
@@ -363,7 +365,7 @@ function LiveDateTime() {
   return (
     <div className="hidden shrink-0 items-center gap-1.5 font-sans text-[12px] text-muted-foreground xl:flex">
       <Clock className="size-3.5 shrink-0" aria-hidden />
-      <time dateTime={new Date().toISOString()}>{formatted || "—"}</time>
+      <time dateTime={iso || undefined}>{formatted || "—"}</time>
     </div>
   );
 }
@@ -906,10 +908,12 @@ function MobileMenu() {
 
 function LiveDateTimeMobile() {
   const [formatted, setFormatted] = useState("");
+  const [iso, setIso] = useState("");
 
   useEffect(() => {
     function update() {
       const now = new Date();
+      setIso(now.toISOString());
       setFormatted(
         now
           .toLocaleString("en-US", {
@@ -929,7 +933,7 @@ function LiveDateTimeMobile() {
     return () => window.clearInterval(id);
   }, []);
 
-  return <time dateTime={new Date().toISOString()}>{formatted || "—"}</time>;
+  return <time dateTime={iso || undefined}>{formatted || "—"}</time>;
 }
 
 export function FrontendHeader() {
