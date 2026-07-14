@@ -2,8 +2,6 @@ import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
 import { AdUnit } from "@/components/main-layout/shared/AdUnit";
 import { Button } from "@/components/ui/button";
 import type { Article } from "@/data/dummy/types";
-import { useDocumentHead } from "@/hooks/useDocumentHead";
-import { getAuthorPath } from "@/lib/authorPaths";
 import NotFound from "@/pages/global/NotFound";
 import {
   AuthorProfileNotFoundError,
@@ -50,17 +48,6 @@ export function AuthorProfileView({ authorSlug }: AuthorProfileViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notFound, setNotFound] = useState(false);
-
-  useDocumentHead({
-    path: getAuthorPath(authorSlug),
-    title: author
-      ? `${author.name} — Author Profile`
-      : `${authorSlug.replace(/-/g, " ")} — Author Profile`,
-    description:
-      author?.bio?.trim() ||
-      `Read published articles by ${author?.name || authorSlug.replace(/-/g, " ")} on ZBC News.`,
-    image: author?.profileImageUrl,
-  });
 
   useEffect(() => {
     setPage(1);

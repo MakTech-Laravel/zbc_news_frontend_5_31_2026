@@ -11,7 +11,6 @@ import { CategoryArticlesView } from "@/components/main-layout/content/CategoryA
 import { FeaturedSection } from "@/components/main-layout/content/FeaturedSection";
 import { HeroSection } from "@/components/main-layout/content/HeroSection";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
-import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { getTagPath } from "@/lib/tagPaths";
 import {
   fetchArticleBySlug,
@@ -26,8 +25,6 @@ export default function Home() {
   const legacyTag = searchParams.get("tag");
   const [view, setView] = useState<SlugView>(slug ? "loading" : "category");
   const [article, setArticle] = useState<ArticleDetail | null>(null);
-
-  useDocumentHead({ path: slug ? `/${slug}` : "/" });
 
   useEffect(() => {
     if (!slug) {

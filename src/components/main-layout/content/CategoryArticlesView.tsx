@@ -6,7 +6,6 @@ import { LatestStories } from "@/components/main-layout/content/LatestStories";
 import { AdUnit } from "@/components/main-layout/shared/AdUnit";
 import { Button } from "@/components/ui/button";
 import type { Article } from "@/data/dummy/types";
-import { useDocumentHead } from "@/hooks/useDocumentHead";
 import NotFound from "@/pages/global/NotFound";
 import { fetchArticlesByCategory } from "@/services/frontend/articles";
 
@@ -17,11 +16,6 @@ type CategoryArticlesViewProps = {
 export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [categoryTitle, setCategoryTitle] = useState("");
-  const [categorySeo, setCategorySeo] = useState({
-    metaTitle: "",
-    metaDescription: "",
-    metaKeywords: "",
-  });
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -29,12 +23,9 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
   const [error, setError] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  useDocumentHead({
-    path: `/${categorySlug}`,
-    title: categorySeo.metaTitle || undefined,
-    description: categorySeo.metaDescription || undefined,
-    keywords: categorySeo.metaKeywords || undefined,
-  });
+  // The document head (title/meta/OG/JSON-LD) is owned server-side by the route
+  // meta() via the loader; no client-side head writing here (it would flash a
+  // generic fallback in over the correct SSR value during hydration).
 
   useEffect(() => {
     setPage(1);
@@ -47,10 +38,9 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
     setNotFound(false);
 
     fetchArticlesByCategory(categorySlug, page)
-      .then(({ categoryTitle: title, categorySeo: seo, articles: rows, meta }) => {
+      .then(({ categoryTitle: title, articles: rows, meta }) => {
         if (cancelled) return;
         setCategoryTitle(title);
-        setCategorySeo(seo);
         setArticles(rows);
         setLastPage(meta?.last_page ?? 1);
         setTotal(meta?.total ?? rows.length);
