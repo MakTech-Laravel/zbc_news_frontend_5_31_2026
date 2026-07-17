@@ -26,12 +26,45 @@ const TEMPERATURE_UNIT_STORAGE_KEY = "zbc-weather-temperature-unit";
 const NYC_TIMEZONE = "America/New_York";
 const NYC_LOCATION = { city: "New York", state: "NY" };
 
-function readStoredTemperatureUnit(): TemperatureUnit {
-  if (typeof window === "undefined") return "celsius";
+/** The unit both the server and the client's first render use, so hydration sees the same HTML. */
+const DEFAULT_TEMPERATURE_UNIT: TemperatureUnit = "celsius";
 
+/**
+ * Subscribe to changes of the stored unit. The value only changes via handleUnitChange in
+ * this same tab, which notifies listeners directly; `storage` covers other tabs.
+ */
+function subscribeToStoredTemperatureUnit(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  temperatureUnitListeners.add(onChange);
+
+  return () => {
+    window.removeEventListener("storage", onChange);
+    temperatureUnitListeners.delete(onChange);
+  };
+}
+
+const temperatureUnitListeners = new Set<() => void>();
+
+function notifyTemperatureUnitChanged(): void {
+  temperatureUnitListeners.forEach((listener) => listener());
+}
+
+/** Client snapshot: the saved unit, or the default when nothing is stored. */
+function getStoredTemperatureUnit(): TemperatureUnit {
   const stored = window.localStorage.getItem(TEMPERATURE_UNIT_STORAGE_KEY);
-  if (stored === "fahrenheit") return "fahrenheit";
-  return "celsius";
+
+  return stored === "fahrenheit" ? "fahrenheit" : DEFAULT_TEMPERATURE_UNIT;
+}
+
+/**
+ * Server snapshot: the server has no localStorage, so it must render the default — and this
+ * is also what the client's *first* render uses, which is the whole point. Hydration compares
+ * the server's HTML with that first render; reading localStorage there instead would make the
+ * two disagree whenever a visitor had saved a non-default unit, and React would report the
+ * mismatched aria-pressed/className on the unit toggle.
+ */
+function getServerTemperatureUnit(): TemperatureUnit {
+  return DEFAULT_TEMPERATURE_UNIT;
 }
 
 function formatForecastDayLabel(isoDate: string): string {
@@ -175,14 +208,18 @@ function WeatherWidgetError({ onRetry }: { onRetry: () => void }) {
 export function WeatherWidget() {
   const [weather, setWeather] = React.useState<WeatherState | null>(null);
   const [loadState, setLoadState] = React.useState<WeatherLoadState>("loading");
-  const [temperatureUnit, setTemperatureUnit] = React.useState<TemperatureUnit>(readStoredTemperatureUnit);
+  const temperatureUnit = React.useSyncExternalStore(
+    subscribeToStoredTemperatureUnit,
+    getStoredTemperatureUnit,
+    getServerTemperatureUnit,
+  );
   const [reloadKey, setReloadKey] = React.useState(0);
 
   const unitSuffix = temperatureUnit === "fahrenheit" ? "F" : "C";
 
   const handleUnitChange = React.useCallback((unit: TemperatureUnit) => {
-    setTemperatureUnit(unit);
     window.localStorage.setItem(TEMPERATURE_UNIT_STORAGE_KEY, unit);
+    notifyTemperatureUnitChanged();
   }, []);
 
   const handleRetry = React.useCallback(() => {
