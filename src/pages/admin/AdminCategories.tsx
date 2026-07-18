@@ -106,6 +106,7 @@ function sortHierarchical(rows: AdminCategoryRow[]): AdminCategoryRow[] {
     if (!row.parent_id) continue;
     const list = childrenByParent.get(row.parent_id) ?? [];
     list.push(row);
+    
     childrenByParent.set(row.parent_id, list);
   }
 
@@ -840,12 +841,16 @@ export default function AdminCategories() {
         />
       ) : null}
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => setIsModalOpen(open)}>
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent
           className={cn(
             "flex max-h-[min(90dvh,100%)] w-[calc(100%-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden",
             "border-[#DDD8C8] bg-primary-foreground p-4 sm:w-full sm:p-6",
           )}
+          // Select portals to <body>, so option clicks look like "outside" the dialog.
+          // On live (faster unmount) a double-click's 2nd click hits the overlay and closes the modal.
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
         >
           <DialogHeader className="shrink-0 pr-8 text-left">
             <DialogTitle className="text-xl font-bold text-[#151000] sm:text-2xl">
