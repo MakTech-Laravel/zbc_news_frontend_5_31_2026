@@ -452,9 +452,33 @@ function MoreMenuDropdown() {
     const logoRect = logoEl?.getBoundingClientRect();
     const accountRect = accountEl?.getBoundingClientRect();
 
-    // Viewport-relative coordinates only — this element is `position: fixed`.
-    const boundsLeft = logoRect ? logoRect.left : rect.left;
-    const boundsRight = accountRect ? accountRect.right : rect.left + 640;
+    // `display:none` elements report zero-size rects (common below lg).
+    const logoVisible = Boolean(logoRect && logoRect.width > 0);
+    const accountVisible = Boolean(accountRect && accountRect.width > 0);
+
+    let boundsLeft: number;
+    let boundsRight: number;
+
+    if (logoVisible && accountVisible && logoRect && accountRect) {
+      // Desktop (lg+): align panel between logo and account actions.
+      boundsLeft = logoRect.left;
+      boundsRight = accountRect.right;
+    } else {
+      // Tablet / mobile nav row: span the nav container, or viewport padding.
+      const navContainer = triggerRef.current?.closest(
+        ".container",
+      ) as HTMLElement | null;
+      const containerRect = navContainer?.getBoundingClientRect();
+
+      if (containerRect && containerRect.width > 0) {
+        boundsLeft = containerRect.left;
+        boundsRight = containerRect.right;
+      } else {
+        const padding = 16;
+        boundsLeft = padding;
+        boundsRight = window.innerWidth - padding;
+      }
+    }
 
     const panelWidth = Math.max(boundsRight - boundsLeft, 0);
 
@@ -588,8 +612,8 @@ function MoreMenuDropdown() {
               onMouseEnter={handleEnter}
               onMouseLeave={handleLeave}
             >
-              <div className="h-[400px] overflow-y-auto rounded-xl border border-border bg-background p-4 shadow-2xl">
-                <div className="grid grid-cols-5 gap-1.5">
+              <div className="max-h-[min(400px,70vh)] overflow-y-auto rounded-xl border border-border bg-background p-3 shadow-2xl sm:p-4">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                   {allItems.map((item) => (
                     <div key={item.id} className="min-w-0">
                       <Link
