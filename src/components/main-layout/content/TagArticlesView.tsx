@@ -23,7 +23,7 @@ type TagArticlesViewProps = {
 
 export function TagArticlesView({ tagSlug }: TagArticlesViewProps) {
   const [articles, setArticles] = useState<Article[]>([]);
-  const [filter ] = useState<ArticlesByTagType>("latest");
+  const [filter] = useState<ArticlesByTagType>("latest");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -123,7 +123,7 @@ export function TagArticlesView({ tagSlug }: TagArticlesViewProps) {
         </p>
       )}
 
-      <AdUnit variant="banner" />
+      <AdUnit variant="banner" slotKey="content_banner_primary" />
       <LatestStories />
     </article>
   );

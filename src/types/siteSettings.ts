@@ -21,6 +21,10 @@ export type SiteSettingsApi = {
   related_article: number;
   google_analytics_id: string | null;
   facebook_pixel_id: string | null;
+  google_adsense_client: string | null;
+  google_adsense_banner_slot: string | null;
+  google_adsense_sidebar_slot: string | null;
+  google_adsense_square_slot: string | null;
   mailchimp_api_key: string | null;
   newsletter_provider: string | null;
   newsletter_from_email: string | null;
@@ -53,6 +57,10 @@ export type PublicSiteSettings = {
   relatedArticlesCount: number;
   googleAnalyticsId: string;
   facebookPixelId: string;
+  googleAdsenseClient: string;
+  googleAdsenseBannerSlot: string;
+  googleAdsenseSidebarSlot: string;
+  googleAdsenseSquareSlot: string;
   disqusShortname: string;
   frontendUrl: string | null;
   apiUrl: string | null;
@@ -120,6 +128,10 @@ export function mapSiteSettingsToForm(raw: SiteSettingsApi) {
     relatedArticlesCount: String(raw.related_article ?? 3),
     googleAnalyticsId: raw.google_analytics_id ?? "",
     facebookPixelId: raw.facebook_pixel_id ?? "",
+    googleAdsenseClient: raw.google_adsense_client ?? "",
+    googleAdsenseBannerSlot: raw.google_adsense_banner_slot ?? "",
+    googleAdsenseSidebarSlot: raw.google_adsense_sidebar_slot ?? "",
+    googleAdsenseSquareSlot: raw.google_adsense_square_slot ?? "",
     mailchimpApiKey: raw.mailchimp_api_key ?? "",
     newsletterProvider: raw.newsletter_provider ?? "smtp",
     newsletterFromEmail: raw.newsletter_from_email ?? "",
@@ -152,6 +164,10 @@ export function mapPublicSiteSettings(raw: SiteSettingsApi): PublicSiteSettings 
     relatedArticlesCount: raw.related_article ?? 3,
     googleAnalyticsId: raw.google_analytics_id ?? "",
     facebookPixelId: raw.facebook_pixel_id ?? "",
+    googleAdsenseClient: raw.google_adsense_client ?? "",
+    googleAdsenseBannerSlot: raw.google_adsense_banner_slot ?? "",
+    googleAdsenseSidebarSlot: raw.google_adsense_sidebar_slot ?? "",
+    googleAdsenseSquareSlot: raw.google_adsense_square_slot ?? "",
     disqusShortname: raw.disqus_shortname ?? "",
     frontendUrl: raw.frontend_url ?? null,
     apiUrl: raw.api_url ?? null,

@@ -61,6 +61,10 @@ export async function updateAdminSiteSettings(
   formData.append("related_article", form.relatedArticlesCount);
   formData.append("google_analytics_id", form.googleAnalyticsId);
   formData.append("facebook_pixel_id", form.facebookPixelId);
+  formData.append("google_adsense_client", form.googleAdsenseClient);
+  formData.append("google_adsense_banner_slot", form.googleAdsenseBannerSlot);
+  formData.append("google_adsense_sidebar_slot", form.googleAdsenseSidebarSlot);
+  formData.append("google_adsense_square_slot", form.googleAdsenseSquareSlot);
   formData.append("mailchimp_api_key", form.mailchimpApiKey);
   formData.append("newsletter_provider", form.newsletterProvider);
   formData.append("newsletter_from_email", form.newsletterFromEmail);

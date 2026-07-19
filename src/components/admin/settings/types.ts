@@ -25,6 +25,10 @@ export type AdminSettingsForm = {
   relatedArticlesCount: string;
   googleAnalyticsId: string;
   facebookPixelId: string;
+  googleAdsenseClient: string;
+  googleAdsenseBannerSlot: string;
+  googleAdsenseSidebarSlot: string;
+  googleAdsenseSquareSlot: string;
   mailchimpApiKey: string;
   newsletterProvider: string;
   newsletterFromEmail: string;
@@ -53,6 +57,10 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettingsForm = {
   relatedArticlesCount: "3",
   googleAnalyticsId: "",
   facebookPixelId: "",
+  googleAdsenseClient: "",
+  googleAdsenseBannerSlot: "",
+  googleAdsenseSidebarSlot: "",
+  googleAdsenseSquareSlot: "",
   mailchimpApiKey: "",
   newsletterProvider: "smtp",
   newsletterFromEmail: "",

@@ -47,15 +47,19 @@ export function AdSlotManagerDynamic() {
   };
 
   const handleSave = async (slot: SlotDraft) => {
+    if (slot.provider === "google" && !(slot.google_ad_slot ?? "").trim()) {
+      setError(`"${slot.name}" needs an Ad Unit ID when Provider is Google.`);
+      return;
+    }
+
     setSavingId(slot.id);
     setError(null);
     try {
       await updateAdminAdSlot(slot.id, {
         provider: slot.provider,
         is_active: slot.is_active,
-        google_ad_client: slot.google_ad_client ?? "",
-        google_ad_slot: slot.google_ad_slot ?? "",
-        manual_click_url: slot.manual_click_url ?? "",
+        google_ad_slot: (slot.google_ad_slot ?? "").trim(),
+        manual_click_url: (slot.manual_click_url ?? "").trim(),
         manual_image_url: slot.manual_image_url ?? "",
       });
       await loadSlots();
@@ -80,10 +84,10 @@ export function AdSlotManagerDynamic() {
   return (
     <AdminPanel padding="none" className="overflow-hidden">
       <div className="border-b border-border px-6 pb-4 pt-6">
-        <h2 className="text-lg font-semibold text-admin-heading">Ad Slot Configuration</h2>
+        <h2 className="text-lg font-semibold text-admin-heading">Ad Placements (individual)</h2>
         <p className="mt-1 text-sm text-admin-label">
-          Configure which ad area uses Google Ads or manual creative. Select an image from the
-          media library or paste a URL.
+          Each placement has its own Ad Unit ID (Google) or image (Manual). Publisher ID above is
+          shared. Turn Active on and Save.
         </p>
         {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
       </div>
@@ -99,7 +103,7 @@ export function AdSlotManagerDynamic() {
                 Provider
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-[0.6px] text-admin-trend-muted">
-                Creative
+                Creative / Ad Unit
               </th>
               <th className="px-6 py-3 text-xs font-medium uppercase tracking-[0.6px] text-admin-trend-muted">
                 Click URL
@@ -137,24 +141,6 @@ export function AdSlotManagerDynamic() {
                       <option value="google">Google</option>
                       <option value="manual">Manual</option>
                     </select>
-                    {slot.provider === "google" ? (
-                      <div className="mt-2 space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Ad client (ca-pub-…)"
-                          value={slot.google_ad_client ?? ""}
-                          onChange={(e) => updateDraft(slot.id, { google_ad_client: e.target.value })}
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Ad slot ID"
-                          value={slot.google_ad_slot ?? ""}
-                          onChange={(e) => updateDraft(slot.id, { google_ad_slot: e.target.value })}
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs"
-                        />
-                      </div>
-                    ) : null}
                   </td>
                   <td className="px-6 py-4">
                     {slot.provider === "manual" ? (
@@ -197,7 +183,20 @@ export function AdSlotManagerDynamic() {
                         </div>
                       </div>
                     ) : (
-                      <span className="text-sm text-admin-trend-muted">Google AdSense</span>
+                      <div className="space-y-1.5">
+                        <input
+                          type="text"
+                          placeholder="Ad unit ID (this placement only)"
+                          value={slot.google_ad_slot ?? ""}
+                          onChange={(e) =>
+                            updateDraft(slot.id, { google_ad_slot: e.target.value })
+                          }
+                          className="w-full min-w-[180px] rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        />
+                        <p className="text-xs text-admin-trend-muted">
+                          Uses Publisher ID from above
+                        </p>
+                      </div>
                     )}
                   </td>
                   <td className="px-6 py-4">

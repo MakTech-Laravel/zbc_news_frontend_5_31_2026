@@ -65,12 +65,12 @@ export default function Home() {
     return (
       <article className="flex flex-col gap-5 sm:gap-7 lg:gap-8">
         <HeroSection />
-        <AdUnit variant="banner" />
+        <AdUnit variant="banner" slotKey="home_banner_top" />
         <FeaturedSection />
         <ArticleGrid />
-        <AdUnit variant="banner" />
+        <AdUnit variant="banner" slotKey="home_banner_middle" />
         <LatestStories />
-        <AdUnit variant="banner" />
+        <AdUnit variant="banner" slotKey="home_banner_bottom" />
       </article>
     );
   }

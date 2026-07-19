@@ -234,8 +234,8 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
         />
 
         <div className="mt-3 space-y-6 pb-4 sm:mt-5 sm:space-y-3 sm:pb-3">
-          <AdUnit variant="banner" />
-          <AdUnit variant="banner" />
+          <AdUnit variant="banner" slotKey="article_details_inline" />
+          <AdUnit variant="banner" slotKey="article_details_bottom" />
         </div>
       </div>
     </article>

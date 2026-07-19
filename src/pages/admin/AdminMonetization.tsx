@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ScrollText } from "lucide-react";
 
 import { AdSlotManagerDynamic } from "@/components/admin/monetization/AdSlotManagerDynamic";
+import { GoogleAdSenseSettings } from "@/components/admin/monetization/GoogleAdSenseSettings";
 import { HomeQuickLinksManager } from "@/components/admin/monetization/HomeQuickLinksManager";
 import { MonetizationOverview } from "@/components/admin/monetization/MonetizationOverview";
 import { MonetizationTabs } from "@/components/admin/monetization/MonetizationTabs";
@@ -28,7 +29,12 @@ export default function AdminMonetization() {
 
       {activeTab === "overview" ? <MonetizationOverview /> : null}
 
-      {activeTab === "ads" ? <AdSlotManagerDynamic /> : null}
+      {activeTab === "ads" ? (
+        <div className="space-y-6">
+          <GoogleAdSenseSettings />
+          <AdSlotManagerDynamic />
+        </div>
+      ) : null}
 
       {activeTab === "quick-links" ? <HomeQuickLinksManager /> : null}
 

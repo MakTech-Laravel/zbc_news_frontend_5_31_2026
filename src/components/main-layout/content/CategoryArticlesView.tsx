@@ -136,7 +136,7 @@ export function CategoryArticlesView({ categorySlug }: CategoryArticlesViewProps
         </div>
       ) : null}
 
-      <AdUnit variant="banner" />
+      <AdUnit variant="banner" slotKey="content_banner_primary" />
       <LatestStories />
     </article>
   );

@@ -184,7 +184,7 @@ export function AuthorProfileView({ authorSlug }: AuthorProfileViewProps) {
         ) : null}
       </section>
 
-      <AdUnit variant="banner" />
+      <AdUnit variant="banner" slotKey="content_banner_primary" />
     </article>
   );
 }

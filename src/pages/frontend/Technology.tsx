@@ -7,12 +7,12 @@ import { LatestStories } from "@/components/main-layout/content/LatestStories";
 export default function Technology() {
   return (
     <article className="flex flex-col gap-5 sm:gap-7 lg:gap-8">
-      <HeroSection  />
-      <AdUnit variant="banner" />
+      <HeroSection />
+      <AdUnit variant="banner" slotKey="home_banner_top" />
       <FeaturedSection />
-      <AdUnit variant="banner" />
+      <AdUnit variant="banner" slotKey="home_banner_middle" />
       <LatestStories />
-     
+
     </article>
   );
 }

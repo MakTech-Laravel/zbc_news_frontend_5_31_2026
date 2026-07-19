@@ -31,6 +31,10 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
   relatedArticlesCount: 3,
   googleAnalyticsId: "",
   facebookPixelId: "",
+  googleAdsenseClient: "",
+  googleAdsenseBannerSlot: "",
+  googleAdsenseSidebarSlot: "",
+  googleAdsenseSquareSlot: "",
   disqusShortname: "",
   frontendUrl: null,
   apiUrl: null,
@@ -39,7 +43,7 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
 const SiteSettingsContext = React.createContext<SiteSettingsContextValue>({
   settings: DEFAULT_SETTINGS,
   isLoading: true,
-  refresh: async () => {},
+  refresh: async () => { },
 });
 
 export function SiteSettingsProvider({ children }: { children: React.ReactNode }) {
