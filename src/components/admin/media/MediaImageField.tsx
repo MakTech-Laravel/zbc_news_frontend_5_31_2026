@@ -15,7 +15,7 @@ type MediaImageFieldProps = {
   uploadLabel?: string;
   previewAlt?: string;
   urlPlaceholder?: string;
-  pickerFilter?: "image" | "all";
+  pickerFilter?: "image" | "video" | "audio" | "all";
   variant?: "default" | "avatar" | "logo";
 };
 

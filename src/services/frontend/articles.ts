@@ -1,4 +1,6 @@
 import { request } from "@/api/request";
+import type { ArticleFeaturedMedia } from "@/components/main-layout/shared/media/types";
+import { resolveFeaturedMediaFromApi } from "@/components/main-layout/shared/media/types";
 import type { Article } from "@/data/dummy/types";
 import {
   formatArticleTimestamp,
@@ -16,6 +18,7 @@ export type ArticleDetail = {
   articleDescription: string;
   category: string;
   imageUrl: string;
+  featuredMedia: ArticleFeaturedMedia | null;
   authorName: string;
   authorInitials: string;
   /** Populated when the API returns author slug; otherwise derived from name in UI. */
@@ -142,6 +145,26 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
       ? (record.seo as Record<string, unknown>)
       : null;
 
+  const imageUrl = resolveMediaUrl(
+    typeof record.featured_image === "string"
+      ? record.featured_image
+      : typeof record.featured_image_url === "string"
+        ? record.featured_image_url
+        : "",
+  );
+
+  const featuredMediaRaw = resolveFeaturedMediaFromApi(record, imageUrl);
+  const featuredMedia = featuredMediaRaw
+    ? {
+        ...featuredMediaRaw,
+        url: resolveMediaUrl(featuredMediaRaw.url),
+        posterUrl: resolveMediaUrl(featuredMediaRaw.posterUrl),
+        thumbnailUrl: featuredMediaRaw.thumbnailUrl
+          ? resolveMediaUrl(featuredMediaRaw.thumbnailUrl)
+          : undefined,
+      }
+    : null;
+
   return {
     id: String(id),
     slug,
@@ -149,13 +172,8 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     subtitle,
     articleDescription,
     category: resolveCategoryLabel(record),
-    imageUrl: resolveMediaUrl(
-      typeof record.featured_image === "string"
-        ? record.featured_image
-        : typeof record.featured_image_url === "string"
-          ? record.featured_image_url
-          : "",
-    ),
+    imageUrl: featuredMedia?.posterUrl || imageUrl,
+    featuredMedia,
     authorName,
     authorInitials: toInitials(authorName),
     authorSlug,
@@ -187,11 +205,7 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     shareImageUrl: resolveMediaUrl(
       typeof record.open_graph_image === "string" && record.open_graph_image.trim()
         ? record.open_graph_image
-        : typeof record.featured_image === "string"
-          ? record.featured_image
-          : typeof record.featured_image_url === "string"
-            ? record.featured_image_url
-            : "",
+        : featuredMedia?.posterUrl || imageUrl,
     ),
   };
 }
@@ -275,18 +289,33 @@ export function mapArticleListItem(raw: unknown): Article | null {
   const description =
     typeof record.article_description === "string" ? record.article_description : undefined;
 
+  const imageUrl = resolveMediaUrl(
+    typeof record.featured_image === "string"
+      ? record.featured_image
+      : typeof record.featured_image_url === "string"
+        ? record.featured_image_url
+        : "",
+  );
+
+  const featuredMediaRaw = resolveFeaturedMediaFromApi(record, imageUrl);
+  const featuredMedia = featuredMediaRaw
+    ? {
+        ...featuredMediaRaw,
+        url: resolveMediaUrl(featuredMediaRaw.url),
+        posterUrl: resolveMediaUrl(featuredMediaRaw.posterUrl),
+        thumbnailUrl: featuredMediaRaw.thumbnailUrl
+          ? resolveMediaUrl(featuredMediaRaw.thumbnailUrl)
+          : undefined,
+      }
+    : null;
+
   return {
     id: String(id),
     slug: typeof record.slug === "string" ? record.slug : undefined,
     title,
     excerpt: typeof record.excerpt === "string" ? record.excerpt : undefined,
-    imageUrl: resolveMediaUrl(
-      typeof record.featured_image === "string"
-        ? record.featured_image
-        : typeof record.featured_image_url === "string"
-          ? record.featured_image_url
-          : "",
-    ),
+    imageUrl: featuredMedia?.posterUrl || imageUrl,
+    featuredMedia,
     category: resolveCategoryLabel(record),
     author: resolveAuthorName(record),
     readTime: resolveReadTime(

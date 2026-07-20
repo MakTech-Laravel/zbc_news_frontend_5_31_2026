@@ -1,3 +1,5 @@
+import type { ArticleFeaturedMedia } from "@/components/main-layout/shared/media/types";
+
 export type Article = {
   id: string;
   slug?: string;
@@ -5,6 +7,7 @@ export type Article = {
   title: string;
   excerpt?: string;
   imageUrl: string;
+  featuredMedia?: ArticleFeaturedMedia | null;
   author: string;
   readTime: string;
   /** Formatted publish date/time for display fallback. */

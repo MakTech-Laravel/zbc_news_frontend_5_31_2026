@@ -13,7 +13,9 @@ import { Input } from '@/components/ui/input'
 import { AdminPagination } from '@/components/admin/shared/AdminPagination'
 import {
   fetchAdminMedia,
+  isAudioMedia,
   isImageMedia,
+  isVideoMedia,
   type AdminMediaRow,
 } from '@/services/admin/media'
 
@@ -24,7 +26,7 @@ export type MediaPickerDialogProps = {
   onOpenChange: (open: boolean) => void
   onSelect: (item: AdminMediaRow) => void
   /** When set, only items matching this type are shown. */
-  filter?: 'image' | 'all'
+  filter?: 'image' | 'video' | 'audio' | 'all'
   title?: string
 }
 
@@ -49,6 +51,7 @@ export function MediaPickerDialog({
         page,
         per_page: PAGE_SIZE,
         search: search.trim() || undefined,
+        media_type: filter === 'all' ? undefined : filter,
       })
       setItems(result.items)
       setLastPage(result.lastPage)
@@ -59,7 +62,7 @@ export function MediaPickerDialog({
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, filter])
 
   React.useEffect(() => {
     if (!open) return
@@ -75,7 +78,10 @@ export function MediaPickerDialog({
 
   const visibleItems = React.useMemo(() => {
     if (filter === 'all') return items
-    return items.filter((item) => isImageMedia(item))
+    if (filter === 'image') return items.filter((item) => isImageMedia(item))
+    if (filter === 'video') return items.filter((item) => isVideoMedia(item))
+    if (filter === 'audio') return items.filter((item) => isAudioMedia(item))
+    return items
   }, [filter, items])
 
   const handlePick = (item: AdminMediaRow) => {
