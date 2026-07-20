@@ -7,8 +7,10 @@ export type AdminMediaRow = {
   name: string
   fileName: string
   mimeType: string
+  mediaType: 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other' | string
   size: number | null
   url: string
+  thumbnailUrl: string
   createdAt: string
   collectionName: string | null
 }
@@ -89,6 +91,19 @@ export function normalizeAdminMedia(raw: Record<string, unknown>): AdminMediaRow
     (typeof raw.mimeType === 'string' && raw.mimeType) ||
     ''
 
+  const mediaTypeRaw =
+    (typeof raw.media_type === 'string' && raw.media_type) ||
+    (typeof raw.mediaType === 'string' && raw.mediaType) ||
+    ''
+
+  let mediaType = mediaTypeRaw
+  if (!mediaType) {
+    if (mimeType.startsWith('image/')) mediaType = 'image'
+    else if (mimeType.startsWith('video/')) mediaType = 'video'
+    else if (mimeType.startsWith('audio/')) mediaType = 'audio'
+    else mediaType = 'other'
+  }
+
   const sizeRaw = raw.size ?? raw.file_size
   const size =
     typeof sizeRaw === 'number'
@@ -97,16 +112,28 @@ export function normalizeAdminMedia(raw: Record<string, unknown>): AdminMediaRow
         ? Number(sizeRaw)
         : null
 
+  const url = resolveMediaUrlFromRaw(raw)
+  const thumbnailUrl =
+    typeof raw.thumbnail_url === 'string' && raw.thumbnail_url.trim()
+      ? resolveMediaUrl(raw.thumbnail_url)
+      : url
+
   return {
     uuid,
     name,
     fileName,
     mimeType,
+    mediaType,
     size: size != null && !Number.isNaN(size) ? size : null,
-    url: resolveMediaUrlFromRaw(raw),
+    url,
+    thumbnailUrl,
     createdAt: formatMediaDate(raw.created_at),
     collectionName:
-      typeof raw.collection_name === 'string' ? raw.collection_name : null,
+      typeof raw.collection_name === 'string'
+        ? raw.collection_name
+        : typeof raw.collection === 'string'
+          ? raw.collection
+          : null,
   }
 }
 
@@ -159,6 +186,7 @@ export type FetchAdminMediaParams = {
   page?: number
   per_page?: number
   search?: string
+  media_type?: 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other'
 }
 
 export async function fetchAdminMedia(
@@ -240,9 +268,13 @@ export async function transformAdminMedia(
 }
 
 export function isImageMedia(row: AdminMediaRow): boolean {
-  return row.mimeType.startsWith('image/')
+  return row.mediaType === 'image' || row.mimeType.startsWith('image/')
 }
 
 export function isVideoMedia(row: AdminMediaRow): boolean {
-  return row.mimeType.startsWith('video/')
+  return row.mediaType === 'video' || row.mimeType.startsWith('video/')
+}
+
+export function isAudioMedia(row: AdminMediaRow): boolean {
+  return row.mediaType === 'audio' || row.mimeType.startsWith('audio/')
 }

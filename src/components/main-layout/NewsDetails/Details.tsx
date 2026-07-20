@@ -8,7 +8,7 @@ import { ArticleDetailToolbar } from "@/components/main-layout/NewsDetails/Artic
 import { ArticleShareButton } from "@/components/articles/ArticleShareButton";
 import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
 import { AuthorByline } from "@/components/main-layout/shared/AuthorByline";
-import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
+import { ArticleMediaHero } from "@/components/main-layout/shared/media/ArticleMediaHero";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import NotFound from "@/pages/global/NotFound";
 import { cn } from "@/lib/utils";
@@ -131,34 +131,37 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
           </div>
         </header>
 
-        {article.imageUrl ? (
+        {article.featuredMedia || article.imageUrl ? (
           <figure className="overflow-hidden rounded-lg border border-border bg-muted shadow-sm">
-            <div className="relative aspect-[16/9] min-h-[200px] w-full sm:min-h-[280px] lg:min-h-[360px]">
-              <ArticleImage
-                src={article.imageUrl}
-                alt={article.title}
-                width={1200}
-                height={675}
-                className="absolute inset-0 h-full w-full object-cover"
-                loading="eager"
-                fetchPriority="high"
-              />
-              <div
-                className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900/90 via-zbc-gray-900/35 to-transparent"
-                aria-hidden
-              />
-              <figcaption className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-3 sm:p-6 lg:p-8">
-                <CategoryTag label={article.category} />
-                <p className="font-inter text-xl font-bold leading-tight text-primary-foreground sm:text-2xl lg:text-3xl">
-                  {article.title}
-                </p>
-                {article.subtitle ? (
-                  <p className="line-clamp-2 max-w-3xl font-inter text-sm leading-6 text-white/90 sm:text-base">
-                    {article.subtitle}
-                  </p>
-                ) : null}
-              </figcaption>
-            </div>
+            <ArticleMediaHero
+              media={
+                article.featuredMedia ?? {
+                  type: "image",
+                  url: article.imageUrl,
+                  posterUrl: article.imageUrl,
+                }
+              }
+              alt={article.title}
+              overlay={
+                <>
+                  <div
+                    className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900/90 via-zbc-gray-900/35 to-transparent"
+                    aria-hidden
+                  />
+                  <figcaption className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-3 sm:p-6 lg:p-8">
+                    <CategoryTag label={article.category} />
+                    <p className="font-inter text-xl font-bold leading-tight text-primary-foreground sm:text-2xl lg:text-3xl">
+                      {article.title}
+                    </p>
+                    {article.subtitle ? (
+                      <p className="line-clamp-2 max-w-3xl font-inter text-sm leading-6 text-white/90 sm:text-base">
+                        {article.subtitle}
+                      </p>
+                    ) : null}
+                  </figcaption>
+                </>
+              }
+            />
           </figure>
         ) : null}
 

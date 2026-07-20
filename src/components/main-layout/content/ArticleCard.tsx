@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
+import { ArticleMediaHoverThumb } from "@/components/main-layout/shared/media/ArticleMediaHoverThumb";
 import { ArticleMeta } from "@/components/main-layout/shared/ArticleMeta";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import type { Article } from "@/data/dummy/types";
@@ -23,15 +23,13 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
         to={article.slug ? `/${article.slug}` : "/"}
         className="block"
       >
-        <div className="aspect-[16/10] overflow-hidden bg-muted">
-          <ArticleImage
-            src={article.imageUrl}
-            alt={article.title}
-            width={640}
-            height={400}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          />
-        </div>
+        <ArticleMediaHoverThumb
+          media={article.featuredMedia}
+          fallbackSrc={article.imageUrl}
+          alt={article.title}
+          className="aspect-[16/10]"
+          imageClassName="transition-transform duration-300 group-hover:scale-[1.03]"
+        />
         <div className="space-y-2 p-4">
           <CategoryTag label={article.category} className="bg-brand-soft text-primary" />
           <h3 className="line-clamp-2 font-inter text-lg font-bold text-zbc-gray-1000 hover:text-primary cursor-pointer">

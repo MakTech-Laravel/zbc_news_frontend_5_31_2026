@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
+import { ArticleMediaHoverThumb } from "@/components/main-layout/shared/media/ArticleMediaHoverThumb";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import type { Article } from "@/data/dummy/types";
 import { cn } from "@/lib/utils";
@@ -47,14 +47,12 @@ export function HeroSection({ className }: HeroSectionProps) {
         className="group block overflow-hidden rounded-xs border border-border bg-card shadow-sm"
       >
         <div className="relative aspect-[16/10] min-h-[220px] w-full sm:aspect-[2/1] sm:min-h-[260px] lg:min-h-[320px]">
-          <ArticleImage
-            src={article.imageUrl ?? ""}
+          <ArticleMediaHoverThumb
+            media={article.featuredMedia}
+            fallbackSrc={article.imageUrl ?? ""}
             alt={article.title}
-            width={1400}
-            height={700}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-            loading="eager"
-            fetchPriority="high"
+            className="absolute inset-0 h-full w-full"
+            imageClassName="transition-transform duration-500 group-hover:scale-[1.02]"
           />
           <div
             className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900 via-zbc-gray-900/50 to-zbc-gray-900/10"

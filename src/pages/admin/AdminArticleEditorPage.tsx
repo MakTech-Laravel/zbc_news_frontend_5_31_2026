@@ -23,6 +23,11 @@ import { ArticleEditorTopBar } from "@/components/admin/articles/editor/ArticleE
 import { ArticlePreviewDialog } from "@/components/admin/articles/editor/ArticlePreviewDialog";
 import { UnsavedChangesDialog } from "@/components/admin/articles/editor/UnsavedChangesDialog";
 import { MediaImageField } from "@/components/admin/media/MediaImageField";
+import {
+  emptyFeaturedMediaValue,
+  FeaturedMediaField,
+  type FeaturedMediaValue,
+} from "@/components/admin/media/FeaturedMediaField";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import InputError from "@/components/input-error";
 import {
@@ -257,6 +262,59 @@ function resolveFeaturedImageUrl(raw: unknown): string | null {
   ]);
 }
 
+function resolveFeaturedMediaValue(raw: unknown): FeaturedMediaValue {
+  if (!raw || typeof raw !== "object") {
+    return emptyFeaturedMediaValue();
+  }
+
+  const record = raw as Record<string, unknown>;
+  const media =
+    record.featured_media && typeof record.featured_media === "object"
+      ? (record.featured_media as Record<string, unknown>)
+      : null;
+
+  if (media) {
+    const typeRaw = typeof media.type === "string" ? media.type : "image";
+    const type =
+      typeRaw === "video" || typeRaw === "audio" || typeRaw === "image"
+        ? typeRaw
+        : "image";
+    const url =
+      typeof media.url === "string" && media.url.trim()
+        ? resolveMediaUrl(media.url)
+        : null;
+    const posterUrl =
+      typeof media.poster_url === "string" && media.poster_url.trim()
+        ? resolveMediaUrl(media.poster_url)
+        : null;
+    const thumbnailUrl =
+      typeof media.thumbnail_url === "string" && media.thumbnail_url.trim()
+        ? resolveMediaUrl(media.thumbnail_url)
+        : posterUrl || url;
+
+    return {
+      type,
+      mediaUuid: typeof media.uuid === "string" ? media.uuid : null,
+      url,
+      thumbnailUrl,
+      posterUuid: typeof media.poster_uuid === "string" ? media.poster_uuid : null,
+      posterUrl,
+    };
+  }
+
+  const legacyUrl = resolveFeaturedImageUrl(raw);
+  if (!legacyUrl) return emptyFeaturedMediaValue();
+
+  return {
+    type: "image",
+    mediaUuid: null,
+    url: legacyUrl,
+    thumbnailUrl: legacyUrl,
+    posterUuid: null,
+    posterUrl: null,
+  };
+}
+
 function resolveOpenGraphImageUrl(raw: unknown): string | null {
   if (!raw || typeof raw !== "object") return null;
   return resolveImageUrlFromRecord(raw as Record<string, unknown>, [
@@ -266,54 +324,44 @@ function resolveOpenGraphImageUrl(raw: unknown): string | null {
   ]);
 }
 
-function buildArticlePayload(
-  data: ArticleFormInputValues,
-  status: ArticleStatus,
-): Record<string, unknown> {
-  const payload: Record<string, unknown> = {
-    title: data.title,
-    article_description: data.article_description,
-    slug: data.slug,
-    status,
-    visibility: data.visibility,
-    article_category_id: data.article_category_id,
-    excerpt: data.excerpt,
-    meta_title: data.meta_title,
-    meta_description: data.meta_description,
-    meta_keywords: data.meta_keywords,
-    tags: data.tags,
-  };
-
-  if (status === "scheduled" && data.scheduled_publishing.trim()) {
-    payload.scheduled_publishing = toApiDatetimeValue(data.scheduled_publishing);
+function featuredImageUrlFromMedia(media: FeaturedMediaValue): string | null {
+  if (media.type === "image") {
+    return media.url;
   }
-
-  if (status === "published" && data.published_at.trim()) {
-    payload.published_at = toApiDatetimeValue(data.published_at);
-  }
-
-  return payload;
+  return media.posterUrl || media.thumbnailUrl || null;
 }
 
-function appendImageUrlsToPayload(
+function appendMediaToPayload(
   payload: Record<string, unknown>,
-  featuredImageUrl: string | null,
+  featuredMedia: FeaturedMediaValue,
   openGraphImageUrl: string | null,
 ) {
+  const featuredImageUrl = featuredImageUrlFromMedia(featuredMedia);
   payload.featured_image = featuredImageUrl ?? "";
   payload.open_graph_image = openGraphImageUrl ?? "";
+
+  if (featuredMedia.mediaUuid) {
+    payload.featured_media_uuid = featuredMedia.mediaUuid;
+    payload.poster_media_uuid =
+      featuredMedia.type === "image" ? "" : (featuredMedia.posterUuid ?? "");
+  } else if (!featuredMedia.url && !featuredImageUrl) {
+    // Explicit clear — detach HasMedia collections.
+    payload.featured_media_uuid = "";
+    payload.poster_media_uuid = "";
+  }
 }
 
 function buildAutoSavePayload(
   data: ArticleFormInputValues,
-  featuredImageUrl: string | null,
+  featuredMedia: FeaturedMediaValue,
   openGraphImageUrl: string | null,
   categories: CategoryRow[],
 ): Record<string, unknown> | null {
   const title = data.title.trim();
   const content = stripHtml(data.article_description ?? "").trim();
+  const featuredImageUrl = featuredImageUrlFromMedia(featuredMedia);
 
-  if (!title && !content && !featuredImageUrl && !openGraphImageUrl) {
+  if (!title && !content && !featuredImageUrl && !openGraphImageUrl && !featuredMedia.url) {
     return null;
   }
 
@@ -339,9 +387,9 @@ function buildAutoSavePayload(
     meta_description: data.meta_description.trim() || seoDefaults.meta_description,
     meta_keywords: data.meta_keywords.trim() || seoDefaults.meta_keywords,
     tags: data.tags,
-    featured_image: featuredImageUrl ?? "",
-    open_graph_image: openGraphImageUrl ?? "",
   };
+
+  appendMediaToPayload(payload, featuredMedia, openGraphImageUrl);
 
   if (data.article_category_id) {
     payload.article_category_id = data.article_category_id;
@@ -352,6 +400,35 @@ function buildAutoSavePayload(
   }
 
   if (data.published_at.trim()) {
+    payload.published_at = toApiDatetimeValue(data.published_at);
+  }
+
+  return payload;
+}
+
+function buildArticlePayload(
+  data: ArticleFormInputValues,
+  status: ArticleStatus,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    title: data.title,
+    article_description: data.article_description,
+    slug: data.slug,
+    status,
+    visibility: data.visibility,
+    article_category_id: data.article_category_id,
+    excerpt: data.excerpt,
+    meta_title: data.meta_title,
+    meta_description: data.meta_description,
+    meta_keywords: data.meta_keywords,
+    tags: data.tags,
+  };
+
+  if (status === "scheduled" && data.scheduled_publishing.trim()) {
+    payload.scheduled_publishing = toApiDatetimeValue(data.scheduled_publishing);
+  }
+
+  if (status === "published" && data.published_at.trim()) {
     payload.published_at = toApiDatetimeValue(data.published_at);
   }
 
@@ -415,7 +492,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const [loading, setLoading] = React.useState(isEdit);
   const [notFound, setNotFound] = React.useState(false);
   const [categories, setCategories] = React.useState<CategoryRow[]>([]);
-  const [featuredImageUrl, setFeaturedImageUrl] = React.useState<string | null>(null);
+  const [featuredMedia, setFeaturedMedia] = React.useState<FeaturedMediaValue>(
+    emptyFeaturedMediaValue(),
+  );
   const [openGraphImageUrl, setOpenGraphImageUrl] = React.useState<string | null>(null);
   const [imagesDirty, setImagesDirty] = React.useState(false);
   const [slugTouched, setSlugTouched] = React.useState(false);
@@ -425,7 +504,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const pendingLeaveRef = React.useRef<(() => void) | null>(null);
   const submitActionRef = React.useRef<"draft" | "publish" | "selected">("selected");
   const skipUnsavedPromptRef = React.useRef(false);
-  const featuredImageUrlRef = React.useRef<string | null>(null);
+  const featuredMediaRef = React.useRef<FeaturedMediaValue>(emptyFeaturedMediaValue());
   const openGraphImageUrlRef = React.useRef<string | null>(null);
   const categoriesRef = React.useRef<CategoryRow[]>([]);
 
@@ -466,7 +545,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const watchedStatus = watch("status");
   const watchedValues = watch();
 
-  featuredImageUrlRef.current = featuredImageUrl;
+  featuredMediaRef.current = featuredMedia;
   openGraphImageUrlRef.current = openGraphImageUrl;
   categoriesRef.current = categories;
 
@@ -476,10 +555,10 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     () =>
       JSON.stringify({
         values: watchedValues,
-        featuredImageUrl,
+        featuredMedia,
         openGraphImageUrl,
       }),
-    [watchedValues, featuredImageUrl, openGraphImageUrl],
+    [watchedValues, featuredMedia, openGraphImageUrl],
   );
 
   const handleAutoSaveSuccess = React.useCallback(
@@ -501,7 +580,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       getPayload: () =>
         buildAutoSavePayload(
           getValues(),
-          featuredImageUrlRef.current,
+          featuredMediaRef.current,
           openGraphImageUrlRef.current,
           categoriesRef.current,
         ),
@@ -569,7 +648,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
       reset(mapArticleToFormValues(article));
       setSlugTouched(true);
-      setFeaturedImageUrl(resolveFeaturedImageUrl(article));
+      setFeaturedMedia(resolveFeaturedMediaValue(article));
       setOpenGraphImageUrl(resolveOpenGraphImageUrl(article));
       setImagesDirty(false);
       skipUnsavedPromptRef.current = false;
@@ -580,7 +659,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       resetAutoSaveSnapshot(
         buildAutoSavePayload(
           mapArticleToFormValues(article),
-          resolveFeaturedImageUrl(article),
+          resolveFeaturedMediaValue(article),
           resolveOpenGraphImageUrl(article),
           categoriesRef.current,
         ) ?? undefined,
@@ -652,7 +731,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     };
 
     const payload = buildArticlePayload(enriched, nextStatus);
-    appendImageUrlsToPayload(payload, featuredImageUrl, openGraphImageUrl);
+    appendMediaToPayload(payload, featuredMedia, openGraphImageUrl);
 
     const persistedSlug = getPersistedSlug();
     const updateSlug = isEdit ? articleSlugParam : persistedSlug;
@@ -670,7 +749,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       reset({ ...enriched, status: nextStatus }, { keepDirty: false });
       setImagesDirty(false);
       resetAutoSaveSnapshot(
-        buildAutoSavePayload(enriched, featuredImageUrl, openGraphImageUrl, categories) ??
+        buildAutoSavePayload(enriched, featuredMedia, openGraphImageUrl, categories) ??
           undefined,
       );
       skipUnsavedPromptRef.current = true;
@@ -705,8 +784,8 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     void handleSubmit(onSubmit)();
   };
 
-  const handleFeaturedImageChange = (url: string | null) => {
-    setFeaturedImageUrl(url);
+  const handleFeaturedMediaChange = (next: FeaturedMediaValue) => {
+    setFeaturedMedia(next);
     setImagesDirty(true);
   };
 
@@ -800,7 +879,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       "",
     tags: watchedValues.tags ?? [],
     authorName: "",
-    featuredImageUrl: featuredImageUrl ?? "",
+    featuredImageUrl: featuredImageUrlFromMedia(featuredMedia) ?? "",
     status: (watchedStatus || "draft") as ArticleStatus,
     publishDisplayAt: previewPublishSource
       ? toApiDatetimeValue(previewPublishSource) || previewPublishSource
@@ -964,12 +1043,10 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
               ) : null} */}
 
               <div className="space-y-1">
-                <label className={fieldLabelClassName}>Featured Image</label>
-                <MediaImageField
-                  value={featuredImageUrl}
-                  onChange={handleFeaturedImageChange}
-                  uploadLabel="Select featured image"
-                  previewAlt="Featured preview"
+                <label className={fieldLabelClassName}>Featured Media</label>
+                <FeaturedMediaField
+                  value={featuredMedia}
+                  onChange={handleFeaturedMediaChange}
                 />
               </div>
 

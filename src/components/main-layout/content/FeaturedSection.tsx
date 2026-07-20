@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
-// import { ListPlus, Play } from "lucide-react";
 
-import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
-// import { Button } from "@/components/ui/button";
+import { ArticleMediaHoverThumb } from "@/components/main-layout/shared/media/ArticleMediaHoverThumb";
 import { useMostReadArticles } from "@/hooks/useMostReadArticles";
 import { cn } from "@/lib/utils";
 
@@ -40,17 +38,16 @@ export function FeaturedSection() {
         aria-label="Featured media"
       >
         <div className="relative aspect-[16/10] min-h-[200px] w-full sm:aspect-[21/9] sm:min-h-[240px] lg:min-h-[280px]">
-          <Link to={articleHref} className="block h-full w-full">
-            <ArticleImage
-              src={topArticle.imageUrl}
+          <Link to={articleHref} className="absolute inset-0 block h-full w-full">
+            <ArticleMediaHoverThumb
+              media={topArticle.featuredMedia}
+              fallbackSrc={topArticle.imageUrl}
               alt={topArticle.title}
-              width={1200}
-              height={560}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full"
             />
           </Link>
           <div
-            className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900 via-zbc-gray-900/60 to-transparent"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zbc-gray-900 via-zbc-gray-900/60 to-transparent"
             aria-hidden
           />
           <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-5 lg:p-6">

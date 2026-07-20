@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
+import { ArticleMediaThumb } from "@/components/main-layout/shared/media/ArticleMediaThumb";
 import { ArticleMeta } from "@/components/main-layout/shared/ArticleMeta";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
 import type { Article } from "@/data/dummy/types";
@@ -21,12 +21,14 @@ export function ArticleListItem({ article, className, hideViewsBelowSm }: Articl
       )}
     >
       <Link to={article.slug ? `/${article.slug}` : "/"} className="shrink-0">
-        <ArticleImage
-          src={article.imageUrl}
+        <ArticleMediaThumb
+          media={article.featuredMedia}
+          fallbackSrc={article.imageUrl}
           alt={article.title}
           width={96}
           height={96}
-          className="size-[80px] shrink-0 rounded-lg object-cover ring-1 ring-border sm:size-[96px]"
+          className="size-[80px] shrink-0 rounded-lg ring-1 ring-border sm:size-[96px]"
+          imageClassName="rounded-lg"
         />
       </Link>
       <div className="min-w-0 flex-1 space-y-1.5">
