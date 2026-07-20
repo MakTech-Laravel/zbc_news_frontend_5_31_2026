@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { cn } from "@/lib/utils";
 import { trackAdEvent } from "@/lib/adTracking";
 import { loadAdSenseScript, pushAdSenseUnit } from "@/lib/adsense";
+import { buildManualAdSrcDoc, hasManualAdHtml } from "@/lib/manualAdHtml";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { fetchPublicAdSlots, type PublicAdSlot } from "@/services/frontend/ads";
 
@@ -11,6 +12,24 @@ type AdUnitProps = {
   slotKey?: string;
   className?: string;
 };
+
+function ManualHtmlEmbed({ html, title }: { html: string; title: string }) {
+  const srcDoc = useMemo(() => buildManualAdSrcDoc(html), [html]);
+
+  return (
+    <iframe
+      title={title}
+      srcDoc={srcDoc}
+      // allow-same-origin is required for nested embeds (YouTube, many ad networks).
+      sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-presentation"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+      allowFullScreen
+      loading="lazy"
+      referrerPolicy="strict-origin-when-cross-origin"
+      className="block h-full w-full border-0 bg-transparent"
+    />
+  );
+}
 
 export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) {
   const { settings } = useSiteSettings();
@@ -48,7 +67,6 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
     void trackAdEvent(slotKey, "impression");
   }, [slot, slotKey]);
 
-  // Common publisher ID (site-wide) + individual ad unit ID (per placement).
   const clientId =
     settings.googleAdsenseClient.trim() || (slot?.google_ad_client?.trim() ?? "");
   const adSlotId = slot?.google_ad_slot?.trim() ?? "";
@@ -58,7 +76,6 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
   useEffect(() => {
     if (!isGoogle) return;
 
-    // New client/unit must be allowed to push again (settings can load after the slot).
     googlePushed.current = false;
     let cancelled = false;
 
@@ -77,7 +94,6 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
     void loadAdSenseScript(clientId)
       .then(() => {
         if (cancelled) return;
-        // Double rAF: wait until <ins> from this render is committed.
         requestAnimationFrame(() => requestAnimationFrame(fill));
       })
       .catch(() => {
@@ -90,7 +106,10 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
   }, [isGoogle, clientId, adSlotId, slotKey]);
 
   const imageUrl = slot?.manual_image_url ? resolveMediaUrl(slot.manual_image_url) : "";
-  const hasManualImage = Boolean(slot?.provider === "manual" && imageUrl);
+  const manualHtml = slot?.manual_html?.trim() ?? "";
+  const isManual = slot?.provider === "manual";
+  const hasHtml = Boolean(isManual && hasManualAdHtml(manualHtml));
+  const hasManualImage = Boolean(isManual && imageUrl && !hasHtml);
 
   const handleClick = () => {
     if (!slotKey) return;
@@ -99,10 +118,16 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
 
   const sizeClass =
     variant === "banner"
-      ? "min-h-[120px] w-full"
+      ? "min-h-[120px] h-[120px] w-full"
       : variant === "square"
         ? "aspect-[4/3] w-full max-h-[360px] lg:max-h-none lg:aspect-square"
-        : "min-h-[180px] w-full";
+        : "min-h-[180px] h-[250px] w-full";
+
+  const shellClass = cn(
+    "w-full overflow-auto rounded-xs",
+    sizeClass,
+    className,
+  );
 
   if (isGoogle) {
     return (
@@ -110,9 +135,8 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
         role="presentation"
         aria-label="Advertisement"
         className={cn(
-          "flex w-full items-center justify-center overflow-hidden rounded-xs bg-muted/30",
-          sizeClass,
-          className,
+          "flex items-center justify-center overflow-hidden bg-muted/30",
+          shellClass,
         )}
       >
         <ins
@@ -129,17 +153,32 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
     );
   }
 
+  if (hasHtml) {
+    return (
+      <div
+        role="presentation"
+        aria-label="Advertisement"
+        className={cn("bg-transparent", shellClass)}
+      >
+        <ManualHtmlEmbed
+          html={manualHtml}
+          title={slotKey ? `Advertisement ${slotKey}` : "Advertisement"}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       role="presentation"
       aria-hidden
       className={cn(
-        "flex items-center justify-center rounded-xs border-3 border-dashed bg-muted font-inter text-xs font-semibold text-muted-foreground",
+        "flex items-center justify-center border-3 border-dashed bg-muted font-inter text-xs font-semibold text-muted-foreground",
         variant === "banner" && "h-[120px] w-full",
         variant === "square" &&
         "aspect-[4/3] w-full max-h-[360px] lg:max-h-none lg:aspect-square",
         variant === "sidebar" && "h-[180px] w-full",
-        hasManualImage && "border-none bg-transparent p-0",
+        hasManualImage && "overflow-auto border-none bg-transparent p-0",
         className,
       )}
     >
@@ -149,12 +188,12 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleClick}
-          className="block h-full w-full overflow-hidden rounded-xs"
+          className="block h-full w-full overflow-auto rounded-xs"
         >
           <img
             src={imageUrl}
             alt="Advertisement"
-            className="h-full w-full object-cover"
+            className="mx-auto block h-auto max-w-none object-contain"
           />
         </a>
       ) : (
