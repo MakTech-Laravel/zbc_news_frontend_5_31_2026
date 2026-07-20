@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Megaphone,
+  Menu,
   MessageSquare,
   Settings,
   ShieldCheck,
@@ -28,6 +29,7 @@ import { PERMISSIONS } from "@/types/permissions";
 const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/dashboard": LayoutDashboard,
   "/admin/categories": FolderTree,
+  "/admin/menus": Menu,
   "/admin/articles": FileText,
   "/admin/media": Image,
   "/admin/rabc": ShieldCheck,

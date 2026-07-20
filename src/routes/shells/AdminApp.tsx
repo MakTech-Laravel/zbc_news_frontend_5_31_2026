@@ -17,6 +17,7 @@ const AdminUserArticleActivities = lazyWithRetry(
   () => import("@/pages/admin/AdminUserArticleActivities"),
 );
 const AdminCategories = lazyWithRetry(() => import("@/pages/admin/AdminCategories"));
+const AdminMenus = lazyWithRetry(() => import("@/pages/admin/AdminMenus"));
 const AdminMedia = lazyWithRetry(() => import("@/pages/admin/AdminMedia"));
 const AdminMonetization = lazyWithRetry(() => import("@/pages/admin/AdminMonetization"));
 const AdminNewsletters = lazyWithRetry(() => import("@/pages/admin/AdminNewsletters"));
@@ -48,6 +49,7 @@ function AdminRoutes() {
           <Route path="articles/:articleSlug/activities" element={suspensePage(AdminArticleActivities)} />
           <Route path="articles/create" element={suspensePage(AdminArticlesCreate)} />
           <Route path="categories" element={suspensePage(AdminCategories)} />
+          <Route path="menus" element={suspensePage(AdminMenus)} />
           <Route path="media" element={suspensePage(AdminMedia)} />
           <Route path="rabc" element={suspensePage(AdminRole)} />
           <Route path="rabc/create" element={suspensePage(AdminRoleCreate)} />

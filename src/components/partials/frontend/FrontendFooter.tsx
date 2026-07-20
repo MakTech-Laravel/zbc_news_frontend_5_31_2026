@@ -1,11 +1,24 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+
 import { NewsletterSignupForm } from "@/components/newsletter/NewsletterSignupForm";
-import { useCategoryLinks } from "@/hooks/useCategoryLinks";
+import {
+  fetchMenuByLocation,
+  flattenMenuItemsToLinks,
+  MENU_LOCATION,
+} from "@/services/frontend/navigation";
 
+type FooterLink = {
+  id?: string;
+  label: string;
+  to: string;
+  target?: string;
+};
 
-type FooterLink = { label: string; to: string };
-
-const FOOTER_STATIC_COLUMNS: { title: string; links: readonly FooterLink[] }[] = [
+const FOOTER_STATIC_COLUMNS: {
+  title: string;
+  links: readonly FooterLink[];
+}[] = [
   {
     title: "Company",
     links: [
@@ -59,7 +72,43 @@ const SOCIAL_LINKS = [
   { label: "LinkedIn", href: "https://linkedin.com", icon: LinkedInIcon },
 ] as const;
 
-function FooterColumn({ title, links }: { title: string; links: readonly FooterLink[] }) {
+function isExternalLink(link: FooterLink) {
+  if (link.target === "_blank") return true;
+  return /^(https?:|mailto:|tel:)/i.test(link.to);
+}
+
+function useFooterMenuLinks(): FooterLink[] {
+  const [links, setLinks] = useState<FooterLink[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchMenuByLocation(MENU_LOCATION.footer)
+      .then((menu) => {
+        if (!isMounted) return;
+        setLinks(flattenMenuItemsToLinks(menu?.items ?? []));
+      })
+      .catch(() => {
+        if (isMounted) setLinks([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return links;
+}
+
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: string;
+  links: readonly FooterLink[];
+}) {
+  if (links.length === 0) return null;
+
   return (
     <div>
       <h4 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">
@@ -67,13 +116,24 @@ function FooterColumn({ title, links }: { title: string; links: readonly FooterL
       </h4>
       <ul className="mt-4 flex list-none flex-col gap-2.5 p-0">
         {links.map((link) => (
-          <li key={link.label}>
-            <Link
-              to={link.to}
-              className="text-sm text-[#cbd5e1] transition-colors hover:text-white"
-            >
-              {link.label}
-            </Link>
+          <li key={link.id ?? `${link.label}-${link.to}`}>
+            {isExternalLink(link) ? (
+              <a
+                href={link.to}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-[#cbd5e1] transition-colors hover:text-white"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                to={link.to}
+                className="text-sm text-[#cbd5e1] transition-colors hover:text-white"
+              >
+                {link.label}
+              </Link>
+            )}
           </li>
         ))}
       </ul>
@@ -83,12 +143,12 @@ function FooterColumn({ title, links }: { title: string; links: readonly FooterL
 
 export function FrontendFooter() {
   const year = new Date().getFullYear();
-  const categoryLinks = useCategoryLinks();
+  const footerMenuLinks = useFooterMenuLinks();
 
   const footerColumns = [
     {
       title: "Sections",
-      links: [{ label: "Latest News", to: "/" }, ...categoryLinks],
+      links: footerMenuLinks,
     },
     ...FOOTER_STATIC_COLUMNS,
   ];
@@ -98,7 +158,11 @@ export function FrontendFooter() {
       <div className="mx-auto w-full container px-4 py-12 sm:py-14">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 md:grid-cols-3 md:gap-10 lg:gap-12">
           {footerColumns.map((column) => (
-            <FooterColumn key={column.title} title={column.title} links={column.links} />
+            <FooterColumn
+              key={column.title}
+              title={column.title}
+              links={column.links}
+            />
           ))}
         </div>
 

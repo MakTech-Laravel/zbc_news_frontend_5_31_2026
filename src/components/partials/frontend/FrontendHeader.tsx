@@ -43,62 +43,89 @@ import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 import { formatPublishDate } from "@/lib/publishDate";
 import { request } from "@/api/request";
-import { mapTreeToNavItems, type CategoryTreeNode } from "@/lib/categoryTree";
 import {
+  fetchMenuByLocation,
   fetchQuickLinks,
+  mapMenuItemsToNav,
+  MENU_LOCATION,
+  withoutHomeNavItem,
+  type NavItem,
   type QuickLink,
 } from "@/services/frontend/navigation";
 
-type NavChild = { id: string; label: string; to: string };
-type NavItem = {
-  id: string;
-  label: string;
-  to: string;
-  children?: NavChild[];
-};
-
 const HOME_NAV_ITEM: NavItem = { id: "home", label: "Home", to: "/" };
 
+function isExternalNavTarget(item: Pick<NavItem, "to" | "target">) {
+  if (item.target === "_blank") return true;
+  return /^(https?:|mailto:|tel:)/i.test(item.to);
+}
+
+/**
+ * Header nav from Admin → Menus locations:
+ * - Middle bar: `header_primary`
+ * - More mega dropdown: `mega_menu` (More button only when assigned)
+ * - Mobile drawer: `header_mobile`, else primary (+ mega if set)
+ */
 export function useMainNav() {
-  const [featuredItems, setFeaturedItems] = useState<NavItem[]>([]);
-  const [allItems, setAllItems] = useState<NavItem[]>([]);
+  const [primaryItems, setPrimaryItems] = useState<NavItem[]>([]);
+  const [megaItems, setMegaItems] = useState<NavItem[]>([]);
+  const [mobileItems, setMobileItems] = useState<NavItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchNavItems = async () => {
-    try {
-      setLoading(true);
-      const response = await request.get("/categories");
-      const categories: CategoryTreeNode[] = Array.isArray(response.data?.data)
-        ? response.data.data
-        : [];
-
-      const mapped = mapTreeToNavItems(categories);
-      const featured = mapped.filter((item) => {
-        const match = categories.find((cat) => String(cat.id) === item.id);
-        return Boolean(match?.is_featured);
-      });
-
-      setAllItems(mapped);
-      setFeaturedItems(featured);
-    } catch (error) {
-      console.error("Failed to fetch nav categories:", error);
-      setAllItems([]);
-      setFeaturedItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchNavItems();
+    let isMounted = true;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const [primaryMenu, megaMenu, mobileMenu] = await Promise.all([
+          fetchMenuByLocation(MENU_LOCATION.headerPrimary),
+          fetchMenuByLocation(MENU_LOCATION.megaMenu),
+          fetchMenuByLocation(MENU_LOCATION.headerMobile),
+        ]);
+
+        if (!isMounted) return;
+
+        const primary = withoutHomeNavItem(
+          mapMenuItemsToNav(primaryMenu?.items ?? []),
+        );
+        const mega = withoutHomeNavItem(
+          mapMenuItemsToNav(megaMenu?.items ?? []),
+        );
+        // Drawer uses Mobile Menu location only; fall back to primary if unset.
+        const mobile = withoutHomeNavItem(
+          mapMenuItemsToNav(mobileMenu?.items ?? []),
+        );
+
+        setPrimaryItems(primary);
+        setMegaItems(mega);
+        setMobileItems(mobile.length > 0 ? mobile : primary);
+      } catch (error) {
+        console.error("Failed to fetch header menus:", error);
+        if (!isMounted) return;
+        setPrimaryItems([]);
+        setMegaItems([]);
+        setMobileItems([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return {
     homeItem: HOME_NAV_ITEM,
-    featuredItems,
-    allItems,
-    /** @deprecated Prefer allItems / featuredItems; kept for drawer fallbacks */
-    navItems: allItems,
+    /** Items between Home and More (`header_primary`) */
+    primaryItems,
+    /** Mega dropdown items (`mega_menu`); empty ⇒ hide More */
+    megaItems,
+    hasMegaMenu: megaItems.length > 0,
+    /** Drawer links from `header_mobile` (falls back to primary) */
+    mobileItems,
     loading,
   };
 }
@@ -370,63 +397,46 @@ function LiveDateTime() {
   );
 }
 
-function FeaturedNavItem({
+function PrimaryNavItem({
   item,
   onNavigate,
 }: {
   item: NavItem;
   onNavigate?: () => void;
 }) {
+  const className = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      "relative inline-flex shrink-0 items-center whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors duration-200",
+      isActive ? "text-primary" : "text-zbc-gray-700 hover:text-primary",
+    );
+
+  if (isExternalNavTarget(item)) {
+    return (
+      <a
+        href={item.to}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onNavigate}
+        className={className({ isActive: false })}
+      >
+        {item.label}
+      </a>
+    );
+  }
+
   return (
     <NavLink
       to={item.to}
       end={item.to === "/"}
       onClick={onNavigate}
-      className={({ isActive }) =>
-        cn(
-          "relative inline-flex shrink-0 items-center whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
-          isActive ? "text-primary" : "text-zbc-gray-700 hover:text-primary",
-        )
-      }
+      className={className}
     >
       {item.label}
     </NavLink>
   );
 }
 
-function MainNavLinks({
-  onNavigate,
-}: {
-  onNavigate?: () => void;
-}) {
-  const { homeItem, featuredItems } = useMainNav();
-
-  return (
-    <>
-      <NavLink
-        to={homeItem.to}
-        end
-        onClick={onNavigate}
-        className={({ isActive }) =>
-          cn(
-            "relative shrink-0 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
-            isActive
-              ? "text-primary"
-              : "text-zbc-gray-700 hover:text-primary",
-          )
-        }
-      >
-        {homeItem.label}
-      </NavLink>
-      {featuredItems.map((item) => (
-        <FeaturedNavItem key={item.id} item={item} onNavigate={onNavigate} />
-      ))}
-    </>
-  );
-}
-
-function MoreMenuDropdown() {
-  const { allItems } = useMainNav();
+function MoreMenuDropdown({ items }: { items: NavItem[] }) {
   const [open, setOpen] = useState(false);
   const [rendered, setRendered] = useState(false);
   const [coords, setCoords] = useState<{
@@ -435,8 +445,20 @@ function MoreMenuDropdown() {
     width: number;
   } | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const openRef = useRef(false);
+  const renderedRef = useRef(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openRafRef = useRef<number | null>(null);
+
+  const MEGA_ENTER_MS = 320;
+  const MEGA_EXIT_MS = 240;
+  const HOVER_LEAVE_MS = 200;
+  /** Fixed panel height; content scrolls inside. */
+  const MEGA_PANEL_HEIGHT = 500;
+
+  openRef.current = open;
+  renderedRef.current = rendered;
 
   const updateCoords = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -482,8 +504,9 @@ function MoreMenuDropdown() {
 
     const panelWidth = Math.max(boundsRight - boundsLeft, 0);
 
+    // Align to trigger bottom; visual gap comes from pt bridge (keeps hover continuous).
     setCoords({
-      top: rect.bottom + 8,
+      top: rect.bottom,
       left: boundsLeft,
       width: panelWidth,
     });
@@ -496,25 +519,53 @@ function MoreMenuDropdown() {
     }
   };
 
+  const clearOpenRaf = () => {
+    if (openRafRef.current != null) {
+      cancelAnimationFrame(openRafRef.current);
+      openRafRef.current = null;
+    }
+  };
+
   const openMenu = () => {
     clearCloseTimer();
     if (exitTimerRef.current) {
       clearTimeout(exitTimerRef.current);
       exitTimerRef.current = null;
     }
+
+    // Already fully open — do not restart animation (stops hover jerk).
+    if (openRef.current && renderedRef.current) {
+      return;
+    }
+
+    // Closing mid-exit: reopen without remounting.
+    if (renderedRef.current && !openRef.current) {
+      clearOpenRaf();
+      setOpen(true);
+      return;
+    }
+
+    clearOpenRaf();
     updateCoords();
     setRendered(true);
-    setOpen(true);
+    // Paint closed state first, then open once — single slide (no jump).
+    openRafRef.current = requestAnimationFrame(() => {
+      openRafRef.current = requestAnimationFrame(() => {
+        setOpen(true);
+        openRafRef.current = null;
+      });
+    });
   };
 
   const closeMenu = () => {
     clearCloseTimer();
+    clearOpenRaf();
     setOpen(false);
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
     exitTimerRef.current = setTimeout(() => {
       setRendered(false);
       exitTimerRef.current = null;
-    }, 160);
+    }, MEGA_EXIT_MS);
   };
 
   useEffect(() => {
@@ -555,11 +606,12 @@ function MoreMenuDropdown() {
   useEffect(() => {
     return () => {
       clearCloseTimer();
+      clearOpenRaf();
       if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
     };
   }, []);
 
-  if (allItems.length === 0) return null;
+  if (items.length === 0) return null;
 
   const handleEnter = () => {
     openMenu();
@@ -567,7 +619,7 @@ function MoreMenuDropdown() {
 
   const handleLeave = () => {
     clearCloseTimer();
-    closeTimerRef.current = setTimeout(() => closeMenu(), 150);
+    closeTimerRef.current = setTimeout(() => closeMenu(), HOVER_LEAVE_MS);
   };
 
   return (
@@ -580,7 +632,8 @@ function MoreMenuDropdown() {
       <button
         type="button"
         className={cn(
-          "relative flex shrink-0 items-center gap-1 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors",
+          // Generous padding = stable hover hit area (no gap between label/icon)
+          "relative flex min-h-11 shrink-0 items-center whitespace-nowrap px-3.5 py-3 font-sans text-sm font-medium transition-colors duration-200 ease-out",
           open ? "text-primary" : "text-zbc-gray-700 hover:text-primary",
         )}
         aria-haspopup="true"
@@ -590,51 +643,98 @@ function MoreMenuDropdown() {
           else openMenu();
         }}
       >
-        More
+        <span className="pr-1.5">More</span>
         <ChevronDown
-          className={cn(
-            "size-4 shrink-0 transition-transform duration-200",
-            open && "rotate-180",
-          )}
+          className="pointer-events-none size-4 shrink-0 opacity-70"
           aria-hidden
         />
       </button>
+
+      {/* Invisible bridge under the button so the cursor never falls into a dead zone
+          between the trigger and the portaled mega panel. */}
+      {(open || rendered) && (
+        <div
+          className="absolute inset-x-0 top-full z-[1] h-5"
+          aria-hidden
+        />
+      )}
 
       {rendered && coords
         ? createPortal(
             <div
               id="desktop-mega-menu"
-              className={cn(
-                "fixed z-[200]",
-                open ? "mega-menu-in" : "mega-menu-out",
-              )}
-              style={{ top: coords.top, left: coords.left, width: coords.width }}
+              // Outer shell stays still (hover bridge). Only the inner panel slides.
+              className="fixed z-[200] pt-5"
+              style={{
+                top: coords.top,
+                left: coords.left,
+                width: coords.width,
+              }}
               onMouseEnter={handleEnter}
               onMouseLeave={handleLeave}
             >
-              <div className="max-h-[min(400px,70vh)] overflow-y-auto rounded-xl border border-border bg-background p-3 shadow-2xl sm:p-4">
-                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {allItems.map((item) => (
-                    <div key={item.id} className="min-w-0">
-                      <Link
-                        to={item.to}
-                        onClick={closeMenu}
-                        className="block truncate rounded-lg px-2.5 py-2 font-sans text-sm font-medium text-zbc-gray-700 transition-colors hover:bg-muted hover:text-primary"
-                      >
-                        {item.label}
-                      </Link>
-                      {(item.children ?? []).map((child) => (
-                        <Link
-                          key={child.id}
-                          to={child.to}
-                          onClick={closeMenu}
-                          className="block truncate rounded-lg px-2.5 py-1.5 pl-4 font-sans text-xs font-medium text-zbc-gray-500 transition-colors hover:bg-muted hover:text-primary"
-                        >
-                          {child.label}
-                        </Link>
-                      ))}
-                    </div>
-                  ))}
+              <div
+                className={cn(
+                  "mega-menu-panel",
+                  open && "mega-menu-panel-open",
+                )}
+                style={{
+                  ["--mega-enter" as string]: `${MEGA_ENTER_MS}ms`,
+                  ["--mega-exit" as string]: `${MEGA_EXIT_MS}ms`,
+                }}
+              >
+                <div
+                  className="overflow-y-auto overscroll-contain rounded-xl border border-border bg-background p-3 shadow-2xl sm:p-4"
+                  style={{ height: MEGA_PANEL_HEIGHT }}
+                >
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {items.map((item) => (
+                      <div key={item.id} className="min-w-0">
+                        {isExternalNavTarget(item) ? (
+                          <a
+                            href={item.to}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={closeMenu}
+                            className="block truncate rounded-lg px-2.5 py-2 font-sans text-sm font-medium text-zbc-gray-700 transition-colors duration-150 hover:bg-muted hover:text-primary"
+                          >
+                            {item.label}
+                          </a>
+                        ) : (
+                          <Link
+                            to={item.to}
+                            onClick={closeMenu}
+                            className="block truncate rounded-lg px-2.5 py-2 font-sans text-sm font-medium text-zbc-gray-700 transition-colors duration-150 hover:bg-muted hover:text-primary"
+                          >
+                            {item.label}
+                          </Link>
+                        )}
+                        {(item.children ?? []).map((child) =>
+                          isExternalNavTarget(child) ? (
+                            <a
+                              key={child.id}
+                              href={child.to}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={closeMenu}
+                              className="block truncate rounded-lg px-2.5 py-1.5 pl-4 font-sans text-xs font-medium text-zbc-gray-500 transition-colors duration-150 hover:bg-muted hover:text-primary"
+                            >
+                              {child.label}
+                            </a>
+                          ) : (
+                            <Link
+                              key={child.id}
+                              to={child.to}
+                              onClick={closeMenu}
+                              className="block truncate rounded-lg px-2.5 py-1.5 pl-4 font-sans text-xs font-medium text-zbc-gray-500 transition-colors duration-150 hover:bg-muted hover:text-primary"
+                            >
+                              {child.label}
+                            </Link>
+                          ),
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>,
@@ -645,13 +745,33 @@ function MoreMenuDropdown() {
   );
 }
 
-/** Desktop + tablet horizontal nav (Figma row 2) */
+/** Desktop + tablet horizontal nav: Home | header_primary | More (if mega_menu) */
 function MainNavBar() {
+  const { homeItem, primaryItems, megaItems, hasMegaMenu } = useMainNav();
+
   return (
     <nav className="" aria-label="Main navigation">
       <div className="mx-auto flex w-full container items-center justify-start gap-0 overflow-x-auto px-4 py-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <MainNavLinks />
-        <MoreMenuDropdown />
+        <NavLink
+          to={homeItem.to}
+          end
+          className={({ isActive }) =>
+            cn(
+              "relative shrink-0 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors duration-200",
+              isActive
+                ? "text-primary"
+                : "text-zbc-gray-700 hover:text-primary",
+            )
+          }
+        >
+          {homeItem.label}
+        </NavLink>
+
+        {primaryItems.map((item) => (
+          <PrimaryNavItem key={item.id} item={item} />
+        ))}
+
+        {hasMegaMenu ? <MoreMenuDropdown items={megaItems} /> : null}
       </div>
     </nav>
   );
@@ -698,7 +818,7 @@ function SubNavBar() {
 function MobileMenu() {
   const [open, setOpen] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const { homeItem, allItems } = useMainNav();
+  const { homeItem, mobileItems } = useMainNav();
   const quickLinks = useQuickLinks();
   const { isAuthenticated, logout, user } = useAuth();
   const location = useLocation();
@@ -707,23 +827,25 @@ function MobileMenu() {
     setOpen(false);
   }, [location.pathname]);
 
-  // Open the first category that has sub-items by default (and whenever menu opens).
+  // Whenever the drawer opens: expand the first item that has children.
   useEffect(() => {
-    if (!open) return;
-    const firstWithChildren = allItems.find(
+    if (!open) {
+      setExpandedIds(new Set());
+      return;
+    }
+    const firstWithChildren = mobileItems.find(
       (item) => (item.children?.length ?? 0) > 0,
     );
     setExpandedIds(
       firstWithChildren ? new Set([firstWithChildren.id]) : new Set(),
     );
-  }, [open, allItems]);
+  }, [open, mobileItems]);
 
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+      // Accordion: one open section at a time.
+      if (prev.has(id)) return new Set();
+      return new Set([id]);
     });
   };
 
@@ -772,8 +894,8 @@ function MobileMenu() {
           </div>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-            <nav className="flex flex-col gap-0.5" aria-label="Main navigation">
-              {/* Home is always shown first on mobile / small screens */}
+            <nav className="flex flex-col gap-0.5" aria-label="Mobile menu">
+              {/* Home is always first (hardcoded), even if also in the menu */}
               <DialogClose asChild>
                 <Link
                   to={homeItem.to}
@@ -788,29 +910,41 @@ function MobileMenu() {
                 </Link>
               </DialogClose>
 
-              {allItems.map((item) => {
+              {mobileItems.map((item) => {
                 const children = item.children ?? [];
                 const hasChildren = children.length > 0;
                 const isExpanded = expandedIds.has(item.id);
                 const isActive =
-                  location.pathname === item.to ||
-                  children.some((child) => location.pathname === child.to);
+                  !isExternalNavTarget(item) &&
+                  (location.pathname === item.to ||
+                    children.some((child) => location.pathname === child.to));
 
                 return (
                   <div key={item.id} className="flex flex-col">
                     <div className="flex items-center gap-0.5">
                       <DialogClose asChild>
-                        <Link
-                          to={item.to}
-                          className={cn(
-                            "min-w-0 flex-1 rounded-lg px-3 py-2.5 font-sans text-[14px] font-medium transition-colors",
-                            isActive
-                              ? "bg-accent text-primary"
-                              : "text-foreground hover:bg-muted",
-                          )}
-                        >
-                          {item.label}
-                        </Link>
+                        {isExternalNavTarget(item) ? (
+                          <a
+                            href={item.to}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="min-w-0 flex-1 rounded-lg px-3 py-2.5 font-sans text-[14px] font-medium text-foreground transition-colors hover:bg-muted"
+                          >
+                            {item.label}
+                          </a>
+                        ) : (
+                          <Link
+                            to={item.to}
+                            className={cn(
+                              "min-w-0 flex-1 rounded-lg px-3 py-2.5 font-sans text-[14px] font-medium transition-colors",
+                              isActive
+                                ? "bg-accent text-primary"
+                                : "text-foreground hover:bg-muted",
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        )}
                       </DialogClose>
                       {hasChildren ? (
                         <button
@@ -851,21 +985,34 @@ function MobileMenu() {
                           >
                             {children.map((child) => {
                               const childActive =
+                                !isExternalNavTarget(child) &&
                                 location.pathname === child.to;
                               return (
                                 <DialogClose asChild key={child.id}>
-                                  <Link
-                                    to={child.to}
-                                    tabIndex={isExpanded ? undefined : -1}
-                                    className={cn(
-                                      "rounded-lg py-2 pr-3 pl-6 font-sans text-[13px] font-medium transition-colors",
-                                      childActive
-                                        ? "bg-accent/70 text-primary"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                                    )}
-                                  >
-                                    {child.label}
-                                  </Link>
+                                  {isExternalNavTarget(child) ? (
+                                    <a
+                                      href={child.to}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      tabIndex={isExpanded ? undefined : -1}
+                                      className="rounded-lg py-2 pr-3 pl-6 font-sans text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    >
+                                      {child.label}
+                                    </a>
+                                  ) : (
+                                    <Link
+                                      to={child.to}
+                                      tabIndex={isExpanded ? undefined : -1}
+                                      className={cn(
+                                        "rounded-lg py-2 pr-3 pl-6 font-sans text-[13px] font-medium transition-colors",
+                                        childActive
+                                          ? "bg-accent/70 text-primary"
+                                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                                      )}
+                                    >
+                                      {child.label}
+                                    </Link>
+                                  )}
                                 </DialogClose>
                               );
                             })}
