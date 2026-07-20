@@ -28,6 +28,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.CATEGORIES.LIST,
   },
   {
+    label: 'Menus',
+    path: '/admin/menus',
+    segment: 'menus',
+    permission: PERMISSIONS.MENUS.LIST,
+  },
+  {
     label: 'Articles',
     path: '/admin/articles',
     segment: 'articles',
