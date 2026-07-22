@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 
 import { NewsletterHtmlEditor } from "@/components/admin/newsletters/NewsletterHtmlEditor";
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
+import { toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
 import {
   createNewsletterCampaign,
   deleteNewsletterSubscriber,
@@ -90,7 +91,7 @@ export default function AdminNewsletters() {
       const nextScheduleTimes: Record<number, string> = {};
       for (const campaign of nextCampaigns) {
         if (campaign.scheduled_at) {
-          nextScheduleTimes[campaign.id] = campaign.scheduled_at.slice(0, 16);
+          nextScheduleTimes[campaign.id] = toDatetimeLocalValue(campaign.scheduled_at);
         }
       }
       setCampaignScheduleTimes(nextScheduleTimes);
@@ -149,7 +150,7 @@ export default function AdminNewsletters() {
     setPreviewText(campaign.preview_text ?? "");
     setContentHtml(campaign.content_html ?? "");
     setPremiumOnly(Boolean(campaign.premium_only));
-    setEditorScheduleAt(campaign.scheduled_at ? campaign.scheduled_at.slice(0, 16) : "");
+    setEditorScheduleAt(toDatetimeLocalValue(campaign.scheduled_at));
     setActiveTab("campaigns");
   }
 
@@ -166,11 +167,6 @@ export default function AdminNewsletters() {
       return;
     }
 
-    if (editorScheduleAt && new Date(editorScheduleAt) <= new Date()) {
-      toast.error("Schedule time must be in the future.");
-      return;
-    }
-
     const payload = {
       title: title.trim(),
       preview_text: previewText.trim() || undefined,
@@ -184,8 +180,18 @@ export default function AdminNewsletters() {
         : await createNewsletterCampaign(payload);
 
       if (editorScheduleAt) {
-        await scheduleNewsletterCampaign(campaign.id, new Date(editorScheduleAt).toISOString());
-        toast.success(editingId ? "Campaign updated and scheduled" : "Campaign created and scheduled");
+        const scheduleUtc = toApiDatetimeValue(editorScheduleAt);
+        const isPastOrDue = new Date(editorScheduleAt).getTime() <= Date.now();
+        await scheduleNewsletterCampaign(campaign.id, scheduleUtc);
+        toast.success(
+          isPastOrDue
+            ? editingId
+              ? "Campaign updated and sending now"
+              : "Campaign created and sending now"
+            : editingId
+              ? "Campaign updated and scheduled"
+              : "Campaign created and scheduled",
+        );
       } else {
         toast.success(editingId ? "Campaign updated" : "Campaign saved to the list");
       }
@@ -205,15 +211,18 @@ export default function AdminNewsletters() {
       return;
     }
 
-    if (new Date(scheduleValue) <= new Date()) {
-      toast.error("Schedule time must be in the future");
+    const scheduleUtc = toApiDatetimeValue(scheduleValue);
+    if (!scheduleUtc) {
+      toast.error("Invalid schedule date and time");
       return;
     }
 
+    const isPastOrDue = new Date(scheduleValue).getTime() <= Date.now();
+
     setCampaignActionId(campaignId);
     try {
-      await scheduleNewsletterCampaign(campaignId, new Date(scheduleValue).toISOString());
-      toast.success("Campaign scheduled");
+      await scheduleNewsletterCampaign(campaignId, scheduleUtc);
+      toast.success(isPastOrDue ? "Campaign is sending now" : "Campaign scheduled");
       await loadData();
     } catch (error) {
       toast.error(getNewsletterApiError(error, "Failed to schedule campaign"));
@@ -508,8 +517,8 @@ export default function AdminNewsletters() {
                   Schedule send (optional)
                 </label>
                 <p className="mt-1 text-xs text-zbc-gray-500">
-                  Leave empty to save as a draft. Set a future time here to schedule when saving, or
-                  schedule later from the campaign list.
+                  Uses your local timezone and is stored as UTC. Leave empty to save as a draft. If
+                  the time is already past, the campaign sends immediately.
                 </p>
                 <input
                   type="datetime-local"
@@ -526,8 +535,9 @@ export default function AdminNewsletters() {
               <div>
                 <h2 className="text-lg font-semibold text-zbc-gray-1000">Campaign list</h2>
                 <p className="mt-1 text-xs text-zbc-gray-500">
-                  Save drafts below, send instantly, or pick a schedule time per campaign. Scheduled
-                  campaigns run automatically every minute.
+                  Save drafts below, send instantly, or pick a schedule time per campaign (local
+                  timezone, stored as UTC). Past times send immediately. Scheduled campaigns also
+                  run automatically every minute.
                 </p>
               </div>
             </div>
