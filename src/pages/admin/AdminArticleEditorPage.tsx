@@ -53,7 +53,7 @@ import {
 } from "@/data/admin/articleVisibility";
 import { slugifyCategoryName } from "@/data/admin/categoryStore";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
-import { isFutureDatetimeLocal, toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
+import { toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { getAuthErrorMessage, getAuthFieldErrors } from "@/features/auth/errorMessage";
@@ -130,19 +130,6 @@ const articleFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Scheduled publishing date and time are required when status is scheduled",
-        path: ["scheduled_publishing"],
-      });
-      return;
-    }
-
-    if (
-      data.status === "scheduled" &&
-      data.scheduled_publishing.trim() &&
-      !isFutureDatetimeLocal(data.scheduled_publishing)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Scheduled publishing must be a future date and time",
         path: ["scheduled_publishing"],
       });
     }
@@ -428,8 +415,15 @@ function buildArticlePayload(
     payload.scheduled_publishing = toApiDatetimeValue(data.scheduled_publishing);
   }
 
-  if (status === "published" && data.published_at.trim()) {
-    payload.published_at = toApiDatetimeValue(data.published_at);
+  if (status === "published") {
+    if (data.published_at.trim()) {
+      payload.published_at = toApiDatetimeValue(data.published_at);
+    } else if (data.scheduled_publishing.trim()) {
+      // Past/due schedule promoted to published — keep that instant.
+      const scheduledUtc = toApiDatetimeValue(data.scheduled_publishing);
+      payload.published_at = scheduledUtc;
+      payload.scheduled_publishing = scheduledUtc;
+    }
   }
 
   return payload;
@@ -706,10 +700,15 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   // ── API: POST — form submit ────────────────────────────────────────────────
 
   const onSubmit = async (data: ArticleFormInputValues) => {
-    const nextStatus =
+    // Past schedule times publish immediately (same rule as the backend).
+    let nextStatus =
       submitActionRef.current === "publish"
         ? resolveStatusAfterPublish(data.scheduled_publishing)
         : (data.status as ArticleStatus);
+
+    if (nextStatus === "scheduled") {
+      nextStatus = resolveStatusAfterPublish(data.scheduled_publishing);
+    }
 
     const categoryTitle =
       categories.find((category) => String(category.id) === data.article_category_id)
@@ -1005,7 +1004,8 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                     {...register("scheduled_publishing")}
                   />
                   <p className="text-xs text-admin-label">
-                    The article will go live automatically at this date and time.
+                    Uses your local timezone, stored as UTC, and goes live automatically at that
+                    moment. If the time is already past, the article publishes immediately.
                   </p>
                   <InputError message={errors.scheduled_publishing?.message} />
                 </div>
@@ -1023,8 +1023,8 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                     {...register("published_at")}
                   />
                   <p className="text-xs text-admin-label">
-                    Shown to readers on the article page. Leave blank to use the current time when
-                    first published.
+                    Uses your local timezone and is stored as UTC. Leave blank to use the current
+                    time when first published.
                   </p>
                   <InputError message={errors.published_at?.message} />
                 </div>
