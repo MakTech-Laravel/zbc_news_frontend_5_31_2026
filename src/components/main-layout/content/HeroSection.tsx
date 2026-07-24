@@ -44,7 +44,7 @@ export function HeroSection({ className }: HeroSectionProps) {
     <section className={cn("relative", className)} aria-label="Featured story">
       <Link
         to={article.slug ? `/${article.slug}` : "/"}
-        className="group block overflow-hidden rounded-xs border border-border bg-card shadow-sm"
+        className="group block overflow-hidden rounded-lg border border-border bg-card shadow-sm"
       >
         <div className="relative aspect-[16/10] min-h-[220px] w-full sm:aspect-[2/1] sm:min-h-[260px] lg:min-h-[320px]">
           <ArticleMediaHoverThumb
