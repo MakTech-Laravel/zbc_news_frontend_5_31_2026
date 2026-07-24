@@ -34,7 +34,7 @@ export function FeaturedSection() {
         Top Headlines
       </h2>
       <div
-        className="overflow-hidden rounded-xs border border-border bg-zbc-gray-900 shadow-sm"
+        className="overflow-hidden rounded-lg border border-border bg-zbc-gray-900 shadow-sm"
         aria-label="Featured media"
       >
         <div className="relative aspect-[16/10] min-h-[200px] w-full sm:aspect-[21/9] sm:min-h-[240px] lg:min-h-[280px]">
