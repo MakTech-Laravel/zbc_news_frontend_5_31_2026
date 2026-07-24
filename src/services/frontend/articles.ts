@@ -327,6 +327,7 @@ export function mapArticleListItem(raw: unknown): Article | null {
     publishedAtIso: timestamps.publishedAtIso,
     updatedAtIso: timestamps.updatedAtIso,
     views: Number(record.views ?? record.view_count ?? 0) || undefined,
+    commentCount: Number(record.comments_count ?? 0),
     tags: parseTags(record.tags),
   };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { Timer } from "lucide-react";
 
 import { ArticleTimestamps } from "@/components/articles/ArticleTimestamps";
@@ -65,6 +65,7 @@ export function DetailsSkeleton() {
 
 export function ArticleContent({ article }: { article: ArticleDetail }) {
   const { settings } = useSiteSettings();
+  const location = useLocation();
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
 
   useEffect(() => {
@@ -79,6 +80,26 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
   }, [article.slug, settings.relatedArticlesCount]);
 
   useArticleTracking(Number(article.id));
+
+  useEffect(() => {
+    if (location.hash !== "#comments") return;
+
+    const scrollToComments = () => {
+      document.getElementById("comments")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    };
+
+    // Comments section mounts after article content; retry briefly for SPA hash nav.
+    const frame = requestAnimationFrame(scrollToComments);
+    const timeout = window.setTimeout(scrollToComments, 150);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+    };
+  }, [location.hash, article.slug, settings.allowComments, settings.disqusShortname]);
 
   return (
     <article className="bg-background text-foreground">

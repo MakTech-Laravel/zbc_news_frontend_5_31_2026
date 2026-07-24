@@ -1,13 +1,16 @@
-import { cn } from "@/lib/utils";
-import { formatCount } from "@/utils/format";
-import { EyeIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+import { EyeIcon, MessageSquare } from "lucide-react";
 
 import { ArticleTimestamps } from "@/components/articles/ArticleTimestamps";
+import { cn } from "@/lib/utils";
+import { formatCount } from "@/utils/format";
 
 type ArticleMetaProps = {
   author: string;
   readTime: string;
   views?: number;
+  commentCount?: number;
+  commentHref?: string;
   publishedAt?: string;
   publishedAtIso?: string;
   updatedAtIso?: string;
@@ -21,6 +24,8 @@ export function ArticleMeta({
   author,
   readTime,
   views,
+  commentCount,
+  commentHref,
   publishedAt,
   publishedAtIso,
   updatedAtIso,
@@ -28,6 +33,13 @@ export function ArticleMeta({
   light = false,
   hideViewsBelowSm = false,
 }: ArticleMetaProps) {
+  const commentContent = (
+    <>
+      <MessageSquare className="size-4 shrink-0" aria-hidden />
+      {formatCount(commentCount ?? 0)}
+    </>
+  );
+
   return (
     <div
       className={cn(
@@ -39,8 +51,6 @@ export function ArticleMeta({
       )}
     >
       <span>{author}</span>
-      <span aria-hidden> · </span>
-      <span>{readTime}</span>
       {publishedAtIso || updatedAtIso || publishedAt ? (
         <>
           <span aria-hidden> · </span>
@@ -53,6 +63,8 @@ export function ArticleMeta({
           />
         </>
       ) : null}
+      <span aria-hidden> · </span>
+      <span>{readTime}</span>
       {views != null ? (
         <>
           <span aria-hidden className={cn(hideViewsBelowSm && "hidden sm:inline")}>
@@ -68,6 +80,26 @@ export function ArticleMeta({
             <EyeIcon className="size-4 shrink-0" aria-hidden />
             {formatCount(views)}
           </span>
+        </>
+      ) : null}
+      {commentCount != null || commentHref ? (
+        <>
+          <span aria-hidden> · </span>
+          {commentHref ? (
+            <Link
+              to={commentHref}
+              onClick={(event) => event.stopPropagation()}
+              className={cn(
+                "inline-flex items-center gap-1 hover:text-primary",
+                light && "hover:text-white",
+              )}
+              aria-label={`${formatCount(commentCount ?? 0)} comments`}
+            >
+              {commentContent}
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1">{commentContent}</span>
+          )}
         </>
       ) : null}
     </div>

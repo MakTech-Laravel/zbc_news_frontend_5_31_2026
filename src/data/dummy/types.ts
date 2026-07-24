@@ -15,6 +15,7 @@ export type Article = {
   publishedAtIso?: string;
   updatedAtIso?: string;
   views?: number;
+  commentCount?: number;
   tags?: string[];
 };
 
