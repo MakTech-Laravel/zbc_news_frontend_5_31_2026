@@ -97,6 +97,8 @@ export function FeaturedSection() {
               author={topArticle.author}
               readTime={topArticle.readTime}
               views={topArticle.views}
+              commentCount={topArticle.commentCount ?? 0}
+              commentHref={topArticle.slug ? `${articleHref}#comments` : undefined}
               publishedAt={topArticle.publishedAt}
               publishedAtIso={topArticle.publishedAtIso}
               updatedAtIso={topArticle.updatedAtIso}

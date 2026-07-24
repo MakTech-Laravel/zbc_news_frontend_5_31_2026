@@ -349,6 +349,7 @@ export function ArticleComments({
 
   return (
     <section
+      id="comments"
       className="border-t border-border pt-8 sm:pt-10"
       aria-labelledby="comments-heading"
     >

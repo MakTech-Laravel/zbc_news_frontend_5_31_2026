@@ -8,7 +8,7 @@ import {
   resolveArticleTimestamps,
 } from "@/lib/articleTimestamps";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
-import { resolveReadTime } from "@/lib/readTime";
+import { resolveEstimatedReadTime } from "@/lib/readTime";
 
 export type ArticleDetail = {
   id: string;
@@ -182,7 +182,11 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     updatedAtIso: timestamps.updated.iso,
     showUpdated: timestamps.wasUpdated,
     scheduledAtIso: scheduled.iso,
-    readTime: resolveReadTime(record.read_time, articleDescription, record.excerpt as string),
+    readTime: resolveEstimatedReadTime(
+      record.estimated_read_time,
+      articleDescription,
+      record.excerpt as string,
+    ),
     tags: parseTags(record.tags),
     metaTitle:
       typeof record.meta_title === "string" && record.meta_title.trim()
@@ -318,8 +322,8 @@ export function mapArticleListItem(raw: unknown): Article | null {
     featuredMedia,
     category: resolveCategoryLabel(record),
     author: resolveAuthorName(record),
-    readTime: resolveReadTime(
-      record.read_time,
+    readTime: resolveEstimatedReadTime(
+      record.estimated_read_time,
       description,
       typeof record.excerpt === "string" ? record.excerpt : undefined,
     ),
@@ -327,6 +331,7 @@ export function mapArticleListItem(raw: unknown): Article | null {
     publishedAtIso: timestamps.publishedAtIso,
     updatedAtIso: timestamps.updatedAtIso,
     views: Number(record.views ?? record.view_count ?? 0) || undefined,
+    commentCount: Number(record.comments_count ?? 0),
     tags: parseTags(record.tags),
   };
 }

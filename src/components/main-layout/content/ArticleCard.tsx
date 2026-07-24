@@ -12,17 +12,17 @@ type ArticleCardProps = {
 };
 
 export function ArticleCard({ article, className }: ArticleCardProps) {
+  const articleHref = article.slug ? `/${article.slug}` : "/";
+  const commentsHref = article.slug ? `/${article.slug}#comments` : undefined;
+
   return (
     <article
       className={cn(
-        "group overflow-hidden rounded-xs border border-border bg-card shadow-sm transition-shadow hover:shadow-md",
+        "group overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-shadow hover:shadow-md",
         className,
       )}
     >
-      <Link
-        to={article.slug ? `/${article.slug}` : "/"}
-        className="block"
-      >
+      <Link to={articleHref} className="block">
         <ArticleMediaHoverThumb
           media={article.featuredMedia}
           fallbackSrc={article.imageUrl}
@@ -30,21 +30,25 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
           className="aspect-[16/10]"
           imageClassName="transition-transform duration-300 group-hover:scale-[1.03]"
         />
-        <div className="space-y-2 p-4">
+      </Link>
+      <div className="space-y-2 p-4">
+        <Link to={articleHref} className="block space-y-2">
           <CategoryTag label={article.category} className="bg-brand-soft text-primary" />
           <h3 className="line-clamp-2 font-inter text-lg font-bold text-zbc-gray-1000 hover:text-primary cursor-pointer">
             {article.title}
           </h3>
-          <ArticleMeta
-            author={article.author}
-            readTime={article.readTime}
-            views={article.views}
-            publishedAt={article.publishedAt}
-            publishedAtIso={article.publishedAtIso}
-            updatedAtIso={article.updatedAtIso}
-          />
-        </div>
-      </Link>
+        </Link>
+        <ArticleMeta
+          author={article.author}
+          readTime={article.readTime}
+          views={article.views}
+          commentCount={article.commentCount ?? 0}
+          commentHref={commentsHref}
+          publishedAt={article.publishedAt}
+          publishedAtIso={article.publishedAtIso}
+          updatedAtIso={article.updatedAtIso}
+        />
+      </div>
     </article>
   );
 }

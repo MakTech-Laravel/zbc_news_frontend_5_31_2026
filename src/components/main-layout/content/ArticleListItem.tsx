@@ -42,6 +42,8 @@ export function ArticleListItem({ article, className, hideViewsBelowSm }: Articl
             author={article.author}
             readTime={article.readTime}
             views={article.views}
+            commentCount={article.commentCount ?? 0}
+            commentHref={article.slug ? `/${article.slug}#comments` : undefined}
             publishedAt={article.publishedAt}
             publishedAtIso={article.publishedAtIso}
             updatedAtIso={article.updatedAtIso}
