@@ -1,7 +1,7 @@
 import { request } from "@/api/request";
 import { mapArticleTimestampFields } from "@/lib/articleTimestamps";
 import { resolveArticleImageUrl } from "@/lib/mediaUrl";
-import { resolveReadTime } from "@/lib/readTime";
+import { resolveEstimatedReadTime } from "@/lib/readTime";
 import { getSearchSessionHeaders } from "@/lib/searchSession";
 
 export type SearchResultItem = {
@@ -57,8 +57,8 @@ function mapSearchResult(raw: unknown): SearchResultItem | null {
     publishedAt: timestamps.publishedAt,
     publishedAtIso: timestamps.publishedAtIso,
     updatedAtIso: timestamps.updatedAtIso,
-    readTime: resolveReadTime(
-      record.read_time,
+    readTime: resolveEstimatedReadTime(
+      record.estimated_read_time,
       typeof record.article_description === "string" ? record.article_description : undefined,
       typeof record.excerpt === "string" ? record.excerpt : undefined,
     ),
