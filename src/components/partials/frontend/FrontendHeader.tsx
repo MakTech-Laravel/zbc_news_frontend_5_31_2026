@@ -41,8 +41,9 @@ import { UserNotificationsDropdown } from "@/components/user/shared/UserNotifica
 import { Input } from "@/components/ui/input";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
-import { formatPublishDate } from "@/lib/publishDate";
 import { request } from "@/api/request";
+import { fetchPublicBreakingNews, type LiveBreakingNewsItem } from "@/services/frontend/breakingNews";
+import { keepLiveBreakingNewsItems } from "@/lib/breakingNews";
 import {
   fetchMenuByLocation,
   fetchQuickLinks,
@@ -201,62 +202,102 @@ function BrandLogo({ compact }: { compact?: boolean }) {
 }
 
 function BreakingNewsTicker() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<LiveBreakingNewsItem[]>([]);
 
   useEffect(() => {
-    const fetchBreakingNews = async () => {
+    let isMounted = true;
+
+    const load = async () => {
       try {
-        const response = await request.get("/articles/breaking");
-        setItems(response.data.data);
+        const liveItems = await fetchPublicBreakingNews(10);
+        if (isMounted) setItems(liveItems);
       } catch (error) {
         console.error("Failed to fetch breaking news:", error);
+        if (isMounted) setItems([]);
       }
     };
 
-    fetchBreakingNews();
+    void load();
+
+    const intervalId = window.setInterval(() => {
+      void load();
+    }, 30_000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
   }, []);
 
-  const tickerItems = items.length > 0 ? [...items, ...items] : items;
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const liveItems = keepLiveBreakingNewsItems(items, new Date(nowTick));
+
+  if (liveItems.length === 0) return null;
+
+  // One full pass of every headline, then seamless repeat (track = segment × 2).
+  const durationSeconds = Math.max(22, liveItems.length * 7 + 12);
+
+  const renderSegment = (keyPrefix: string, inert = false) => (
+    <div
+      key={keyPrefix}
+      className="breaking-ticker-segment font-sans text-[13px] leading-none sm:text-[14px]"
+      aria-hidden={inert || undefined}
+    >
+      {liveItems.map((item, index) => (
+        <span key={`${keyPrefix}-${item.slug}-${index}`} className="inline-flex items-center gap-10">
+          <Link
+            to={`/${encodeURIComponent(item.slug)}`}
+            tabIndex={inert ? -1 : undefined}
+            className="text-white transition-colors hover:underline focus-visible:underline focus-visible:outline-none"
+          >
+            {item.title}
+          </Link>
+          {index < liveItems.length - 1 ? (
+            <span className="text-white/50" aria-hidden>
+              •
+            </span>
+          ) : null}
+        </span>
+      ))}
+      {/* End-of-cycle separator before the list repeats */}
+      <span className="text-white/50" aria-hidden>
+        •
+      </span>
+    </div>
+  );
 
   return (
     <div
-      className="bg-zbc-breaking text-primary-foreground"
+      className="border-t border-zbc-gray-800 bg-zbc-breaking text-primary-foreground"
       aria-label="Breaking news"
     >
-      <div className="mx-auto flex h-9 w-full container items-center gap-2.5 overflow-hidden px-4 sm:gap-3">
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-zbc-breaking-dark px-2 py-[3px] font-sans text-[12px] font-bold uppercase leading-none tracking-[0.06em] sm:text-[11px]">
-          <Zap className="size-3 fill-current sm:size-3.5" aria-hidden />
-          <p className="font-bold text-white text-xs">Breaking</p>
+      <div className="mx-auto flex h-10 w-full container items-center gap-2.5 overflow-hidden px-4 sm:h-9 sm:gap-3">
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-zbc-breaking-dark px-2.5 py-1 font-sans text-[11px] font-bold uppercase leading-none tracking-[0.08em] text-white sm:text-[12px]">
+          <Zap className="size-3.5 fill-current" aria-hidden />
+          Breaking
         </span>
         <div
-          className="relative min-w-0 flex-1 overflow-hidden"
+          className="breaking-ticker-viewport relative min-w-0 flex-1"
           aria-live="polite"
         >
           <div
-            className="flex w-max items-center gap-5 whitespace-nowrap font-sans text-[12px] leading-none motion-reduce:animate-none sm:gap-6 sm:text-[13px]"
-            style={{ animation: "news-ticker 10s linear infinite" }}
+            className="breaking-ticker-track"
+            style={{ animationDuration: `${durationSeconds}s` }}
           >
-            {tickerItems.map((item, index) => (
-              <span
-                key={`${item.title}-${index}`}
-                className="inline-flex items-center gap-2"
-              >
-                <span>{item.title}</span>
-                <span className="text-white/60" aria-hidden>
-                  •
-                </span>
-                <span className="font-medium text-white/90">
-                  {formatPublishDate(item.published_at ?? item.created_at)
-                    .time || item.created_at}
-                </span>
-              </span>
-            ))}
+            {renderSegment("a")}
+            {renderSegment("b", true)}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 function SearchField({
   className,

@@ -97,6 +97,12 @@ const articleFormSchema = z
       .string()
       .min(1, "Visibility is required")
       .pipe(z.enum(ARTICLE_VISIBILITY_VALUES)),
+    is_breaking: z.boolean(),
+    breaking_priority: z.string(),
+    breaking_starts_at: z.string(),
+    breaking_expires_at: z.string(),
+    breaking_headline: z.string(),
+    breaking_status: z.enum(["active", "paused"]),
     article_category_id: z.string().min(1, "Category is required"),
     tags: z.array(z.string()),
     excerpt: z
@@ -131,6 +137,19 @@ const articleFormSchema = z
         code: z.ZodIssueCode.custom,
         message: "Scheduled publishing date and time are required when status is scheduled",
         path: ["scheduled_publishing"],
+      });
+    }
+
+    if (
+      data.is_breaking &&
+      data.breaking_starts_at.trim() &&
+      data.breaking_expires_at.trim() &&
+      data.breaking_expires_at <= data.breaking_starts_at
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Expiration must be after the start time",
+        path: ["breaking_expires_at"],
       });
     }
   });
@@ -187,6 +206,32 @@ function normalizeArticleStatus(value: unknown): ArticleStatus {
   return "draft";
 }
 
+function mapBreakingFields(record: Record<string, unknown>) {
+  const breaking =
+    record.breaking_news && typeof record.breaking_news === "object"
+      ? (record.breaking_news as Record<string, unknown>)
+      : null;
+
+  const status =
+    breaking?.status === "paused" || breaking?.status === "active"
+      ? breaking.status
+      : "active";
+
+  return {
+    is_breaking: Boolean(
+      record.is_breaking ||
+        (breaking && breaking.status !== "removed" && breaking.status !== "expired"),
+    ),
+    breaking_priority:
+      breaking?.priority != null ? String(breaking.priority) : "10",
+    breaking_starts_at: toDatetimeLocalValue(breaking?.starts_at),
+    breaking_expires_at: toDatetimeLocalValue(breaking?.expires_at),
+    breaking_headline:
+      typeof breaking?.headline_override === "string" ? breaking.headline_override : "",
+    breaking_status: status as "active" | "paused",
+  };
+}
+
 function mapArticleToFormValues(raw: unknown): ArticleFormInputValues {
   const record =
     raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
@@ -203,6 +248,7 @@ function mapArticleToFormValues(raw: unknown): ArticleFormInputValues {
             : "",
     status: normalizeArticleStatus(record.status),
     visibility: normalizeArticleVisibility(record.visibility),
+    ...mapBreakingFields(record),
     article_category_id: resolveCategoryId(record),
     tags: resolveArticleTagsFromRecord(record),
     excerpt: typeof record.excerpt === "string" ? record.excerpt : "",
@@ -369,6 +415,16 @@ function buildAutoSavePayload(
     article_description: data.article_description,
     slug: data.slug,
     visibility: data.visibility,
+    is_breaking: data.is_breaking,
+    breaking_priority: Number(data.breaking_priority) || 10,
+    breaking_starts_at: data.breaking_starts_at.trim()
+      ? toApiDatetimeValue(data.breaking_starts_at)
+      : null,
+    breaking_expires_at: data.breaking_expires_at.trim()
+      ? toApiDatetimeValue(data.breaking_expires_at)
+      : null,
+    breaking_headline: data.breaking_headline.trim() || null,
+    breaking_status: data.breaking_status,
     excerpt: data.excerpt,
     meta_title: data.meta_title.trim() || seoDefaults.meta_title,
     meta_description: data.meta_description.trim() || seoDefaults.meta_description,
@@ -403,6 +459,16 @@ function buildArticlePayload(
     slug: data.slug,
     status,
     visibility: data.visibility,
+    is_breaking: data.is_breaking,
+    breaking_priority: Number(data.breaking_priority) || 10,
+    breaking_starts_at: data.breaking_starts_at.trim()
+      ? toApiDatetimeValue(data.breaking_starts_at)
+      : null,
+    breaking_expires_at: data.breaking_expires_at.trim()
+      ? toApiDatetimeValue(data.breaking_expires_at)
+      : null,
+    breaking_headline: data.breaking_headline.trim() || null,
+    breaking_status: data.breaking_status,
     article_category_id: data.article_category_id,
     excerpt: data.excerpt,
     meta_title: data.meta_title,
@@ -437,6 +503,12 @@ const ARTICLE_FORM_FIELDS: (keyof ArticleFormInputValues)[] = [
   "article_description",
   "status",
   "visibility",
+  "is_breaking",
+  "breaking_priority",
+  "breaking_starts_at",
+  "breaking_expires_at",
+  "breaking_headline",
+  "breaking_status",
   "article_category_id",
   "tags",
   "excerpt",
@@ -521,6 +593,12 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       article_description: "",
       status: "",
       visibility: "public",
+      is_breaking: false,
+      breaking_priority: "10",
+      breaking_starts_at: "",
+      breaking_expires_at: "",
+      breaking_headline: "",
+      breaking_status: "active",
       article_category_id: "",
       tags: [],
       excerpt: "",
@@ -537,6 +615,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const titleValue = watch("title");
   const watchedContent = watch("article_description");
   const watchedStatus = watch("status");
+  const watchedIsBreaking = watch("is_breaking");
   const watchedValues = watch();
 
   featuredMediaRef.current = featuredMedia;
@@ -990,6 +1069,115 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                   )}
                 />
                 <InputError message={errors.visibility?.message} />
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-border bg-admin-surface/40 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <Controller
+                    name="is_breaking"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        id="article-breaking"
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(event) => field.onChange(event.target.checked)}
+                        className="mt-0.5 size-4 rounded border-border text-zbc-blue focus:ring-zbc-blue"
+                      />
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <label
+                      htmlFor="article-breaking"
+                      className="block text-sm font-semibold text-admin-heading"
+                    >
+                      Breaking news
+                    </label>
+                    <p className="mt-0.5 text-xs text-admin-trend-muted">
+                      Shows beside the red Breaking label when live. Does not delete the article
+                      when it expires or is removed.
+                    </p>
+                  </div>
+                </div>
+
+                {watchedIsBreaking ? (
+                  <div className="space-y-3 border-t border-border pt-3">
+                    <div className="space-y-1">
+                      <label htmlFor="breaking-priority" className={fieldLabelClassName}>
+                        Priority
+                      </label>
+                      <Input
+                        id="breaking-priority"
+                        type="number"
+                        min={0}
+                        {...register("breaking_priority")}
+                      />
+                      <p className="text-xs text-admin-label">
+                        Lower numbers scroll first in the ticker.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className={fieldLabelClassName}>Ticker status</label>
+                      <Controller
+                        name="breaking_status"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) =>
+                              field.onChange(value as "active" | "paused")
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="paused">Paused</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="breaking-headline" className={fieldLabelClassName}>
+                        Headline override (optional)
+                      </label>
+                      <Input
+                        id="breaking-headline"
+                        placeholder="Defaults to article title"
+                        {...register("breaking_headline")}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="breaking-starts" className={fieldLabelClassName}>
+                        Start date &amp; time
+                      </label>
+                      <Input
+                        id="breaking-starts"
+                        type="datetime-local"
+                        step={60}
+                        {...register("breaking_starts_at")}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="breaking-expires" className={fieldLabelClassName}>
+                        Expiration date &amp; time
+                      </label>
+                      <Input
+                        id="breaking-expires"
+                        type="datetime-local"
+                        step={60}
+                        {...register("breaking_expires_at")}
+                      />
+                      <InputError message={errors.breaking_expires_at?.message} />
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               {watchedStatus === "scheduled" ? (

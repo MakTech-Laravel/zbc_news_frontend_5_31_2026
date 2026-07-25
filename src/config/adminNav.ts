@@ -40,6 +40,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.ARTICLES.LIST,
   },
   {
+    label: 'Breaking News',
+    path: '/admin/breaking-news',
+    segment: 'breaking-news',
+    permission: PERMISSIONS.ARTICLES.LIST,
+  },
+  {
     label: 'Media',
     path: '/admin/media',
     segment: 'media',
