@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -63,6 +65,11 @@ import {
 } from "@/services/admin/categories";
 
 type ViewMode = "list" | "edit" | "locations";
+
+type DeleteConfirmTarget =
+  | { kind: "menu"; menu: AdminMenu }
+  | { kind: "item"; item: AdminMenuItem }
+  | { kind: "location"; location: AdminMenuLocation };
 
 const menuSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -193,6 +200,8 @@ export default function AdminMenus() {
   const [selectedCategoryIds, setSelectedCategoryIds] = React.useState<number[]>([]);
   const [includeChildren, setIncludeChildren] = React.useState(true);
   const [locationDialogOpen, setLocationDialogOpen] = React.useState(false);
+  const [deleteConfirm, setDeleteConfirm] = React.useState<DeleteConfirmTarget | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
   const [locationDraft, setLocationDraft] = React.useState({
     name: "",
     key: "",
@@ -317,19 +326,64 @@ export default function AdminMenus() {
     }
   });
 
-  const handleDeleteMenu = async (menu: AdminMenu) => {
+  const handleDeleteMenu = (menu: AdminMenu) => {
     if (!canDelete) return;
-    if (!window.confirm(`Delete menu “${menu.name}”?`)) return;
+    setDeleteConfirm({ kind: "menu", menu });
+  };
+
+  const handleDeleteItem = (item: AdminMenuItem) => {
+    if (!canManageItems) return;
+    setDeleteConfirm({ kind: "item", item });
+  };
+
+  const confirmDeleteTitle = deleteConfirm
+    ? deleteConfirm.kind === "menu"
+      ? "Delete menu"
+      : deleteConfirm.kind === "item"
+        ? "Delete menu item"
+        : "Delete location"
+    : "Confirm delete";
+
+  const confirmDeleteDescription = deleteConfirm
+    ? deleteConfirm.kind === "menu"
+      ? `Delete menu “${deleteConfirm.menu.name}”? This cannot be undone.`
+      : deleteConfirm.kind === "item"
+        ? `Delete “${deleteConfirm.item.label}” and its sub-items? This cannot be undone.`
+        : `Delete location “${deleteConfirm.location.name}”? This cannot be undone.`
+    : "";
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
     try {
-      await deleteMenu(menu.id);
-      toast.success("Menu deleted");
-      if (activeMenu?.id === menu.id) {
-        setActiveMenu(null);
-        setView("list");
+      if (deleteConfirm.kind === "menu") {
+        await deleteMenu(deleteConfirm.menu.id);
+        toast.success("Menu deleted");
+        if (activeMenu?.id === deleteConfirm.menu.id) {
+          setActiveMenu(null);
+          setView("list");
+        }
+        await loadBase();
+      } else if (deleteConfirm.kind === "item") {
+        await deleteMenuItem(deleteConfirm.item.id);
+        toast.success("Item deleted");
+        if (activeMenu) await refreshActive(activeMenu.id);
+      } else {
+        await deleteMenuLocation(deleteConfirm.location.id);
+        setLocations(await fetchMenuLocations());
+        toast.success("Location deleted");
       }
-      await loadBase();
+      setDeleteConfirm(null);
     } catch {
-      toast.error("Could not delete menu");
+      toast.error(
+        deleteConfirm.kind === "menu"
+          ? "Could not delete menu"
+          : deleteConfirm.kind === "item"
+            ? "Could not delete item"
+            : "Could not delete location",
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -427,18 +481,6 @@ export default function AdminMenus() {
       if (activeMenu) await refreshActive(activeMenu.id);
     } catch {
       toast.error("Could not update item");
-    }
-  };
-
-  const handleDeleteItem = async (item: AdminMenuItem) => {
-    if (!canManageItems) return;
-    if (!window.confirm(`Delete “${item.label}” and its sub-items?`)) return;
-    try {
-      await deleteMenuItem(item.id);
-      toast.success("Item deleted");
-      if (activeMenu) await refreshActive(activeMenu.id);
-    } catch {
-      toast.error("Could not delete item");
     }
   };
 
@@ -545,12 +587,14 @@ export default function AdminMenus() {
                 New menu
               </Button>
             ) : null}
+            {/* Location create disabled — locations are seeded/managed outside the UI.
             {view === "locations" && canManageLocations ? (
               <Button type="button" onClick={() => setLocationDialogOpen(true)}>
                 <Plus className="size-4" />
                 New location
               </Button>
             ) : null}
+            */}
           </div>
         }
       />
@@ -598,7 +642,7 @@ export default function AdminMenus() {
                         type="button"
                         variant="outline"
                         className="text-destructive"
-                        onClick={() => void handleDeleteMenu(menu)}
+                        onClick={() => handleDeleteMenu(menu)}
                       >
                         <Trash2 className="size-4" />
                         Delete
@@ -817,7 +861,7 @@ export default function AdminMenus() {
                 onOutdent={(item) => void handleOutdent(item)}
                 onEdit={openEditItem}
                 onToggleActive={(item) => void handleToggleActive(item)}
-                onDelete={(item) => void handleDeleteItem(item)}
+                onDelete={(item) => handleDeleteItem(item)}
               />
             </AdminPanel>
           </div>
@@ -882,24 +926,18 @@ export default function AdminMenus() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {/* Location delete disabled — locations cannot be removed from the UI.
                     {canManageLocations ? (
                       <Button
                         type="button"
                         variant="outline"
                         className="text-destructive"
-                        onClick={() => {
-                          if (!window.confirm(`Delete location “${loc.name}”?`)) return;
-                          void deleteMenuLocation(loc.id)
-                            .then(async () => {
-                              setLocations(await fetchMenuLocations());
-                              toast.success("Location deleted");
-                            })
-                            .catch(() => toast.error("Could not delete location"));
-                        }}
+                        onClick={() => setDeleteConfirm({ kind: "location", location: loc })}
                       >
                         <Trash2 className="size-4" />
                       </Button>
                     ) : null}
+                    */}
                   </div>
                 </div>
               ))}
@@ -993,6 +1031,7 @@ export default function AdminMenus() {
         </DialogContent>
       </Dialog>
 
+      {/* Location create dialog disabled — locations cannot be created from the UI.
       <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1066,6 +1105,47 @@ export default function AdminMenus() {
               Create location
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      */}
+
+      <Dialog
+        open={Boolean(deleteConfirm)}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteConfirm(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmDeleteTitle}</DialogTitle>
+            <DialogDescription>{confirmDeleteDescription}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleting}
+              onClick={() => setDeleteConfirm(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="gap-2"
+              disabled={deleting}
+              onClick={() => void handleConfirmDelete()}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
