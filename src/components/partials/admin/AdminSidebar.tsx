@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   UserCircle,
   Users,
+  Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
@@ -21,7 +22,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
 import { ZbcAdminLogo } from "@/components/partials/admin/ZbcAdminLogo";
 import { HeaderAvatar } from "@/components/ui/HeaderAvatar";
-import { ADMIN_NAV_ITEMS } from "@/config/adminNav";
+import { ADMIN_NAV_ITEMS, isAdminNavItemVisible } from "@/config/adminNav";
 import { usePermission } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
 import { PERMISSIONS } from "@/types/permissions";
@@ -31,6 +32,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/categories": FolderTree,
   "/admin/menus": Menu,
   "/admin/articles": FileText,
+  "/admin/breaking-news": Zap,
   "/admin/media": Image,
   "/admin/rabc": ShieldCheck,
   "/admin/users": Users,
@@ -38,6 +40,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/newsletters": Megaphone,
   "/admin/announcements": Bell,
   "/admin/comments": MessageSquare,
+  "/admin/contact-messages": MessageSquare,
   "/admin/profile": UserCircle,
   "/admin/settings": Settings,
 };
@@ -76,16 +79,17 @@ type AdminSidebarProps = {
 
 export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProps) {
   const { user, logout } = useAuth();
-  const { can } = usePermission();
+  const { can, isSuperAdmin } = usePermission();
   const [loggingOut, setLoggingOut] = React.useState(false);
   const displayName = user?.name ?? user?.email ?? "Admin";
   const initials = getInitials(displayName);
   const avatarUrl = resolveAvatarUrl(user);
 
-  const canManageProfile = can(PERMISSIONS.USERS.PROFILE);
+  const canManageProfile = isSuperAdmin || can(PERMISSIONS.USERS.PROFILE);
 
+  // Admin panel only: permission-filtered nav. User dashboard (UserSidebar) is separate.
   const visibleNavItems = ADMIN_NAV_ITEMS.filter((item) =>
-    item.permission ? can(item.permission) : true,
+    isAdminNavItemVisible(item, { isSuperAdmin, can }),
   );
 
   async function handleLogout() {

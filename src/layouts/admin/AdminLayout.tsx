@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export function AdminLayout() {
   const location = useLocation();
   const { user } = useAuth();
-  const { can, isUserLoading } = usePermission();
+  const { can, isSuperAdmin, isUserLoading } = usePermission();
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
@@ -27,11 +27,16 @@ export function AdminLayout() {
     );
   }
 
+  // Reader / subscriber accounts belong on the user dashboard — never admin nav rules there.
   if (isUserPanelUser(user)) {
     return <Navigate to="/user/dashboard" replace />;
   }
 
-  if (requiredPermission && !can(requiredPermission)) {
+  if (
+    requiredPermission &&
+    !isSuperAdmin &&
+    !can(requiredPermission)
+  ) {
     return <Navigate to="/unauthorized" replace state={{ from: location }} />;
   }
 
