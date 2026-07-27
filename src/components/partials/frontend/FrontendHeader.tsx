@@ -787,32 +787,57 @@ function MoreMenuDropdown({ items }: { items: NavItem[] }) {
 }
 
 /** Desktop + tablet horizontal nav: Home | header_primary | More (if mega_menu) */
-function MainNavBar() {
+function MainNavBar({
+  mode = "bar",
+}: {
+  /**
+   * `inline` — beside search (compact top row)
+   * `under-search` — directly under the search field, same column (stacked)
+   * `bar` — full-width mobile strip
+   */
+  mode?: "inline" | "under-search" | "bar";
+}) {
   const { homeItem, primaryItems, megaItems, hasMegaMenu } = useMainNav();
 
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      "relative shrink-0 whitespace-nowrap font-sans text-sm font-medium transition-colors duration-200",
+      mode === "under-search" ? "px-2 py-2 first:pl-0" : "px-2.5 py-3",
+      isActive ? "text-primary" : "text-zbc-gray-700 hover:text-primary",
+    );
+
+  const links = (
+    <>
+      <NavLink to={homeItem.to} end className={linkClass}>
+        {homeItem.label}
+      </NavLink>
+
+      {primaryItems.map((item) => (
+        <PrimaryNavItem key={item.id} item={item} />
+      ))}
+
+      {hasMegaMenu ? <MoreMenuDropdown items={megaItems} /> : null}
+    </>
+  );
+
+  if (mode === "inline" || mode === "under-search") {
+    return (
+      <nav
+        className={cn(
+          "flex max-w-full items-center justify-start gap-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          mode === "under-search" && "-mx-0.5",
+        )}
+        aria-label="Main navigation"
+      >
+        {links}
+      </nav>
+    );
+  }
+
   return (
-    <nav className="" aria-label="Main navigation">
+    <nav aria-label="Main navigation">
       <div className="mx-auto flex w-full container items-center justify-start gap-0 overflow-x-auto px-4 py-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <NavLink
-          to={homeItem.to}
-          end
-          className={({ isActive }) =>
-            cn(
-              "relative shrink-0 whitespace-nowrap px-2.5 py-3 font-sans text-sm font-medium transition-colors duration-200",
-              isActive
-                ? "text-primary"
-                : "text-zbc-gray-700 hover:text-primary",
-            )
-          }
-        >
-          {homeItem.label}
-        </NavLink>
-
-        {primaryItems.map((item) => (
-          <PrimaryNavItem key={item.id} item={item} />
-        ))}
-
-        {hasMegaMenu ? <MoreMenuDropdown items={megaItems} /> : null}
+        {links}
       </div>
     </nav>
   );
@@ -1178,26 +1203,46 @@ function LiveDateTimeMobile() {
   return <time dateTime={iso || undefined}>{formatted || "—"}</time>;
 }
 
-export function FrontendHeader() {
+export type FrontendHeaderVariant = "compact" | "stacked";
+
+type FrontendHeaderProps = {
+  /**
+   * `compact` — Logo · Search · Nav · Account on one row
+   * `stacked` — Logo | (Search + menu under it in the same column) | Account
+   */
+  variant?: FrontendHeaderVariant;
+};
+
+export function FrontendHeader({
+  variant = "compact",
+}: FrontendHeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const isStacked = variant === "stacked";
 
   return (
     <header
-      className="sticky top-0 z-50 border-b border-border bg-background shadow-sm [--header-mobile-offset:9rem] md:[--header-mobile-offset:10.5rem]"
+      className={cn(
+        "sticky top-0 z-50 border-b border-border bg-background shadow-sm [--header-mobile-offset:9rem] md:[--header-mobile-offset:10.5rem]",
+        isStacked && "lg:[--header-mobile-offset:11.5rem]",
+      )}
       id="site-header"
+      data-header-variant={variant}
     >
       <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <BreakingNewsTicker />
 
-      {/* Row 1: logo · search · actions */}
+      {/* One container: logo · search(+menu) · account */}
       <div className="relative mx-auto w-full container bg-background px-4">
-        <div className="flex items-center justify-between gap-2 py-3 sm:gap-3 sm:py-3.5 lg:py-4">
-          {/* Mobile Menu Button - now visible up to 1023px */}
-          <div className="lg:hidden">
+        <div
+          className={cn(
+            "flex gap-2 py-3 sm:gap-3 sm:py-3.5 lg:gap-4 lg:py-4",
+            isStacked ? "items-start" : "items-center justify-between",
+          )}
+        >
+          <div className={cn("lg:hidden", isStacked && "pt-1.5")}>
             <MobileMenu />
           </div>
 
-          {/* Logo */}
           <div
             className="
               min-w-0
@@ -1209,49 +1254,66 @@ export function FrontendHeader() {
             <BrandLogo compact />
           </div>
 
-          <div className="hidden lg:block" data-header-logo-start="true">
+          <div
+            className={cn("hidden shrink-0 lg:block", isStacked && "pt-1")}
+            data-header-logo-start="true"
+          >
             <BrandLogo />
           </div>
 
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-3 lg:gap-4">
-            {/* Search - now only inline on desktop (1024+), grows to fill the gap */}
-            <div className="hidden min-w-0 md:flex md:flex-1">
-              <SearchField className="w-full" onOpen={() => setSearchOpen(true)} />
-            </div>
-
-            {/* Desktop Menu (1024+) */}
-            <div className="hidden shrink-0 lg:block">
-              <MainNavBar />
-            </div>
-
-            {/* Account - full label only at 1024+, compact below */}
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 gap-3 lg:gap-4",
+              isStacked ? "items-start justify-end" : "items-center justify-end",
+            )}
+          >
+            {/* Same column: search on top, menu directly underneath (stacked) */}
             <div
-              className="hidden shrink-0 lg:flex"
+              className={cn(
+                "hidden min-w-0 w-full flex-1 md:flex",
+                isStacked && "flex-col gap-2",
+              )}
+            >
+              <SearchField
+                className="w-full"
+                onOpen={() => setSearchOpen(true)}
+              />
+              {isStacked ? <MainNavBar mode="under-search" /> : null}
+            </div>
+
+            {!isStacked ? (
+              <div className="hidden min-w-0 shrink lg:block">
+                <MainNavBar mode="inline" />
+              </div>
+            ) : null}
+
+            <div
+              className={cn("hidden shrink-0 lg:flex", isStacked && "pt-0.5")}
               data-header-account-end="true"
             >
               <AccountActions />
             </div>
 
-            <div className="flex shrink-0 lg:hidden">
+            <div className={cn("flex shrink-0 lg:hidden", isStacked && "pt-1.5")}>
               <AccountActions showLabel={false} />
             </div>
           </div>
         </div>
 
-        {/* Mobile search below logo row - shown up to 1023px */}
-        <div className="mb-2 p-0 md:hidden md:p-3">
+        {/* Mobile (< md): search + menu still inside this same container */}
+        <div className="flex flex-col gap-2 pb-2 md:hidden">
           <SearchField onOpen={() => setSearchOpen(true)} />
+          {isStacked ? <MainNavBar mode="under-search" /> : null}
         </div>
-      </div>
 
-      {/* Mobile main nav row - shown up to 1023px */}
-      <div className="border-t border-border block lg:hidden">
-        <MainNavBar />
+        {!isStacked ? (
+          <div className="border-t border-border lg:hidden">
+            <MainNavBar mode="bar" />
+          </div>
+        ) : null}
       </div>
 
       <SubNavBar />
-
-      {/* <p>mahfuj bhai amare bujlo na ds fcvsdfsd</p> */}
     </header>
   );
 }
