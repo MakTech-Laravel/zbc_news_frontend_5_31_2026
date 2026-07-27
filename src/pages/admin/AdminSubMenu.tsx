@@ -40,9 +40,9 @@ const PERIOD_OPTIONS: { value: MostReadPeriod; label: string }[] = [
 ];
 
 function formatWhen(value: string | null | undefined): string {
-  if (!value) return "â€”";
+  if (!value) return "-";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "â€”" : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
 }
 
 export default function AdminSubMenu() {
@@ -127,6 +127,11 @@ export default function AdminSubMenu() {
       return;
     }
 
+    // Keep the selected title in the input without reopening the result list.
+    if (selectedArticleId != null) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       setSearching(true);
       void searchAdminPanel(q, 8)
@@ -144,7 +149,7 @@ export default function AdminSubMenu() {
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [articleQuery]);
+  }, [articleQuery, selectedArticleId]);
 
   const orderedManualIds = useMemo(() => manual.map((entry) => entry.id), [manual]);
 
@@ -152,9 +157,9 @@ export default function AdminSubMenu() {
     setSavingSettings(true);
     try {
       await updateSubMenuSettings(activeTab, {
-        limit: Math.max(1, Number(limit) || 5),
-        pinned_slots: Math.max(0, Number(pinnedSlots) || 0),
-        trending_window_hours: Math.max(1, Number(windowHours) || 24),
+        limit: Number(limit) || 0,
+        pinned_slots: Number(pinnedSlots) || 0,
+        trending_window_hours: Number(windowHours) || 0,
         most_read_default_period: defaultPeriod,
         is_enabled: isEnabled,
       });
@@ -295,7 +300,7 @@ export default function AdminSubMenu() {
   }
 
   async function handleRemove(entry: SubMenuManualEntry) {
-    if (!window.confirm(`Remove â€œ${entry.article?.title ?? `Article #${entry.article_id}`}â€ from this section?`)) {
+    if (!window.confirm(`Remove "${entry.article?.title ?? `Article #${entry.article_id}`}" from this section?`)) {
       return;
     }
     setBusyId(entry.id);
@@ -335,14 +340,14 @@ export default function AdminSubMenu() {
     return (
       <div className="space-y-3 rounded-md border border-border p-3">
         <Input
-          placeholder="Search published articlesâ€¦"
+          placeholder="Search published articles..."
           value={articleQuery}
           onChange={(e) => {
             setArticleQuery(e.target.value);
             setSelectedArticleId(null);
           }}
         />
-        {searching ? <p className="text-xs text-admin-label">Searchingâ€¦</p> : null}
+        {searching ? <p className="text-xs text-admin-label">Searching...</p> : null}
         {searchResults.length > 0 ? (
           <ul className="max-h-40 space-y-1 overflow-y-auto">
             {searchResults.map((article) => {
@@ -352,7 +357,11 @@ export default function AdminSubMenu() {
                 <li key={article.id}>
                   <button
                     type="button"
-                    onClick={() => setSelectedArticleId(id)}
+                    onClick={() => {
+                      setSelectedArticleId(id);
+                      setArticleQuery(article.title ?? "");
+                      setSearchResults([]);
+                    }}
                     className={cn(
                       "w-full rounded-md px-2 py-1.5 text-left text-sm",
                       selected ? "bg-primary/10 text-primary" : "hover:bg-muted",
@@ -451,8 +460,6 @@ export default function AdminSubMenu() {
                   <span className="font-medium text-admin-label">Item limit</span>
                   <Input
                     type="number"
-                    min={1}
-                    max={20}
                     value={limit}
                     onChange={(e) => setLimit(e.target.value)}
                   />
@@ -465,8 +472,6 @@ export default function AdminSubMenu() {
                     </span>
                     <Input
                       type="number"
-                      min={1}
-                      max={168}
                       value={windowHours}
                       onChange={(e) => setWindowHours(e.target.value)}
                     />
@@ -494,8 +499,6 @@ export default function AdminSubMenu() {
                   <span className="font-medium text-admin-label">Pinned slots</span>
                   <Input
                     type="number"
-                    min={0}
-                    max={20}
                     value={pinnedSlots}
                     onChange={(e) => setPinnedSlots(e.target.value)}
                   />
@@ -508,7 +511,7 @@ export default function AdminSubMenu() {
                   onClick={() => void handleSaveSettings()}
                   disabled={savingSettings}
                 >
-                  {savingSettings ? "Savingâ€¦" : "Save settings"}
+                  {savingSettings ? "Saving..." : "Save settings"}
                 </Button>
               </div>
             </AdminPanel>
@@ -528,7 +531,7 @@ export default function AdminSubMenu() {
                     disabled={busyId === "live" || !selectedArticleId}
                   >
                     <Radio className="size-4" />
-                    {busyId === "live" ? "Startingâ€¦" : "Start live"}
+                    {busyId === "live" ? "Starting..." : "Start live"}
                   </Button>
                   <Button
                     type="button"
@@ -537,7 +540,7 @@ export default function AdminSubMenu() {
                     disabled={busyId === "add" || !selectedArticleId}
                   >
                     <Plus className="size-4" />
-                    {busyId === "add" ? "Addingâ€¦" : "Add manual boost"}
+                    {busyId === "add" ? "Adding..." : "Add manual boost"}
                   </Button>
                 </div>
                 <label className="mt-3 flex items-center gap-2 text-sm text-admin-label">
@@ -564,7 +567,7 @@ export default function AdminSubMenu() {
                             {article.title}
                           </p>
                           <p className="mt-0.5 text-xs text-emerald-700">
-                            Live Â· started {formatWhen(article.live_started_at)}
+                            Live | started {formatWhen(article.live_started_at)}
                           </p>
                         </div>
                         <Button
@@ -596,8 +599,8 @@ export default function AdminSubMenu() {
                             {entry.article?.title ?? `Article #${entry.article_id}`}
                           </p>
                           <p className="mt-0.5 text-xs text-admin-label">
-                            {entry.is_pinned ? "Pinned" : "Manual"} Â·{" "}
-                            {entry.is_active ? "Active" : "Inactive"} Â· order {index + 1}
+                            {entry.is_pinned ? "Pinned" : "Manual"} |{" "}
+                            {entry.is_active ? "Active" : "Inactive"} | order {index + 1}
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-1">
@@ -702,7 +705,7 @@ export default function AdminSubMenu() {
                     disabled={busyId === "add" || !selectedArticleId}
                   >
                     <Plus className="size-4" />
-                    {busyId === "add" ? "Addingâ€¦" : "Add article"}
+                    {busyId === "add" ? "Adding..." : "Add article"}
                   </Button>
                 </div>
 
@@ -721,10 +724,10 @@ export default function AdminSubMenu() {
                               {entry.article?.title ?? `Article #${entry.article_id}`}
                             </p>
                             <p className="mt-0.5 text-xs text-admin-label">
-                              {entry.is_pinned ? "Pinned" : "Manual"} Â·{" "}
-                              {entry.is_active ? "Active" : "Inactive"} Â· order {index + 1}
+                              {entry.is_pinned ? "Pinned" : "Manual"} |{" "}
+                              {entry.is_active ? "Active" : "Inactive"} | order {index + 1}
                               {showScheduleFields
-                                ? ` Â· ${formatWhen(entry.starts_at)} â†’ ${formatWhen(entry.ends_at)}`
+                                ? ` | ${formatWhen(entry.starts_at)} -> ${formatWhen(entry.ends_at)}`
                                 : ""}
                             </p>
                           </div>
@@ -817,7 +820,7 @@ export default function AdminSubMenu() {
                                 disabled={busyId === entry.id}
                                 onClick={() => void handleSaveSchedule(entry)}
                               >
-                                {busyId === entry.id ? "Savingâ€¦" : "Save schedule"}
+                                {busyId === entry.id ? "Saving..." : "Save schedule"}
                               </Button>
                             </div>
                           </div>
@@ -835,7 +838,7 @@ export default function AdminSubMenu() {
               <h2 className="mb-1 text-base font-bold text-admin-heading">Live preview</h2>
               <p className="mb-4 text-sm text-admin-label">
                 Merged public list (manual + algorithmic), limited by settings.
-                {!isEnabled ? " Section is disabled â€” public site hides this card." : ""}
+                {!isEnabled ? " Section is disabled - public site hides this card." : ""}
               </p>
               <ol className="space-y-2">
                 {preview.length === 0 ? (
@@ -871,7 +874,7 @@ export default function AdminSubMenu() {
                 {showLiveControls
                   ? "Articles with live coverage enabled."
                   : showScheduleFields
-                    ? "Latest published articles used when picks donâ€™t fill the limit."
+                    ? "Latest published articles used when picks don't fill the limit."
                     : "Ranked candidates before manual merge."}
               </p>
               <ol className="space-y-2">
