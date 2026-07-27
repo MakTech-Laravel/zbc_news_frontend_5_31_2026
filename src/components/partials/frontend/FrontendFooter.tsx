@@ -15,11 +15,17 @@ type FooterLink = {
   target?: string;
 };
 
-const FOOTER_STATIC_COLUMNS: {
+type FooterColumnData = {
   title: string;
-  links: readonly FooterLink[];
-}[] = [
-  {
+  links: FooterLink[];
+};
+
+/** Fallback when a footer location has no menu assigned yet. */
+const FOOTER_FALLBACK_COLUMNS: Record<
+  "company" | "legal",
+  { title: string; links: readonly FooterLink[] }
+> = {
+  company: {
     title: "Company",
     links: [
       { label: "About Us", to: "/about" },
@@ -29,7 +35,7 @@ const FOOTER_STATIC_COLUMNS: {
       { label: "Advertise", to: "/advertise" },
     ],
   },
-  {
+  legal: {
     title: "Legal",
     links: [
       { label: "Privacy Policy", to: "/privacy" },
@@ -38,7 +44,7 @@ const FOOTER_STATIC_COLUMNS: {
       { label: "Accessibility", to: "/accessibility-statement" },
     ],
   },
-];
+};
 
 type SocialIconProps = { className?: string };
 
@@ -77,19 +83,57 @@ function isExternalLink(link: FooterLink) {
   return /^(https?:|mailto:|tel:)/i.test(link.to);
 }
 
-function useFooterMenuLinks(): FooterLink[] {
-  const [links, setLinks] = useState<FooterLink[]>([]);
+function useFooterColumns(): FooterColumnData[] {
+  const [columns, setColumns] = useState<FooterColumnData[]>([
+    { title: "Sections", links: [] },
+    {
+      title: FOOTER_FALLBACK_COLUMNS.company.title,
+      links: [...FOOTER_FALLBACK_COLUMNS.company.links],
+    },
+    {
+      title: FOOTER_FALLBACK_COLUMNS.legal.title,
+      links: [...FOOTER_FALLBACK_COLUMNS.legal.links],
+    },
+  ]);
 
   useEffect(() => {
     let isMounted = true;
 
-    fetchMenuByLocation(MENU_LOCATION.footer)
-      .then((menu) => {
+    Promise.all([
+      fetchMenuByLocation(MENU_LOCATION.footer),
+      fetchMenuByLocation(MENU_LOCATION.footerCompany),
+      fetchMenuByLocation(MENU_LOCATION.footerLegal),
+    ])
+      .then(([sectionsMenu, companyMenu, legalMenu]) => {
         if (!isMounted) return;
-        setLinks(flattenMenuItemsToLinks(menu?.items ?? []));
+
+        const sectionsLinks = flattenMenuItemsToLinks(sectionsMenu?.items ?? []);
+        const companyLinks = flattenMenuItemsToLinks(companyMenu?.items ?? []);
+        const legalLinks = flattenMenuItemsToLinks(legalMenu?.items ?? []);
+
+        setColumns([
+          {
+            title: "Sections",
+            links: sectionsLinks,
+          },
+          {
+            title: "Company",
+            links:
+              companyLinks.length > 0
+                ? companyLinks
+                : [...FOOTER_FALLBACK_COLUMNS.company.links],
+          },
+          {
+            title: "Legal",
+            links:
+              legalLinks.length > 0
+                ? legalLinks
+                : [...FOOTER_FALLBACK_COLUMNS.legal.links],
+          },
+        ]);
       })
       .catch(() => {
-        if (isMounted) setLinks([]);
+        /* keep fallbacks */
       });
 
     return () => {
@@ -97,7 +141,7 @@ function useFooterMenuLinks(): FooterLink[] {
     };
   }, []);
 
-  return links;
+  return columns;
 }
 
 function FooterColumn({
@@ -143,15 +187,7 @@ function FooterColumn({
 
 export function FrontendFooter() {
   const year = new Date().getFullYear();
-  const footerMenuLinks = useFooterMenuLinks();
-
-  const footerColumns = [
-    {
-      title: "Sections",
-      links: footerMenuLinks,
-    },
-    ...FOOTER_STATIC_COLUMNS,
-  ];
+  const footerColumns = useFooterColumns();
 
   return (
     <footer className="mt-auto bg-zbc-footer text-[#cbd5e1]">
