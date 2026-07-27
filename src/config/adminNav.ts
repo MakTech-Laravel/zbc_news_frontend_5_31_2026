@@ -2,7 +2,11 @@ import { PERMISSIONS, type PermissionKey } from '@/types/permissions'
 
 /**
  * Admin sidebar + URL permission config (single source of truth).
- * `permission: null` = visible to every admin-panel user (e.g. dashboard landing).
+ *
+ * Rules (admin panel only — never apply to UserSidebar / user dashboard):
+ * - `super_admin` sees every item (bypass in usePermission / AdminSidebar)
+ * - Everyone else only sees items whose `permission` they have
+ * - `permission: null` = shared landing item for any admin-panel user (Dashboard)
  */
 export type AdminNavItemConfig = {
   label: string
@@ -74,7 +78,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     label: 'Newsletters',
     path: '/admin/newsletters',
     segment: 'newsletters',
-    permission: null,
+    permission: PERMISSIONS.SITE_SETTINGS.LIST,
   },
   {
     label: 'Announcements',
@@ -109,3 +113,16 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     end: false,
   },
 ]
+
+/** Whether an admin sidebar item should render for the current staff user. */
+export function isAdminNavItemVisible(
+  item: AdminNavItemConfig,
+  options: {
+    isSuperAdmin: boolean
+    can: (permission: PermissionKey) => boolean
+  },
+): boolean {
+  if (options.isSuperAdmin) return true
+  if (!item.permission) return true
+  return options.can(item.permission)
+}

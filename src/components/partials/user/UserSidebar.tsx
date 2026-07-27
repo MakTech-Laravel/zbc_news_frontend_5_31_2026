@@ -35,6 +35,7 @@ const MAIN_NAV: NavItem[] = [
   { label: "Reading Analytics", to: "/user/reading-analytics", Icon: BarChart3 },
 ];
 
+/** Explore links — user dashboard is NOT permission-filtered (admin Spatie rules do not apply). */
 const EXPLORE_NAV: NavItem[] = [
   { label: "Breaking News", to: "/user/breaking-news", Icon: TrendingUp },
   { label: "World", to: "/user/world", Icon: Globe },

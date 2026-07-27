@@ -36,6 +36,8 @@ export const MENU_LOCATION = {
   megaMenu: "mega_menu",
   sidebar: "sidebar",
   footer: "footer",
+  footerCompany: "footer_company",
+  footerLegal: "footer_legal",
 } as const;
 
 export async function fetchQuickLinks(): Promise<QuickLink[]> {
