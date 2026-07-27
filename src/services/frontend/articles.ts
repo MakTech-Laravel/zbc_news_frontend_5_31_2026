@@ -402,31 +402,116 @@ export async function fetchArticlesByTag(
     .filter((article): article is Article => article !== null);
 }
 
-let mostReadCache: Article[] | null = null;
-let mostReadPromise: Promise<Article[]> | null = null;
+export type MostReadPeriod = "today" | "week" | "month" | "all";
 
-export async function fetchMostReadArticles(): Promise<Article[]> {
-  if (mostReadCache) return mostReadCache;
+export type MostReadMeta = {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
 
-  if (!mostReadPromise) {
-    mostReadPromise = request
-      .get("/articles/most-read")
-      .then((response) =>
-        extractArticleRows(response.data)
-          .map(mapArticleListItem)
-          .filter((article): article is Article => article !== null),
-      )
-      .then((articles) => {
-        mostReadCache = articles;
-        return articles;
-      })
-      .catch((error) => {
-        mostReadPromise = null;
-        throw error;
-      });
+export type MostReadResult = {
+  articles: Article[];
+  meta: MostReadMeta;
+};
+
+type FetchMostReadOptions = {
+  period?: MostReadPeriod;
+  page?: number;
+  perPage?: number;
+};
+
+let mostReadPage1Cache = new Map<string, MostReadResult>();
+let mostReadPage1Promises = new Map<string, Promise<MostReadResult>>();
+
+function parseMostReadMeta(raw: unknown): MostReadMeta {
+  const fallback: MostReadMeta = {
+    current_page: 1,
+    last_page: 1,
+    per_page: 5,
+    total: 0,
+  };
+
+  if (!raw || typeof raw !== "object") return fallback;
+
+  const meta = raw as Record<string, unknown>;
+  const currentPage = Number(meta.current_page ?? 1);
+  const lastPage = Number(meta.last_page ?? 1);
+  const perPage = Number(meta.per_page ?? 5);
+  const total = Number(meta.total ?? 0);
+
+  return {
+    current_page: Number.isFinite(currentPage) && currentPage > 0 ? currentPage : 1,
+    last_page: Number.isFinite(lastPage) && lastPage > 0 ? lastPage : 1,
+    per_page: Number.isFinite(perPage) && perPage > 0 ? perPage : 5,
+    total: Number.isFinite(total) && total >= 0 ? total : 0,
+  };
+}
+
+export async function fetchMostReadArticles(
+  options: FetchMostReadOptions = {},
+): Promise<MostReadResult> {
+  const period = options.period ?? "today";
+  const page = options.page ?? 1;
+  const perPage = options.perPage ?? 5;
+  const cacheKey = `${period}:${perPage}`;
+
+  if (page === 1) {
+    const cached = mostReadPage1Cache.get(cacheKey);
+    if (cached) return cached;
+
+    const inflight = mostReadPage1Promises.get(cacheKey);
+    if (inflight) return inflight;
   }
 
-  return mostReadPromise;
+  const requestPromise = request
+    .get("/articles/most-read", {
+      params: {
+        unique: true,
+        period,
+        page,
+        per_page: perPage,
+      },
+    })
+    .then((response) => {
+      const body = response.data;
+      const articles = extractArticleRows(body)
+        .map(mapArticleListItem)
+        .filter((article): article is Article => article !== null);
+
+      const payload =
+        body && typeof body === "object" && "data" in body
+          ? (body as { data?: Record<string, unknown> }).data
+          : body;
+      const meta =
+        payload && typeof payload === "object" && "meta" in payload
+          ? parseMostReadMeta((payload as { meta: unknown }).meta)
+          : parseMostReadMeta({
+              current_page: page,
+              last_page: 1,
+              per_page: perPage,
+              total: articles.length,
+            });
+
+      return { articles, meta } satisfies MostReadResult;
+    });
+
+  if (page === 1) {
+    mostReadPage1Promises.set(cacheKey, requestPromise);
+    try {
+      const result = await requestPromise;
+      mostReadPage1Cache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      mostReadPage1Promises.delete(cacheKey);
+      throw error;
+    } finally {
+      mostReadPage1Promises.delete(cacheKey);
+    }
+  }
+
+  return requestPromise;
 }
 
 export async function fetchArticlesByCategory(

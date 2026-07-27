@@ -106,7 +106,7 @@ export async function fetchEditorialPageData(): Promise<EditorialPageData> {
 
   if (picks.length === 0) {
     try {
-      picks = (await fetchMostReadArticles()).slice(0, 4).map(mapArticleToUserFeed);
+      picks = (await fetchMostReadArticles()).articles.slice(0, 4).map(mapArticleToUserFeed);
     } catch {
       picks = mapped.slice(0, 4);
     }
