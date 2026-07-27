@@ -17,6 +17,7 @@ export type Article = {
   views?: number;
   commentCount?: number;
   tags?: string[];
+  isLive?: boolean;
 };
 
 export type NavItem = {

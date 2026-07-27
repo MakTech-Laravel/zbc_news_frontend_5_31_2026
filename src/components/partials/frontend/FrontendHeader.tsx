@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useSearchParams } from "react-router-dom";
 import {
   BarChart3,
   ChevronDown,
@@ -132,11 +132,24 @@ export function useMainNav() {
 }
 
 const QUICK_LINK_FALLBACK = [
-  { id: 1, label: "Trending", url: "/", icon: "TrendingUp" },
-  { id: 2, label: "Most Read", url: "/", icon: "BarChart3" },
-  { id: 3, label: "Live Updates", url: "/", icon: "Radio" },
-  { id: 4, label: "Editorial Picks", url: "/", icon: "Star" },
+  { id: 1, label: "Trending", url: "/?section=trending", icon: "TrendingUp" },
+  { id: 2, label: "Most Read", url: "/?section=most_read", icon: "BarChart3" },
+  { id: 3, label: "Live Updates", url: "/?section=live_updates", icon: "Radio" },
+  { id: 4, label: "Editorial Picks", url: "/?section=editorial_picks", icon: "Star" },
 ] as const;
+
+const QUICK_LINK_SECTION_BY_ICON: Record<string, string> = {
+  TrendingUp: "trending",
+  BarChart3: "most_read",
+  Radio: "live_updates",
+  Star: "editorial_picks",
+};
+
+function resolveQuickLinkHref(icon?: string | null, url?: string | null): string {
+  const section = icon ? QUICK_LINK_SECTION_BY_ICON[icon] : undefined;
+  if (section) return `/?section=${section}`;
+  return url?.trim() || "/";
+}
 
 const quickLinkIconMap: Record<string, typeof TrendingUp> = {
   TrendingUp,
@@ -846,6 +859,8 @@ function MainNavBar({
 /** Sub-nav + datetime (Figma row 3) */
 function SubNavBar() {
   const quickLinks = useQuickLinks();
+  const [searchParams] = useSearchParams();
+  const activeSection = searchParams.get("section");
 
   return (
     <div
@@ -863,11 +878,20 @@ function SubNavBar() {
             const Icon = icon
               ? (quickLinkIconMap[icon] ?? TrendingUp)
               : TrendingUp;
+            const href = resolveQuickLinkHref(icon, url);
+            const section = icon ? QUICK_LINK_SECTION_BY_ICON[icon] : undefined;
+            const isActive = Boolean(section && activeSection === section);
             return (
               <Link
                 key={id}
-                to={url || "/"}
-                className="inline-flex shrink-0 items-center gap-1.5 font-inter text-base font-medium text-muted-foreground transition-colors hover:text-foreground"
+                to={href}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1.5 font-inter text-base font-medium transition-colors",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                aria-current={isActive ? "page" : undefined}
               >
                 <Icon className="size-3.5 shrink-0" aria-hidden />
                 {label}
@@ -1099,11 +1123,20 @@ function MobileMenu() {
                 const Icon = icon
                   ? (quickLinkIconMap[icon] ?? TrendingUp)
                   : TrendingUp;
+                const href = resolveQuickLinkHref(icon, url);
+                const section = icon ? QUICK_LINK_SECTION_BY_ICON[icon] : undefined;
+                const isActive = Boolean(
+                  section && location.search.includes(`section=${section}`),
+                );
                 return (
                   <DialogClose asChild key={id}>
                     <Link
-                      to={url || "/"}
-                      className="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      to={href}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-lg px-3 py-2 font-sans text-[13px] transition-colors hover:bg-muted hover:text-foreground",
+                        isActive ? "bg-muted text-primary" : "text-muted-foreground",
+                      )}
+                      aria-current={isActive ? "page" : undefined}
                     >
                       <Icon className="size-4" aria-hidden />
                       {label}

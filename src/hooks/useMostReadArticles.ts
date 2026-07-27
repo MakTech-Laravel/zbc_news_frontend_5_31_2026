@@ -6,7 +6,11 @@ import {
   type MostReadPeriod,
 } from "@/services/frontend/articles";
 
-export function useMostReadArticles(period: MostReadPeriod = "today") {
+export function useMostReadArticles(
+  period: MostReadPeriod = "today",
+  perPage = 5,
+  enabled = true,
+) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -15,6 +19,15 @@ export function useMostReadArticles(period: MostReadPeriod = "today") {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setArticles([]);
+      setPage(1);
+      setHasMore(false);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
 
     setLoading(true);
@@ -23,7 +36,7 @@ export function useMostReadArticles(period: MostReadPeriod = "today") {
     setHasMore(false);
     setError(null);
 
-    fetchMostReadArticles({ period, page: 1 })
+    fetchMostReadArticles({ period, page: 1, perPage })
       .then((result) => {
         if (!cancelled) {
           setArticles(result.articles);
@@ -45,15 +58,15 @@ export function useMostReadArticles(period: MostReadPeriod = "today") {
     return () => {
       cancelled = true;
     };
-  }, [period]);
+  }, [period, perPage, enabled]);
 
   const loadMore = useCallback(async () => {
-    if (loading || loadingMore || !hasMore) return;
+    if (!enabled || loading || loadingMore || !hasMore) return;
 
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const result = await fetchMostReadArticles({ period, page: nextPage });
+      const result = await fetchMostReadArticles({ period, page: nextPage, perPage });
       setArticles((prev) => {
         const seen = new Set(prev.map((article) => article.id));
         const appended = result.articles.filter((article) => !seen.has(article.id));
@@ -67,7 +80,7 @@ export function useMostReadArticles(period: MostReadPeriod = "today") {
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loading, loadingMore, page, period]);
+  }, [enabled, hasMore, loading, loadingMore, page, period, perPage]);
 
   return {
     articles,

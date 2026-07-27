@@ -333,6 +333,7 @@ export function mapArticleListItem(raw: unknown): Article | null {
     views: Number(record.views ?? record.view_count ?? 0) || undefined,
     commentCount: Number(record.comments_count ?? 0),
     tags: parseTags(record.tags),
+    isLive: Boolean(record.is_live),
   };
 }
 
