@@ -468,7 +468,7 @@ export async function fetchMostReadArticles(
   const requestPromise = request
     .get("/articles/most-read", {
       params: {
-        unique: true,
+        unique: 1,
         period,
         page,
         per_page: perPage,
