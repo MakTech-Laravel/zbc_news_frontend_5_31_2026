@@ -50,6 +50,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.ARTICLES.LIST,
   },
   {
+    label: 'Sub Menu',
+    path: '/admin/sub-menu',
+    segment: 'sub-menu',
+    permission: PERMISSIONS.ARTICLES.LIST,
+  },
+  {
     label: 'Media',
     path: '/admin/media',
     segment: 'media',

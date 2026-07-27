@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import {
   ArticleContent,
@@ -11,6 +11,10 @@ import { CategoryArticlesView } from "@/components/main-layout/content/CategoryA
 import { FeaturedSection } from "@/components/main-layout/content/FeaturedSection";
 import { HeroSection } from "@/components/main-layout/content/HeroSection";
 import { LatestStories } from "@/components/main-layout/content/LatestStories";
+import {
+  parseSubMenuSectionParam,
+  SubMenuFeed,
+} from "@/components/main-layout/content/SubMenuFeed";
 import { getTagPath } from "@/lib/tagPaths";
 import {
   fetchArticleBySlug,
@@ -23,6 +27,7 @@ export default function Home() {
   const { slug } = useParams<{ slug?: string }>();
   const [searchParams] = useSearchParams();
   const legacyTag = searchParams.get("tag");
+  const sectionFilter = parseSubMenuSectionParam(searchParams.get("section"));
   const [view, setView] = useState<SlugView>(slug ? "loading" : "category");
   const [article, setArticle] = useState<ArticleDetail | null>(null);
 
@@ -62,6 +67,14 @@ export default function Home() {
   }
 
   if (!slug) {
+    if (sectionFilter) {
+      return (
+        <article className="flex flex-col gap-5 sm:gap-7 lg:gap-8">
+          <SubMenuFeed section={sectionFilter} />
+        </article>
+      );
+    }
+
     return (
       <article className="flex flex-col gap-5 sm:gap-7 lg:gap-8">
         <HeroSection />

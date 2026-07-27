@@ -13,6 +13,7 @@ const AdminArticlesEdit = lazyWithRetry(() => import("@/pages/admin/AdminArticle
 const AdminArticlesTrash = lazyWithRetry(() => import("@/pages/admin/AdminArticlesTrash"));
 const AdminArticleActivities = lazyWithRetry(() => import("@/pages/admin/AdminArticleActivities"));
 const AdminBreakingNews = lazyWithRetry(() => import("@/pages/admin/AdminBreakingNews"));
+const AdminSubMenu = lazyWithRetry(() => import("@/pages/admin/AdminSubMenu"));
 const AdminUser = lazyWithRetry(() => import("@/pages/admin/AdminUser"));
 const AdminUserArticleActivities = lazyWithRetry(
   () => import("@/pages/admin/AdminUserArticleActivities"),
@@ -50,6 +51,7 @@ function AdminRoutes() {
           <Route path="articles/:articleSlug/activities" element={suspensePage(AdminArticleActivities)} />
           <Route path="articles/create" element={suspensePage(AdminArticlesCreate)} />
           <Route path="breaking-news" element={suspensePage(AdminBreakingNews)} />
+          <Route path="sub-menu" element={suspensePage(AdminSubMenu)} />
           <Route path="categories" element={suspensePage(AdminCategories)} />
           <Route path="menus" element={suspensePage(AdminMenus)} />
           <Route path="media" element={suspensePage(AdminMedia)} />
