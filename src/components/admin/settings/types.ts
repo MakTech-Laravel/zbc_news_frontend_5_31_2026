@@ -11,6 +11,7 @@ export type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
 export type AdminSettingsForm = {
   siteName: string;
   tagline: string;
+  headerLayout: "compact" | "stacked";
   timezone: string;
   language: string;
   defaultCategory: string;
@@ -43,6 +44,7 @@ export type AdminSettingsForm = {
 export const DEFAULT_ADMIN_SETTINGS: AdminSettingsForm = {
   siteName: "ZBC News",
   tagline: "Breaking news and analysis from around the world",
+  headerLayout: "stacked",
   timezone: "America/New_York",
   language: "en",
   defaultCategory: "",
@@ -83,6 +85,17 @@ export const TIMEZONE_OPTIONS = [
   { value: "Asia/Kolkata", label: "India Standard Time" },
   { value: "Asia/Tokyo", label: "Tokyo" },
   { value: "UTC", label: "UTC" },
+] as const;
+
+export const HEADER_LAYOUT_OPTIONS = [
+  {
+    value: "compact",
+    label: "Compact — logo, search, menu, and account on one row",
+  },
+  {
+    value: "stacked",
+    label: "Stacked — wide search with menu directly underneath",
+  },
 ] as const;
 
 export const LANGUAGE_OPTIONS = [

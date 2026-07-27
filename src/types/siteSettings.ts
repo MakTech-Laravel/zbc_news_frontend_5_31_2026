@@ -4,6 +4,7 @@ export type SiteSettingsApi = {
   site_tag: string | null;
   site_logo: string | null;
   favicon: string | null;
+  header_layout?: "compact" | "stacked" | null;
   timezone: string | null;
   language: string | null;
   meta_title: string | null;
@@ -44,6 +45,7 @@ export type PublicSiteSettings = {
   siteTag: string;
   siteLogo: string | null;
   siteFavicon: string | null;
+  headerLayout: "compact" | "stacked";
   timezone: string;
   language: string;
   defaultCategoryId: number | null;
@@ -114,6 +116,10 @@ export function mapSiteSettingsToForm(raw: SiteSettingsApi) {
   return {
     siteName: raw.site_name ?? "",
     tagline: raw.site_tag ?? "",
+    headerLayout:
+      raw.header_layout === "compact" || raw.header_layout === "stacked"
+        ? raw.header_layout
+        : "stacked",
     timezone: raw.timezone ?? "America/New_York",
     language: raw.language ?? "en",
     defaultCategory: raw.default_category_id ? String(raw.default_category_id) : "",
@@ -150,6 +156,10 @@ export function mapPublicSiteSettings(raw: SiteSettingsApi): PublicSiteSettings 
     siteTag: raw.site_tag ?? "",
     siteLogo: raw.site_logo,
     siteFavicon: raw.favicon ?? null,
+    headerLayout:
+      raw.header_layout === "compact" || raw.header_layout === "stacked"
+        ? raw.header_layout
+        : "stacked",
     timezone: raw.timezone ?? "America/New_York",
     language: raw.language ?? "en",
     defaultCategoryId: raw.default_category_id,

@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
   siteTag: "Breaking news and analysis from around the world",
   siteLogo: null,
   siteFavicon: null,
+  headerLayout: "stacked",
   timezone: "America/New_York",
   language: "en",
   defaultCategoryId: null,

@@ -39,6 +39,7 @@ export async function updateAdminSiteSettings(
 
   formData.append("site_name", form.siteName);
   formData.append("site_tag", form.tagline);
+  formData.append("header_layout", form.headerLayout);
   formData.append("timezone", form.timezone);
   formData.append("language", form.language);
 
