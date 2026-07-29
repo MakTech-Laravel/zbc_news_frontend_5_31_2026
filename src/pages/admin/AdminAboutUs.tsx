@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { previewAboutValueIcon } from "@/components/about-us/aboutValueIcons";
+import { CareersPerkIconField } from "@/components/admin/careers/CareersPerkIconField";
 import { NewsletterHtmlEditor } from "@/components/admin/newsletters/NewsletterHtmlEditor";
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
 import { SettingsSaveBar } from "@/components/admin/settings/SettingsSaveBar";
@@ -271,7 +272,7 @@ export default function AdminAboutUs() {
               onClick={() =>
                 setContent((c) => ({
                   ...c,
-                  leaders: [...c.leaders, { name: "", role: "", bio: "", initials: "" }],
+                  leaders: [...c.leaders, { name: "", role: "", bio: "", initials: "", photo: "" }],
                 }))
               }
             >
@@ -292,8 +293,24 @@ export default function AdminAboutUs() {
           {content.leaders.map((leader, index) => (
             <div
               key={index}
-              className="grid gap-3 rounded-md border border-admin-input-border p-4 md:grid-cols-2"
+              className="grid gap-3 rounded-md border border-admin-input-border p-4 md:grid-cols-[auto_1fr_1fr]"
             >
+              <div className="space-y-1.5">
+                <span className="block text-xs font-medium text-admin-label">Photo</span>
+                <CareersPerkIconField
+                  value={leader.photo || null}
+                  disabled={!canUpdate}
+                  alt={`${leader.name || "Leader"} photo`}
+                  onChange={(url) =>
+                    setContent((c) => {
+                      const leaders = [...c.leaders];
+                      leaders[index] = { ...leaders[index], photo: url || "" };
+                      return { ...c, leaders };
+                    })
+                  }
+                />
+              </div>
+
               <Field
                 label="Name"
                 value={leader.name}
@@ -351,7 +368,7 @@ export default function AdminAboutUs() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-9 gap-1 md:col-span-2 md:w-fit"
+                  className="h-9 gap-1 md:col-span-3 md:w-fit"
                   onClick={() =>
                     setContent((c) => ({
                       ...c,
