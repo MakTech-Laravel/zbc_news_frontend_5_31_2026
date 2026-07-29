@@ -2,7 +2,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import { previewAboutValueIcon } from "@/components/about-us/aboutValueIcons";
+import { AboutValueIconField } from "@/components/about-us/AboutValueIconField";
 import { CareersPerkIconField } from "@/components/admin/careers/CareersPerkIconField";
 import { NewsletterHtmlEditor } from "@/components/admin/newsletters/NewsletterHtmlEditor";
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
@@ -37,7 +37,6 @@ export default function AdminAboutUs() {
   const [content, setContent] = useState<AboutUsContent>(emptyContent());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editingIconIndex, setEditingIconIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!canShow) {
@@ -81,7 +80,6 @@ export default function AdminAboutUs() {
           journey,
         }),
       );
-      setEditingIconIndex(null);
       toast.success("About Us saved.");
     } catch {
       toast.error("Failed to save About Us.");
@@ -166,97 +164,73 @@ export default function AdminAboutUs() {
         </div>
 
         <div className="space-y-4">
-          {content.values.map((item, index) => {
-            const Icon = previewAboutValueIcon(item.icon);
-            const editingIcon = editingIconIndex === index;
+          {content.values.map((item, index) => (
+            <div
+              key={index}
+              className="grid gap-3 rounded-md border border-admin-input-border p-4 md:grid-cols-[auto_1fr_auto]"
+            >
+              <AboutValueIconField
+                value={item.icon}
+                disabled={!canUpdate}
+                onChange={(icon) =>
+                  setContent((c) => {
+                    const values = [...c.values];
+                    values[index] = { ...values[index], icon };
+                    return { ...c, values };
+                  })
+                }
+              />
 
-            return (
-              <div
-                key={index}
-                className="grid gap-3 rounded-md border border-admin-input-border p-4 md:grid-cols-[auto_1fr_auto]"
-              >
-                <div className="space-y-2">
-                  <span className="block text-xs font-medium text-admin-label">Icon</span>
-                  <button
-                    type="button"
+              <div className="space-y-3">
+                <Field
+                  label="Title"
+                  value={item.title}
+                  disabled={!canUpdate}
+                  onChange={(value) =>
+                    setContent((c) => {
+                      const values = [...c.values];
+                      values[index] = { ...values[index], title: value };
+                      return { ...c, values };
+                    })
+                  }
+                />
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-medium text-admin-label">Description</span>
+                  <textarea
+                    value={item.description}
                     disabled={!canUpdate}
-                    onClick={() => setEditingIconIndex(editingIcon ? null : index)}
-                    className="inline-flex size-12 items-center justify-center rounded-full bg-[#dbeafe] text-zbc-blue disabled:opacity-60"
-                    title="Click to edit Lucide icon name"
-                  >
-                    <Icon className="size-6" strokeWidth={2.2} />
-                  </button>
-                  {editingIcon && canUpdate ? (
-                    <Input
-                      value={item.icon}
-                      placeholder="ShieldCheck"
-                      onChange={(e) =>
-                        setContent((c) => {
-                          const values = [...c.values];
-                          values[index] = { ...values[index], icon: e.target.value };
-                          return { ...c, values };
-                        })
-                      }
-                      onBlur={() => setEditingIconIndex(null)}
-                      className="h-9 w-36"
-                      autoFocus
-                    />
-                  ) : (
-                    <p className="text-xs text-admin-label">{item.icon || "ShieldCheck"}</p>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <Field
-                    label="Title"
-                    value={item.title}
-                    disabled={!canUpdate}
-                    onChange={(value) =>
+                    rows={3}
+                    onChange={(e) =>
                       setContent((c) => {
                         const values = [...c.values];
-                        values[index] = { ...values[index], title: value };
+                        values[index] = { ...values[index], description: e.target.value };
                         return { ...c, values };
                       })
                     }
+                    className="w-full rounded-md border border-admin-input-border bg-transparent px-3 py-2 text-sm text-admin-heading outline-none focus:border-zbc-blue"
                   />
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-medium text-admin-label">Description</span>
-                    <textarea
-                      value={item.description}
-                      disabled={!canUpdate}
-                      rows={3}
-                      onChange={(e) =>
-                        setContent((c) => {
-                          const values = [...c.values];
-                          values[index] = { ...values[index], description: e.target.value };
-                          return { ...c, values };
-                        })
-                      }
-                      className="w-full rounded-md border border-admin-input-border bg-transparent px-3 py-2 text-sm text-admin-heading outline-none focus:border-zbc-blue"
-                    />
-                  </label>
-                </div>
-
-                {canUpdate ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 gap-1 self-start"
-                    onClick={() =>
-                      setContent((c) => ({
-                        ...c,
-                        values: c.values.filter((_, i) => i !== index),
-                      }))
-                    }
-                  >
-                    <Trash2 className="size-3.5" />
-                    Remove
-                  </Button>
-                ) : null}
+                </label>
               </div>
-            );
-          })}
+
+              {canUpdate ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1 self-start"
+                  onClick={() =>
+                    setContent((c) => ({
+                      ...c,
+                      values: c.values.filter((_, i) => i !== index),
+                    }))
+                  }
+                >
+                  <Trash2 className="size-3.5" />
+                  Remove
+                </Button>
+              ) : null}
+            </div>
+          ))}
         </div>
       </section>
 
