@@ -8,6 +8,7 @@ import { SectionEyebrow } from "@/components/legal/SectionEyebrow";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { AccessibilityStatementContent } from "@/services/admin/accessibilityStatement";
+import { submitAccessibilityReport } from "@/services/frontend/accessibilityReports";
 import { fetchPublicAccessibilityStatement } from "@/services/frontend/accessibilityStatement";
 
 export function AccessibilityStatementContent() {
@@ -43,11 +44,17 @@ export function AccessibilityStatementContent() {
 
     setSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await submitAccessibilityReport({
+        issue: issue.trim(),
+        page_url: pageUrl.trim() || undefined,
+        email: email.trim() || undefined,
+      });
       toast.success("Thank you. We'll investigate your report within 5 business days.");
       setIssue("");
       setPageUrl("");
       setEmail("");
+    } catch {
+      toast.error("Unable to submit your report right now. Please try again later.");
     } finally {
       setSubmitting(false);
     }
