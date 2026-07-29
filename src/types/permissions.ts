@@ -125,6 +125,10 @@ export const PERMISSIONS = {
     SHOW: 'terms-of-service.show',
     UPDATE: 'terms-of-service.update',
   },
+  COOKIE_POLICY: {
+    SHOW: 'cookie-policy.show',
+    UPDATE: 'cookie-policy.update',
+  },
   CAREER_JOBS: {
     LIST: 'career-jobs.list',
     CREATE: 'career-jobs.create',
@@ -262,6 +266,8 @@ export const PERMISSION_GROUP_BY_KEY: Record<PermissionKey, string> = {
   [PERMISSIONS.PRIVACY_POLICY.UPDATE]: 'Privacy Policy',
   [PERMISSIONS.TERMS_OF_SERVICE.SHOW]: 'Terms of Service',
   [PERMISSIONS.TERMS_OF_SERVICE.UPDATE]: 'Terms of Service',
+  [PERMISSIONS.COOKIE_POLICY.SHOW]: 'Cookie Policy',
+  [PERMISSIONS.COOKIE_POLICY.UPDATE]: 'Cookie Policy',
   [PERMISSIONS.CAREER_JOBS.LIST]: 'Career Jobs',
   [PERMISSIONS.CAREER_JOBS.CREATE]: 'Career Jobs',
   [PERMISSIONS.CAREER_JOBS.SHOW]: 'Career Jobs',

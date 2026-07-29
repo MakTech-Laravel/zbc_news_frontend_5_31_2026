@@ -1,11 +1,15 @@
 import * as React from "react";
 
+import { useCookieConsent } from "@/context/CookieConsentProvider";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
 
 export function AnalyticsScripts() {
   const { settings } = useSiteSettings();
+  const { ready, allowAnalytics, allowAdvertising } = useCookieConsent();
 
   React.useEffect(() => {
+    if (!ready || !allowAnalytics) return;
+
     const gaId = settings.googleAnalyticsId.trim();
     if (!gaId) return;
 
@@ -26,9 +30,11 @@ export function AnalyticsScripts() {
       gtag('config', '${gaId.replace(/'/g, "\\'")}');
     `;
     document.head.appendChild(inline);
-  }, [settings.googleAnalyticsId]);
+  }, [ready, allowAnalytics, settings.googleAnalyticsId]);
 
   React.useEffect(() => {
+    if (!ready || !allowAdvertising) return;
+
     const pixelId = settings.facebookPixelId.trim();
     if (!pixelId) return;
 
@@ -50,7 +56,7 @@ export function AnalyticsScripts() {
       fbq('track', 'PageView');
     `;
     document.head.appendChild(inline);
-  }, [settings.facebookPixelId]);
+  }, [ready, allowAdvertising, settings.facebookPixelId]);
 
   return null;
 }

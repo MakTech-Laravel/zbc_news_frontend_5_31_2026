@@ -1,11 +1,12 @@
 import { Outlet } from "react-router-dom";
 
-import { useSiteSettings } from "@/context/SiteSettingsProvider";
+import { CookieConsentBanner } from "@/components/cookie-policy/CookieConsentBanner";
 import { FrontendFooter } from "@/components/partials/frontend/FrontendFooter";
 import {
   FrontendHeader,
   type FrontendHeaderVariant,
 } from "@/components/partials/frontend/FrontendHeader";
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
 
 function resolveHeaderVariant(
   value: string | undefined,
@@ -22,9 +23,7 @@ export function FrontendLayout({
   headerVariant?: FrontendHeaderVariant;
 }) {
   const { settings } = useSiteSettings();
-  const variant = resolveHeaderVariant(
-    headerVariant ?? settings.headerLayout,
-  );
+  const variant = resolveHeaderVariant(headerVariant ?? settings.headerLayout);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
@@ -33,6 +32,7 @@ export function FrontendLayout({
         <Outlet />
       </main>
       <FrontendFooter />
+      <CookieConsentBanner />
     </div>
   );
 }
