@@ -111,6 +111,18 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.CAREER_JOBS.LIST,
   },
   {
+    label: 'Privacy Policy',
+    path: '/admin/privacy-policy',
+    segment: 'privacy-policy',
+    permission: PERMISSIONS.PRIVACY_POLICY.SHOW,
+  },
+  {
+    label: 'Terms of Service',
+    path: '/admin/terms-of-service',
+    segment: 'terms-of-service',
+    permission: PERMISSIONS.TERMS_OF_SERVICE.SHOW,
+  },
+  {
     label: 'My Profile',
     path: '/admin/profile',
     segment: 'profile',
