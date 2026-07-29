@@ -1,25 +1,30 @@
 import { Star } from "lucide-react";
 
-import {
-  CAREERS_TESTIMONIALS_SECTION,
-  TEAM_TESTIMONIALS,
-} from "@/components/careers/careersData";
+import type { TeamTestimonial } from "@/components/careers/careersData";
 
-export function CareersTestimonials() {
+type CareersTestimonialsProps = {
+  section: { eyebrow: string; heading: string };
+  testimonials: TeamTestimonial[];
+};
+
+export function CareersTestimonials({
+  section,
+  testimonials,
+}: CareersTestimonialsProps) {
   return (
     <section className="bg-zbc-gray-50 py-20 md:py-24">
       <div className="mx-auto container px-4">
         <div className="text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zbc-red-accent">
-            {CAREERS_TESTIMONIALS_SECTION.eyebrow}
+            {section.eyebrow}
           </p>
           <h2 className="mt-3 text-3xl font-bold leading-tight text-zbc-gray-1000 md:text-4xl">
-            {CAREERS_TESTIMONIALS_SECTION.heading}
+            {section.heading}
           </h2>
         </div>
 
         <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {TEAM_TESTIMONIALS.map((testimonial) => (
+          {testimonials.map((testimonial) => (
             <article
               key={testimonial.name}
               className="flex flex-col rounded-lg border border-zbc-gray-200 bg-white p-8"

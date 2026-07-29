@@ -30,6 +30,11 @@ const AdminContactMessages = lazyWithRetry(() => import("@/pages/admin/AdminCont
 const AdminContactMessageDetail = lazyWithRetry(
   () => import("@/pages/admin/AdminContactMessageDetail"),
 );
+const AdminCareers = lazyWithRetry(() => import("@/pages/admin/AdminCareers"));
+const AdminCareerJobForm = lazyWithRetry(() => import("@/pages/admin/AdminCareerJobForm"));
+const AdminCareerApplicationDetail = lazyWithRetry(
+  () => import("@/pages/admin/AdminCareerApplicationDetail"),
+);
 const AdminSettings = lazyWithRetry(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazyWithRetry(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminProfile = lazyWithRetry(() => import("@/pages/admin/AdminProfile"));
@@ -67,6 +72,13 @@ function AdminRoutes() {
           <Route path="comments" element={suspensePage(AdminComments)} />
           <Route path="contact-messages" element={suspensePage(AdminContactMessages)} />
           <Route path="contact-messages/:id" element={suspensePage(AdminContactMessageDetail)} />
+          <Route path="careers" element={suspensePage(AdminCareers)} />
+          <Route path="careers/jobs/create" element={suspensePage(AdminCareerJobForm)} />
+          <Route path="careers/jobs/:id/edit" element={suspensePage(AdminCareerJobForm)} />
+          <Route
+            path="careers/applications/:id"
+            element={suspensePage(AdminCareerApplicationDetail)}
+          />
           <Route path="settings" element={suspensePage(AdminSettings)} />
           <Route path="settings/seo/:pageId" element={suspensePage(AdminSettingsSeoEdit)} />
           <Route path="profile" element={suspensePage(AdminProfile)} />

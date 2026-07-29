@@ -10,6 +10,7 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
+  Briefcase,
   PanelRight,
   Settings,
   ShieldCheck,
@@ -43,6 +44,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/announcements": Bell,
   "/admin/comments": MessageSquare,
   "/admin/contact-messages": MessageSquare,
+  "/admin/careers": Briefcase,
   "/admin/profile": UserCircle,
   "/admin/settings": Settings,
 };
