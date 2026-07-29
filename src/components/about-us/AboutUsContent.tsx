@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { resolveAboutValueIcon } from "@/components/about-us/aboutValueIcons";
 import type { AboutUsContent as AboutUsApiContent } from "@/services/admin/aboutUs";
 import { fetchPublicAboutUs } from "@/services/frontend/aboutUs";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 type ValueItem = {
@@ -16,6 +17,7 @@ type Leader = {
   role: string;
   bio: string;
   initials: string;
+  photo?: string | null;
 };
 
 type JourneyItem = {
@@ -38,12 +40,18 @@ function ValueCard({ title, description, icon }: ValueItem) {
   );
 }
 
-function LeaderCard({ name, role, bio, initials }: Leader) {
+function LeaderCard({ name, role, bio, initials, photo }: Leader) {
+  const photoUrl = photo ? resolveMediaUrl(photo) : "";
+
   return (
     <article className="rounded-lg border border-zbc-gray-200 bg-white p-6">
       <div className="flex items-start gap-4">
-        <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-zbc-blue to-[#1447e6]">
-          <span className="text-lg font-bold text-white">{initials}</span>
+        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-zbc-blue to-[#1447e6]">
+          {photoUrl ? (
+            <img src={photoUrl} alt={name} className="size-full object-cover" />
+          ) : (
+            <span className="text-lg font-bold text-white">{initials}</span>
+          )}
         </div>
         <div className="min-w-0">
           <h3 className="text-lg font-bold leading-7 text-zbc-gray-1000">{name}</h3>

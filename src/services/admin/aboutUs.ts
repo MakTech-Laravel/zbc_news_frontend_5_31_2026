@@ -11,6 +11,7 @@ export type AboutUsLeader = {
   role: string
   bio: string
   initials: string
+  photo?: string | null
 }
 
 export type AboutUsJourneyItem = {
