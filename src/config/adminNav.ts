@@ -129,6 +129,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.ABOUT_US.SHOW,
   },
   {
+    label: 'Cookie Policy',
+    path: '/admin/cookie-policy',
+    segment: 'cookie-policy',
+    permission: PERMISSIONS.COOKIE_POLICY.SHOW,
+  },
+  {
     label: 'My Profile',
     path: '/admin/profile',
     segment: 'profile',

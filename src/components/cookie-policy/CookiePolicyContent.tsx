@@ -1,18 +1,21 @@
-import { useState } from "react";
-import { ChevronDown, Mail } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BarChart3, ChevronDown, Mail, Settings, Shield, Target } from "lucide-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import type { LucideIcon } from "lucide-react";
 
 import { LegalPageHero } from "@/components/legal/LegalPageHero";
+import { useCookieConsent } from "@/context/CookieConsentProvider";
 import { cn } from "@/lib/utils";
+import type { CookieCategoryId, CookiePolicyContent } from "@/services/admin/cookiePolicy";
+import { fetchPublicCookiePolicy } from "@/services/frontend/cookiePolicy";
 
-import {
-  BROWSER_CONTROLS,
-  COOKIE_CATEGORIES,
-  COOKIE_FAQ,
-  COOKIE_PRIVACY_EMAIL,
-  type CookieCategoryId,
-} from "./cookiePolicyData";
+const CATEGORY_ICONS: Record<CookieCategoryId, LucideIcon> = {
+  essential: Shield,
+  analytics: BarChart3,
+  preferences: Settings,
+  advertising: Target,
+};
 
 function CookieToggle({
   enabled,
@@ -49,64 +52,99 @@ function CookieToggle({
   );
 }
 
+function emptyDraft(): Record<CookieCategoryId, boolean> {
+  return {
+    essential: true,
+    analytics: false,
+    preferences: false,
+    advertising: false,
+  };
+}
+
 export function CookiePolicyContent() {
-  const [preferences, setPreferences] = useState<Record<CookieCategoryId, boolean>>(() =>
-    Object.fromEntries(COOKIE_CATEGORIES.map((cat) => [cat.id, cat.defaultEnabled])) as Record<
-      CookieCategoryId,
-      boolean
-    >,
-  );
+  const { preferences, savePreferences, acceptAll, rejectOptional, ready } = useCookieConsent();
+  const [content, setContent] = useState<CookiePolicyContent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Record<CookieCategoryId, boolean>>(emptyDraft);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  function savePreferences(next: Record<CookieCategoryId, boolean>) {
-    setPreferences(next);
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        setContent(await fetchPublicCookiePolicy());
+      } catch {
+        setError("Unable to load the cookie policy right now.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    setDraft({ ...preferences, essential: true });
+  }, [ready, preferences]);
+
+  const categories = useMemo(() => {
+    if (!content?.categories?.length) return [];
+    return content.categories.map((category) => ({
+      ...category,
+      icon: CATEGORY_ICONS[category.id] ?? Shield,
+    }));
+  }, [content]);
+
+  function handleSave() {
+    savePreferences(draft);
     toast.success("Cookie preferences saved.");
   }
 
-  function handleSave() {
-    savePreferences(preferences);
-  }
-
   function handleRejectAll() {
-    const next = {
-      essential: true,
-      analytics: false,
-      preferences: false,
-      advertising: false,
-    };
-    savePreferences(next);
+    rejectOptional();
+    toast.success("Optional cookies disabled.");
   }
 
   function handleAcceptAll() {
-    const next = {
-      essential: true,
-      analytics: true,
-      preferences: true,
-      advertising: true,
-    };
-    savePreferences(next);
+    acceptAll();
+    toast.success("All cookies accepted.");
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white px-6 py-20 text-center text-sm text-admin-label">
+        Loading cookie policy…
+      </div>
+    );
+  }
+
+  if (error || !content) {
+    return (
+      <div className="bg-white px-6 py-20 text-center text-sm text-admin-label">
+        {error ?? "Cookie policy is unavailable."}
+      </div>
+    );
   }
 
   return (
     <div className="bg-white">
       <LegalPageHero
         title="Cookie Policy"
-        meta="Last updated: June 1, 2026 · Version 2.3"
-        description="ZBC News uses cookies to keep you logged in, remember your preferences, understand how our journalism is read, and — with your consent — to serve relevant advertising. This page explains every cookie we use and gives you full control."
+        meta={content.hero_meta}
+        description={content.hero_description}
       />
 
       <section className="py-12 md:py-16">
         <div className="mx-auto container max-w-3xl px-4">
           <h2 className="text-3xl font-black text-zbc-hero-navy">Manage Cookie Preferences</h2>
-          <p className="mt-2 text-sm text-admin-label">
-            Toggle optional cookie categories. Essential cookies cannot be disabled — they&apos;re required for ZBC News
-            to work.
-          </p>
+          <p className="mt-2 text-sm text-admin-label">{content.preferences_intro}</p>
 
           <div className="mt-6 space-y-3">
-            {COOKIE_CATEGORIES.map((category) => {
+            {categories.map((category) => {
               const Icon = category.icon;
-              const enabled = preferences[category.id];
+              const enabled = draft[category.id];
+              const alwaysOn = category.always_on || category.id === "essential";
 
               return (
                 <div
@@ -119,25 +157,24 @@ export function CookiePolicyContent() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-black text-zbc-hero-navy">{category.title}</h3>
-                      {category.alwaysOn ? (
+                      {alwaysOn ? (
                         <span className="bg-zbc-blue-light px-2 py-0.5 text-xs font-bold text-zbc-blue">
                           Always On
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-sm leading-[1.625rem] text-admin-label">{category.description}</p>
-                    <button type="button" className="mt-1 text-xs font-bold text-zbc-blue">
-                      Details
-                    </button>
+                    <p className="mt-1 text-sm leading-[1.625rem] text-admin-label">
+                      {category.description}
+                    </p>
                   </div>
                   <CookieToggle
                     label={`${category.title} cookies`}
-                    enabled={enabled}
-                    disabled={category.alwaysOn}
+                    enabled={alwaysOn ? true : enabled}
+                    disabled={alwaysOn}
                     onChange={
-                      category.alwaysOn
+                      alwaysOn
                         ? undefined
-                        : (value) => setPreferences((prev) => ({ ...prev, [category.id]: value }))
+                        : (value) => setDraft((prev) => ({ ...prev, [category.id]: value }))
                     }
                   />
                 </div>
@@ -174,12 +211,10 @@ export function CookiePolicyContent() {
       <section className="border-t border-zbc-gray-200 py-12 md:py-16">
         <div className="mx-auto container max-w-3xl px-4">
           <h2 className="text-3xl font-black text-zbc-hero-navy">Browser-Level Cookie Controls</h2>
-          <p className="mt-4 text-sm text-admin-label">
-            You can also manage cookies directly in your browser settings:
-          </p>
+          <p className="mt-4 text-sm text-admin-label">{content.browser_intro}</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {BROWSER_CONTROLS.map((item) => (
-              <div key={item.browser} className="rounded-lg border border-zbc-gray-200 bg-zbc-gray-50 p-4">
+            {content.browser_controls.map((item) => (
+              <div key={`${item.browser}-${item.path}`} className="rounded-lg border border-zbc-gray-200 bg-zbc-gray-50 p-4">
                 <p className="text-sm font-bold text-zbc-hero-navy">{item.browser}</p>
                 <p className="mt-0.5 text-xs leading-4 text-zbc-nav-muted">{item.path}</p>
               </div>
@@ -192,7 +227,7 @@ export function CookiePolicyContent() {
         <div className="mx-auto container max-w-3xl px-4">
           <h2 className="text-3xl font-black text-zbc-hero-navy">Cookie FAQ</h2>
           <div className="mt-6 divide-y divide-zbc-gray-200 border border-zbc-gray-200">
-            {COOKIE_FAQ.map((item, index) => {
+            {content.faqs.map((item, index) => {
               const isOpen = openFaq === index;
               return (
                 <div key={item.question}>
@@ -204,12 +239,17 @@ export function CookiePolicyContent() {
                   >
                     <span className="text-sm font-bold text-zbc-hero-navy">{item.question}</span>
                     <ChevronDown
-                      className={cn("size-4 shrink-0 text-zbc-hero-navy transition-transform", isOpen && "rotate-180")}
+                      className={cn(
+                        "size-4 shrink-0 text-zbc-hero-navy transition-transform",
+                        isOpen && "rotate-180",
+                      )}
                       aria-hidden
                     />
                   </button>
                   {isOpen ? (
-                    <p className="px-5 pb-4 text-sm leading-[1.625rem] text-admin-label">{item.answer}</p>
+                    <p className="px-5 pb-4 text-sm leading-[1.625rem] text-admin-label">
+                      {item.answer}
+                    </p>
                   ) : null}
                 </div>
               );
@@ -225,18 +265,18 @@ export function CookiePolicyContent() {
               <Mail className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-black text-white">Questions About Cookies?</h2>
+              <h2 className="text-2xl font-black text-white">{content.contact_heading}</h2>
               <p className="mt-2 text-sm leading-[1.625rem] text-zbc-blue-muted">
-                Our privacy team can help with any questions about how ZBC News uses tracking technologies.
+                {content.contact_description}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <a
-                href={`mailto:${COOKIE_PRIVACY_EMAIL}`}
+                href={`mailto:${content.contact_email}`}
                 className="inline-flex items-center gap-2 bg-white px-5 py-2.5 text-sm font-bold text-zbc-hero-navy"
               >
                 <Mail className="size-4" aria-hidden />
-                {COOKIE_PRIVACY_EMAIL}
+                {content.contact_email}
               </a>
               <Link
                 to="/privacy"

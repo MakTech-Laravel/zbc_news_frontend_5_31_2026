@@ -1,6 +1,8 @@
 import * as React from "react";
 import {
   Bell,
+  Briefcase,
+  ChevronDown,
   CreditCard,
   FileText,
   FolderTree,
@@ -10,7 +12,6 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
-  Briefcase,
   PanelRight,
   Settings,
   ShieldCheck,
@@ -85,6 +86,8 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
   const { user, logout } = useAuth();
   const { can, isSuperAdmin } = usePermission();
   const [loggingOut, setLoggingOut] = React.useState(false);
+  const [canScrollDown, setCanScrollDown] = React.useState(false);
+  const navRef = React.useRef<HTMLElement | null>(null);
   const displayName = user?.name ?? user?.email ?? "Admin";
   const initials = getInitials(displayName);
   const avatarUrl = resolveAvatarUrl(user);
@@ -95,6 +98,38 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
   const visibleNavItems = ADMIN_NAV_ITEMS.filter((item) =>
     isAdminNavItemVisible(item, { isSuperAdmin, can }),
   );
+
+  const updateScrollHint = React.useCallback(() => {
+    const el = navRef.current;
+    if (!el) {
+      setCanScrollDown(false);
+      return;
+    }
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setCanScrollDown(remaining > 4);
+  }, []);
+
+  React.useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+
+    updateScrollHint();
+    el.addEventListener("scroll", updateScrollHint, { passive: true });
+
+    const resizeObserver = new ResizeObserver(() => updateScrollHint());
+    resizeObserver.observe(el);
+
+    return () => {
+      el.removeEventListener("scroll", updateScrollHint);
+      resizeObserver.disconnect();
+    };
+  }, [updateScrollHint, visibleNavItems.length, collapsed]);
+
+  function scrollNavDown() {
+    const el = navRef.current;
+    if (!el) return;
+    el.scrollBy({ top: 96, behavior: "smooth" });
+  }
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -111,42 +146,60 @@ export function AdminSidebar({ collapsed = false, onNavigate }: AdminSidebarProp
         <ZbcAdminLogo collapsed={collapsed} />
       </div>
 
-      <nav
-        className="flex shrink-0 flex-col gap-0 pt-6"
-        aria-label="Admin navigation"
-      >
-        {visibleNavItems.map((item) => {
-          const Icon = NAV_ICONS[item.path] ?? LayoutDashboard;
-          const end = item.end ?? true;
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <nav
+          ref={navRef}
+          className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto overscroll-contain scrollbar-hide pt-6"
+          aria-label="Admin navigation"
+        >
+          {visibleNavItems.map((item) => {
+            const Icon = NAV_ICONS[item.path] ?? LayoutDashboard;
+            const end = item.end ?? true;
 
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={end}
-              onClick={onNavigate}
-              title={collapsed ? item.label : undefined}
-              className={({ isActive }) =>
-                cn(
-                  "flex h-12 items-center transition-colors",
-                  collapsed ? "justify-center px-0" : "gap-3 px-6 py-3",
-                  isActive
-                    ? cn(
-                      "bg-zbc-blue text-white",
-                      !collapsed && "border-l-4 border-admin-nav-active-border pl-7 pr-6",
-                    )
-                    : "text-admin-nav-muted hover:text-white",
-                )
-              }
-            >
-              <Icon className="size-5 shrink-0" aria-hidden />
-              {!collapsed && (
-                <span className="text-base truncate">{item.label}</span>
-              )}
-            </NavLink>
-          );
-        })}
-      </nav>
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={end}
+                onClick={onNavigate}
+                title={collapsed ? item.label : undefined}
+                className={({ isActive }) =>
+                  cn(
+                    "flex h-12 items-center transition-colors",
+                    collapsed ? "justify-center px-0" : "gap-3 px-6 py-3",
+                    isActive
+                      ? cn(
+                        "bg-zbc-blue text-white",
+                        !collapsed && "border-l-4 border-admin-nav-active-border pl-7 pr-6",
+                      )
+                      : "text-admin-nav-muted hover:text-white",
+                  )
+                }
+              >
+                <Icon className="size-5 shrink-0" aria-hidden />
+                {!collapsed && (
+                  <span className="text-base truncate">{item.label}</span>
+                )}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {canScrollDown ? (
+          <button
+            type="button"
+            onClick={scrollNavDown}
+            aria-label="Scroll navigation down"
+            title="More items"
+            className={cn(
+              "absolute bottom-1 left-1/2 z-10 flex size-8 -translate-x-1/2 items-center justify-center",
+              "rounded-full bg-zbc-blue/90 text-white shadow-md transition hover:bg-zbc-blue",
+            )}
+          >
+            <ChevronDown className="size-4" aria-hidden />
+          </button>
+        ) : null}
+      </div>
 
       <div
         className={cn(

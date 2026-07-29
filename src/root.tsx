@@ -15,6 +15,7 @@ import { AppBootstrapEffects } from "@/AppBootstrapEffects";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { ErrorBoundary as AppErrorBoundary } from "@/components/error/ErrorBoundary";
 import { AuthenticatedNotificationsProvider } from "@/contexts/AuthenticatedNotificationsProvider";
+import { CookieConsentProvider } from "@/context/CookieConsentProvider";
 import { SiteSettingsProvider } from "@/context/SiteSettingsProvider";
 import { queryClient } from "@/lib/queryClient";
 
@@ -32,20 +33,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="UTF-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />  
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <Meta />
         <Links />
-
-        {/* Google tag (gtag.js) */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-K8J2BJMV83" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-K8J2BJMV83');`,
-          }}
-        />
       </head>
       <body>
         {children}
@@ -60,15 +50,17 @@ export default function Root() {
   return (
     <QueryClientProvider client={queryClient}>
       <SiteSettingsProvider>
-        <AuthProvider>
-          <AuthenticatedNotificationsProvider>
-            <AppErrorBoundary>
-              <AppBootstrapEffects />
-              <Outlet />
-            </AppErrorBoundary>
-          </AuthenticatedNotificationsProvider>
-          <Toaster position="top-right" />
-        </AuthProvider>
+        <CookieConsentProvider>
+          <AuthProvider>
+            <AuthenticatedNotificationsProvider>
+              <AppErrorBoundary>
+                <AppBootstrapEffects />
+                <Outlet />
+              </AppErrorBoundary>
+            </AuthenticatedNotificationsProvider>
+            <Toaster position="top-right" />
+          </AuthProvider>
+        </CookieConsentProvider>
       </SiteSettingsProvider>
     </QueryClientProvider>
   );
