@@ -42,6 +42,9 @@ const AdminCookiePolicy = lazyWithRetry(() => import("@/pages/admin/AdminCookieP
 const AdminAccessibilityStatement = lazyWithRetry(
   () => import("@/pages/admin/AdminAccessibilityStatement"),
 );
+const AdminAccessibilityReports = lazyWithRetry(
+  () => import("@/pages/admin/AdminAccessibilityReports"),
+);
 const AdminSettings = lazyWithRetry(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazyWithRetry(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminProfile = lazyWithRetry(() => import("@/pages/admin/AdminProfile"));
@@ -94,6 +97,7 @@ function AdminRoutes() {
             path="accessibility-statement"
             element={suspensePage(AdminAccessibilityStatement)}
           />
+          <Route path="accessibility-reports" element={suspensePage(AdminAccessibilityReports)} />
           <Route path="settings" element={suspensePage(AdminSettings)} />
           <Route path="settings/seo/:pageId" element={suspensePage(AdminSettingsSeoEdit)} />
           <Route path="profile" element={suspensePage(AdminProfile)} />

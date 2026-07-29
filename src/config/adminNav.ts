@@ -141,6 +141,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.ACCESSIBILITY_STATEMENT.SHOW,
   },
   {
+    label: 'Report',
+    path: '/admin/accessibility-reports',
+    segment: 'accessibility-reports',
+    permission: PERMISSIONS.ACCESSIBILITY_REPORTS.LIST,
+  },
+  {
     label: 'My Profile',
     path: '/admin/profile',
     segment: 'profile',

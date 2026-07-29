@@ -45,6 +45,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/announcements": Bell,
   "/admin/comments": MessageSquare,
   "/admin/contact-messages": MessageSquare,
+  "/admin/accessibility-reports": MessageSquare,
   "/admin/careers": Briefcase,
   "/admin/profile": UserCircle,
   "/admin/settings": Settings,
