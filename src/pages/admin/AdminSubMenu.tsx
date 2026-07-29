@@ -753,7 +753,8 @@ export default function AdminSubMenu() {
                     onChange={(e) => setPinnedSlots(e.target.value)}
                   />
                   <span className="block text-xs text-admin-label">
-                    Reserved top slots for pinned manuals (0 = all pinned first, no cap).
+                    Reserved top slots for pinned manuals across all sections (0 = all
+                    pinned first, no cap).
                   </span>
                 </label>
               </div>
@@ -773,10 +774,10 @@ export default function AdminSubMenu() {
               <AdminPanel>
                 <h2 className="mb-1 text-base font-bold text-admin-heading">Live coverage</h2>
                 <p className="mb-4 text-sm text-admin-label">
-                  Start live on a published article. Live articles feed this section
-                  automatically. You can also pin articles below.
+                  Start live on a published article. Live articles fill this section
+                  automatically after manual pins.
                 </p>
-                {articleSearchBlock("Select an article, then start live or add as a manual boost.")}
+                {articleSearchBlock("Select an article, then start live coverage.")}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     type="button"
@@ -786,25 +787,7 @@ export default function AdminSubMenu() {
                     <Radio className="size-4" />
                     {busyId === "live" ? "Starting..." : "Start live"}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => void handleAddManual()}
-                    disabled={busyId === "add" || !selectedArticleId}
-                  >
-                    <Plus className="size-4" />
-                    {busyId === "add" ? "Adding..." : "Add manual boost"}
-                  </Button>
                 </div>
-                <label className="mt-3 flex items-center gap-2 text-sm text-admin-label">
-                  <input
-                    type="checkbox"
-                    checked={addAsPinned}
-                    onChange={(e) => setAddAsPinned(e.target.checked)}
-                    className="size-4"
-                  />
-                  Manual boost as pinned
-                </label>
 
                 <ul className="mt-4 space-y-2">
                   {liveArticles.length === 0 ? (
@@ -836,80 +819,73 @@ export default function AdminSubMenu() {
                     ))
                   )}
                 </ul>
-
-                <h3 className="mb-2 mt-6 text-sm font-bold text-admin-heading">Manual boosts</h3>
-                <ul className="space-y-2">
-                  {manual.length === 0 ? (
-                    <li className="text-sm text-admin-label">No manual entries yet.</li>
-                  ) : (
-                    manual.map((entry, index) => renderManualEntry(entry, index))
-                  )}
-                </ul>
               </AdminPanel>
-            ) : (
-              <AdminPanel>
-                <h2 className="mb-1 text-base font-bold text-admin-heading">Manual pins</h2>
-                <p className="mb-4 text-sm text-admin-label">
-                  {showScheduleFields
-                    ? "Add picks with optional schedule windows. Manual items always appear before auto-fill."
-                    : "Search and pin articles. Pinned items fill reserved slots first."}
-                </p>
+            ) : null}
 
-                {articleSearchBlock()}
+            <AdminPanel>
+              <h2 className="mb-1 text-base font-bold text-admin-heading">Manual pins</h2>
+              <p className="mb-4 text-sm text-admin-label">
+                {showScheduleFields
+                  ? "Add picks with optional schedule windows. Manual items always appear before auto-fill. Use Up/Down within the same pin group."
+                  : showLiveControls
+                    ? "Pin articles to boost them above automatic live coverage. Same pin / reorder rules as other sections."
+                    : "Search and pin published articles. Pinned manuals appear first, then unpinned, then algorithmic fill. Use Up/Down within the same pin group."}
+              </p>
 
-                <div className="mt-3 space-y-3">
-                  <label className="flex items-center gap-2 text-sm text-admin-label">
-                    <input
-                      type="checkbox"
-                      checked={addAsPinned}
-                      onChange={(e) => setAddAsPinned(e.target.checked)}
-                      className="size-4"
-                    />
-                    Add as pinned
-                  </label>
+              {articleSearchBlock()}
 
-                  {showScheduleFields ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="space-y-1.5 text-sm">
-                        <span className="font-medium text-admin-label">Starts at</span>
-                        <Input
-                          type="datetime-local"
-                          value={startsAt}
-                          onChange={(e) => setStartsAt(e.target.value)}
-                        />
-                      </label>
-                      <label className="space-y-1.5 text-sm">
-                        <span className="font-medium text-admin-label">Ends at</span>
-                        <Input
-                          type="datetime-local"
-                          value={endsAt}
-                          onChange={(e) => setEndsAt(e.target.value)}
-                        />
-                      </label>
-                    </div>
-                  ) : null}
+              <div className="mt-3 space-y-3">
+                <label className="flex items-center gap-2 text-sm text-admin-label">
+                  <input
+                    type="checkbox"
+                    checked={addAsPinned}
+                    onChange={(e) => setAddAsPinned(e.target.checked)}
+                    className="size-4"
+                  />
+                  Add as pinned
+                </label>
 
-                  <Button
-                    type="button"
-                    onClick={() => void handleAddManual()}
-                    disabled={busyId === "add" || !selectedArticleId}
-                  >
-                    <Plus className="size-4" />
-                    {busyId === "add" ? "Adding..." : "Add article"}
-                  </Button>
-                </div>
+                {showScheduleFields ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm">
+                      <span className="font-medium text-admin-label">Starts at</span>
+                      <Input
+                        type="datetime-local"
+                        value={startsAt}
+                        onChange={(e) => setStartsAt(e.target.value)}
+                      />
+                    </label>
+                    <label className="space-y-1.5 text-sm">
+                      <span className="font-medium text-admin-label">Ends at</span>
+                      <Input
+                        type="datetime-local"
+                        value={endsAt}
+                        onChange={(e) => setEndsAt(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                ) : null}
 
-                <ul className="mt-4 space-y-2">
-                  {manual.length === 0 ? (
-                    <li className="text-sm text-admin-label">No manual entries yet.</li>
-                  ) : (
-                    manual.map((entry, index) =>
-                      renderManualEntry(entry, index, { showSchedule: showScheduleFields }),
-                    )
-                  )}
-                </ul>
-              </AdminPanel>
-            )}
+                <Button
+                  type="button"
+                  onClick={() => void handleAddManual()}
+                  disabled={busyId === "add" || !selectedArticleId}
+                >
+                  <Plus className="size-4" />
+                  {busyId === "add" ? "Adding..." : "Add article"}
+                </Button>
+              </div>
+
+              <ul className="mt-4 space-y-2">
+                {manual.length === 0 ? (
+                  <li className="text-sm text-admin-label">No manual entries yet.</li>
+                ) : (
+                  manual.map((entry, index) =>
+                    renderManualEntry(entry, index, { showSchedule: showScheduleFields }),
+                  )
+                )}
+              </ul>
+            </AdminPanel>
           </div>
 
           <div className="space-y-6">
@@ -951,14 +927,18 @@ export default function AdminSubMenu() {
                   ? "Currently live (algorithmic)"
                   : showScheduleFields
                     ? "Fallback latest (algorithmic)"
-                    : "Algorithmic feed"}
+                    : activeTab === "trending"
+                      ? "Trending candidates (algorithmic)"
+                      : activeTab === "most_read"
+                        ? "Most-read candidates (algorithmic)"
+                        : "Algorithmic feed"}
               </h2>
               <p className="mb-4 text-sm text-admin-label">
                 {showLiveControls
-                  ? "Articles with live coverage enabled."
+                  ? "Articles with live coverage enabled — used after manual pins."
                   : showScheduleFields
                     ? "Latest published articles used when picks don't fill the limit."
-                    : "Ranked candidates before manual merge."}
+                    : "Ranked candidates used after manual pins to fill the limit."}
               </p>
               <ol className="space-y-2">
                 {algorithmic.length === 0 ? (
