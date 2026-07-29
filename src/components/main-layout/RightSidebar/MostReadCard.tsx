@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChartNoAxesColumn, Eye } from "lucide-react";
 
 import { SidebarCard } from "@/components/main-layout/shared/SidebarCard";
 import { useMostReadArticles } from "@/hooks/useMostReadArticles";
+import { useSubMenuSection } from "@/hooks/useSubMenuSection";
+import type { Article } from "@/data/dummy/types";
 import { cn } from "@/lib/utils";
 import type { MostReadPeriod } from "@/services/frontend/articles";
 import { formatCount } from "@/utils/format";
@@ -15,17 +17,59 @@ const PERIOD_OPTIONS: { value: MostReadPeriod; label: string }[] = [
   { value: "all", label: "All" },
 ];
 
+/**
+ * Manual pins from Admin → Sub Menu → Most Read always lead the list.
+ * Period tabs only change the algorithmic fill after those manuals.
+ */
 export function MostReadCard() {
   const [period, setPeriod] = useState<MostReadPeriod>("today");
-  const { articles, loading, loadingMore, hasMore, loadMore } =
-    useMostReadArticles(period);
+  const {
+    data: subMenu,
+    loading: loadingSubMenu,
+    enabled: sectionEnabled,
+  } = useSubMenuSection("most_read");
+
+  const limit = Math.max(1, subMenu?.settings.limit ?? 5);
+  const {
+    articles: periodArticles,
+    loading: loadingPeriod,
+    loadingMore,
+    hasMore,
+    loadMore,
+  } = useMostReadArticles(period, limit);
+
+  const displayArticles = useMemo(() => {
+    const manuals: Article[] = sectionEnabled
+      ? (subMenu?.manual ?? [])
+          .map((entry) => entry.article)
+          .filter((article): article is Article => article !== null)
+      : [];
+
+    const manualIds = new Set(manuals.map((article) => article.id));
+    const fill = periodArticles.filter((article) => !manualIds.has(article.id));
+
+    return [...manuals, ...fill].map((article, index) => ({
+      ...article,
+      serial: index + 1,
+    }));
+  }, [periodArticles, sectionEnabled, subMenu?.manual]);
+
+  const loading = loadingSubMenu || loadingPeriod;
 
   return (
     <SidebarCard className="rounded-xs bg-surface-soft p-0!">
       <div className="border-b-2 border-border p-4 pb-3">
-        <div className="mb-3 flex items-center gap-2">
-          <ChartNoAxesColumn className="size-5 text-primary" />
-          <h2 className="font-inter text-sm font-bold text-zbc-gray-1000">Most Read</h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ChartNoAxesColumn className="size-5 text-primary" />
+            <h2 className="font-inter text-sm font-bold text-zbc-gray-1000">Most Read</h2>
+          </div>
+          <Link
+            to="/?section=most_read"
+            className="font-inter text-[11px] font-semibold text-primary hover:underline"
+          >
+            View all
+          </Link>
         </div>
         <div className="flex flex-wrap gap-1" role="tablist" aria-label="Most read period">
           {PERIOD_OPTIONS.map((option) => {
@@ -53,18 +97,18 @@ export function MostReadCard() {
 
       {loading ? (
         <div className="h-70 animate-pulse bg-muted/60" />
-      ) : articles.length === 0 ? (
+      ) : displayArticles.length === 0 ? (
         <p className="p-4 text-xs text-muted-foreground">No articles yet.</p>
       ) : (
         <>
           <ol>
-            {articles.map((article, index) => (
+            {displayArticles.map((article) => (
               <li
                 key={article.id}
                 className="flex gap-3 border-b-2 border-border p-4 last:border-b-0"
               >
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-sm font-inter text-2xl font-extrabold text-primary/20">
-                  {index + 1}
+                  {article.serial}
                 </span>
                 <div>
                   <Link

@@ -24,12 +24,12 @@ function OrderedSubMenuGrid({ articles }: { articles: Article[] }) {
         const serial = article.serial ?? index + 1;
         return (
           <li key={article.id} className="relative min-w-0">
-            <span
+            {/* <span
               className="absolute left-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground shadow-sm"
               aria-label={`Position ${serial}`}
             >
               {serial}
-            </span>
+            </span> */}
             <ArticleCard article={article} />
           </li>
         );
