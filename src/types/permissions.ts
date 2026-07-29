@@ -117,6 +117,10 @@ export const PERMISSIONS = {
     SHOW: 'careers-page.show',
     UPDATE: 'careers-page.update',
   },
+  PRIVACY_POLICY: {
+    SHOW: 'privacy-policy.show',
+    UPDATE: 'privacy-policy.update',
+  },
   CAREER_JOBS: {
     LIST: 'career-jobs.list',
     CREATE: 'career-jobs.create',
@@ -250,6 +254,8 @@ export const PERMISSION_GROUP_BY_KEY: Record<PermissionKey, string> = {
   [PERMISSIONS.MENUS.MANAGE_ITEMS]: 'Menus',
   [PERMISSIONS.CAREERS_PAGE.SHOW]: 'Careers Page',
   [PERMISSIONS.CAREERS_PAGE.UPDATE]: 'Careers Page',
+  [PERMISSIONS.PRIVACY_POLICY.SHOW]: 'Privacy Policy',
+  [PERMISSIONS.PRIVACY_POLICY.UPDATE]: 'Privacy Policy',
   [PERMISSIONS.CAREER_JOBS.LIST]: 'Career Jobs',
   [PERMISSIONS.CAREER_JOBS.CREATE]: 'Career Jobs',
   [PERMISSIONS.CAREER_JOBS.SHOW]: 'Career Jobs',

@@ -35,6 +35,7 @@ const AdminCareerJobForm = lazyWithRetry(() => import("@/pages/admin/AdminCareer
 const AdminCareerApplicationDetail = lazyWithRetry(
   () => import("@/pages/admin/AdminCareerApplicationDetail"),
 );
+const AdminPrivacyPolicy = lazyWithRetry(() => import("@/pages/admin/AdminPrivacyPolicy"));
 const AdminSettings = lazyWithRetry(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazyWithRetry(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminProfile = lazyWithRetry(() => import("@/pages/admin/AdminProfile"));
@@ -79,6 +80,7 @@ function AdminRoutes() {
             path="careers/applications/:id"
             element={suspensePage(AdminCareerApplicationDetail)}
           />
+          <Route path="privacy-policy" element={suspensePage(AdminPrivacyPolicy)} />
           <Route path="settings" element={suspensePage(AdminSettings)} />
           <Route path="settings/seo/:pageId" element={suspensePage(AdminSettingsSeoEdit)} />
           <Route path="profile" element={suspensePage(AdminProfile)} />
