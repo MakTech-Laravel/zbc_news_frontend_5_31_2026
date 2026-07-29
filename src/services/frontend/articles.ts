@@ -334,6 +334,10 @@ export function mapArticleListItem(raw: unknown): Article | null {
     commentCount: Number(record.comments_count ?? 0),
     tags: parseTags(record.tags),
     isLive: Boolean(record.is_live),
+    serial:
+      Number.isFinite(Number(record.serial)) && Number(record.serial) > 0
+        ? Math.trunc(Number(record.serial))
+        : undefined,
   };
 }
 

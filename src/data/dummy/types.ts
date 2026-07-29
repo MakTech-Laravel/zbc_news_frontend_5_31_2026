@@ -18,6 +18,8 @@ export type Article = {
   commentCount?: number;
   tags?: string[];
   isLive?: boolean;
+  /** 1-based display rank from curated feeds (sub-menu items). */
+  serial?: number;
 };
 
 export type NavItem = {

@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, Pin, Plus, Radio, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  CalendarClock,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Pin,
+  Plus,
+  Radio,
+  Trash2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
@@ -40,9 +49,63 @@ const PERIOD_OPTIONS: { value: MostReadPeriod; label: string }[] = [
 ];
 
 function formatWhen(value: string | null | undefined): string {
-  if (!value) return "-";
+  if (!value) return "—";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+}
+
+type ScheduleBadge = "live" | "scheduled" | "expired" | "off" | null;
+
+function resolveScheduleBadge(entry: SubMenuManualEntry, now = Date.now()): ScheduleBadge {
+  if (!entry.is_active) return "off";
+
+  const startsMs = entry.starts_at ? new Date(entry.starts_at).getTime() : null;
+  const endsMs = entry.ends_at ? new Date(entry.ends_at).getTime() : null;
+
+  if (startsMs != null && !Number.isNaN(startsMs) && startsMs > now) return "scheduled";
+  if (endsMs != null && !Number.isNaN(endsMs) && endsMs <= now) return "expired";
+  if (startsMs != null || endsMs != null) return "live";
+
+  return null;
+}
+
+function scheduleBadgeLabel(badge: ScheduleBadge): string | null {
+  switch (badge) {
+    case "live":
+      return "In window";
+    case "scheduled":
+      return "Scheduled";
+    case "expired":
+      return "Expired";
+    case "off":
+      return "Off";
+    default:
+      return null;
+  }
+}
+
+function MetaChip({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: "neutral" | "pin" | "live" | "scheduled" | "expired" | "off";
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        tone === "neutral" && "bg-muted text-admin-label",
+        tone === "pin" && "bg-primary/10 text-primary",
+        tone === "live" && "bg-emerald-100 text-emerald-800",
+        tone === "scheduled" && "bg-sky-100 text-sky-800",
+        tone === "expired" && "bg-amber-100 text-amber-900",
+        tone === "off" && "bg-zinc-200 text-zinc-700",
+      )}
+    >
+      {children}
+    </span>
+  );
 }
 
 export default function AdminSubMenu() {
@@ -137,11 +200,14 @@ export default function AdminSubMenu() {
       void searchAdminPanel(q, 8)
         .then((results) => {
           setSearchResults(
-            results.articles.map((article) => ({
-              id: article.id,
-              title: article.title,
-              slug: article.slug,
-            })),
+            results.articles
+              // Sub menu public feed only shows published articles.
+              .filter((article) => article.status === "published")
+              .map((article) => ({
+                id: article.id,
+                title: article.title,
+                slug: article.slug,
+              })),
           );
         })
         .catch(() => setSearchResults([]))
@@ -179,11 +245,11 @@ export default function AdminSubMenu() {
     }
     setBusyId("add");
     try {
+      // Omit sort_order so the backend appends after existing entries.
       await upsertSubMenuManualEntry(activeTab, {
         article_id: selectedArticleId,
         is_pinned: addAsPinned,
         is_active: true,
-        sort_order: manual.length,
         starts_at: startsAt.trim() ? toApiDatetimeValue(startsAt) : null,
         ends_at: endsAt.trim() ? toApiDatetimeValue(endsAt) : null,
       });
@@ -195,7 +261,7 @@ export default function AdminSubMenu() {
       setEndsAt("");
       await load();
     } catch {
-      toast.error("Failed to add article.");
+      toast.error("Only published articles can be added.");
     } finally {
       setBusyId(null);
     }
@@ -242,8 +308,6 @@ export default function AdminSubMenu() {
         is_pinned: !entry.is_pinned,
         is_active: entry.is_active,
         sort_order: entry.sort_order,
-        starts_at: entry.starts_at,
-        ends_at: entry.ends_at,
       });
       await load();
     } catch {
@@ -261,8 +325,6 @@ export default function AdminSubMenu() {
         is_pinned: entry.is_pinned,
         is_active: !entry.is_active,
         sort_order: entry.sort_order,
-        starts_at: entry.starts_at,
-        ends_at: entry.ends_at,
       });
       await load();
     } catch {
@@ -275,10 +337,11 @@ export default function AdminSubMenu() {
   async function handleSaveSchedule(entry: SubMenuManualEntry) {
     setBusyId(entry.id);
     try {
+      // Re-enable when saving an open/future window (expired entries stay off until this).
       await upsertSubMenuManualEntry(activeTab, {
         article_id: entry.article_id,
         is_pinned: entry.is_pinned,
-        is_active: entry.is_active,
+        is_active: true,
         sort_order: entry.sort_order,
         starts_at: editStartsAt.trim() ? toApiDatetimeValue(editStartsAt) : null,
         ends_at: editEndsAt.trim() ? toApiDatetimeValue(editEndsAt) : null,
@@ -315,12 +378,20 @@ export default function AdminSubMenu() {
     }
   }
 
-  async function moveManual(entryId: number, direction: -1 | 1) {
+  function canMoveManual(entryId: number, direction: -1 | 1): boolean {
     const index = orderedManualIds.indexOf(entryId);
-    if (index < 0) return;
+    if (index < 0) return false;
     const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= orderedManualIds.length) return;
+    if (nextIndex < 0 || nextIndex >= manual.length) return false;
+    // Keep Up/Down inside the same pin group so order sticks after reload.
+    return Boolean(manual[index]?.is_pinned) === Boolean(manual[nextIndex]?.is_pinned);
+  }
 
+  async function moveManual(entryId: number, direction: -1 | 1) {
+    if (!canMoveManual(entryId, direction)) return;
+
+    const index = orderedManualIds.indexOf(entryId);
+    const nextIndex = index + direction;
     const next = [...orderedManualIds];
     const [moved] = next.splice(index, 1);
     next.splice(nextIndex, 0, moved);
@@ -334,6 +405,184 @@ export default function AdminSubMenu() {
     } finally {
       setBusyId(null);
     }
+  }
+
+  function renderManualEntry(
+    entry: SubMenuManualEntry,
+    index: number,
+    options: { showSchedule?: boolean } = {},
+  ) {
+    const { showSchedule = false } = options;
+    const busy = busyId === entry.id;
+    const badge = showSchedule ? resolveScheduleBadge(entry) : null;
+    const badgeLabel = scheduleBadgeLabel(badge);
+    const scheduleTone =
+      badge === "live" || badge === "scheduled" || badge === "expired" || badge === "off"
+        ? badge
+        : "neutral";
+    const hasSchedule = Boolean(entry.starts_at || entry.ends_at);
+    const editing = showSchedule && editingScheduleId === entry.id;
+    const articleStatus = entry.article?.status?.toLowerCase() ?? null;
+    const isPublished = articleStatus === "published";
+    const unpublishedLabel = !isPublished
+      ? articleStatus
+        ? articleStatus.replaceAll("_", " ")
+        : "missing"
+      : null;
+
+    return (
+      <li
+        key={entry.id}
+        className={cn(
+          "rounded-md border border-border bg-background p-3",
+          badge === "expired" && "border-amber-200 bg-amber-50/40",
+          !isPublished && "border-rose-200 bg-rose-50/40",
+          !entry.is_active && "opacity-75",
+        )}
+      >
+        <div className="space-y-3">
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded bg-muted text-[11px] font-bold text-admin-label">
+                {index + 1}
+              </span>
+              <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-admin-heading">
+                {entry.article?.title ?? `Article #${entry.article_id}`}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 pl-8">
+              <MetaChip tone={entry.is_pinned ? "pin" : "neutral"}>
+                {entry.is_pinned ? "Pinned" : "Manual"}
+              </MetaChip>
+              <MetaChip tone={entry.is_active ? "live" : "off"}>
+                {entry.is_active ? "Active" : "Inactive"}
+              </MetaChip>
+              {badgeLabel ? <MetaChip tone={scheduleTone}>{badgeLabel}</MetaChip> : null}
+              {unpublishedLabel ? (
+                <MetaChip tone="expired">Not on site · {unpublishedLabel}</MetaChip>
+              ) : null}
+            </div>
+            {!isPublished ? (
+              <p className="pl-8 text-xs text-rose-700">
+                This article is not published, so it will not appear in Live preview or on the
+                public site. Publish it first, or remove this pin.
+              </p>
+            ) : null}
+            {showSchedule && hasSchedule ? (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-8 text-xs text-admin-label">
+                <CalendarClock className="size-3.5 shrink-0" />
+                <span>{formatWhen(entry.starts_at)}</span>
+                <span className="text-muted-foreground">→</span>
+                <span>{formatWhen(entry.ends_at)}</span>
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-2.5">
+            <div className="inline-flex overflow-hidden rounded-md border border-border">
+              <button
+                type="button"
+                className="inline-flex h-8 items-center gap-1 border-r border-border px-2.5 text-xs font-medium text-admin-heading transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                disabled={busy || !canMoveManual(entry.id, -1)}
+                onClick={() => void moveManual(entry.id, -1)}
+                aria-label="Move up"
+              >
+                <ChevronUp className="size-3.5" />
+                Up
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-8 items-center gap-1 px-2.5 text-xs font-medium text-admin-heading transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                disabled={busy || !canMoveManual(entry.id, 1)}
+                onClick={() => void moveManual(entry.id, 1)}
+                aria-label="Move down"
+              >
+                <ChevronDown className="size-3.5" />
+                Down
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => void handleTogglePin(entry)}
+              >
+                <Pin className="size-3.5" />
+                {entry.is_pinned ? "Unpin" : "Pin"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => void handleToggleActive(entry)}
+              >
+                {entry.is_active ? "Disable" : "Enable"}
+              </Button>
+              {showSchedule ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() =>
+                    editing ? setEditingScheduleId(null) : openScheduleEditor(entry)
+                  }
+                >
+                  <CalendarClock className="size-3.5" />
+                  {editing ? "Close" : "Schedule"}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="size-8 px-0 text-destructive hover:text-destructive"
+                disabled={busy}
+                onClick={() => void handleRemove(entry)}
+                aria-label="Remove"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {editing ? (
+            <div className="grid gap-3 rounded-md border border-dashed border-border bg-muted/40 p-3 sm:grid-cols-[1fr_1fr_auto]">
+              <label className="space-y-1.5 text-sm">
+                <span className="font-medium text-admin-label">Starts at</span>
+                <Input
+                  type="datetime-local"
+                  value={editStartsAt}
+                  onChange={(e) => setEditStartsAt(e.target.value)}
+                />
+              </label>
+              <label className="space-y-1.5 text-sm">
+                <span className="font-medium text-admin-label">Ends at</span>
+                <Input
+                  type="datetime-local"
+                  value={editEndsAt}
+                  onChange={(e) => setEditEndsAt(e.target.value)}
+                />
+              </label>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void handleSaveSchedule(entry)}
+                >
+                  {busy ? "Saving..." : "Save schedule"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </li>
+    );
   }
 
   function articleSearchBlock(onSelectHint?: string) {
@@ -499,9 +748,13 @@ export default function AdminSubMenu() {
                   <span className="font-medium text-admin-label">Pinned slots</span>
                   <Input
                     type="number"
+                    min={0}
                     value={pinnedSlots}
                     onChange={(e) => setPinnedSlots(e.target.value)}
                   />
+                  <span className="block text-xs text-admin-label">
+                    Reserved top slots for pinned manuals (0 = all pinned first, no cap).
+                  </span>
                 </label>
               </div>
 
@@ -589,70 +842,7 @@ export default function AdminSubMenu() {
                   {manual.length === 0 ? (
                     <li className="text-sm text-admin-label">No manual entries yet.</li>
                   ) : (
-                    manual.map((entry, index) => (
-                      <li
-                        key={entry.id}
-                        className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-admin-heading">
-                            {entry.article?.title ?? `Article #${entry.article_id}`}
-                          </p>
-                          <p className="mt-0.5 text-xs text-admin-label">
-                            {entry.is_pinned ? "Pinned" : "Manual"} |{" "}
-                            {entry.is_active ? "Active" : "Inactive"} | order {index + 1}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={busyId === entry.id || index === 0}
-                            onClick={() => void moveManual(entry.id, -1)}
-                          >
-                            Up
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={busyId === entry.id || index === manual.length - 1}
-                            onClick={() => void moveManual(entry.id, 1)}
-                          >
-                            Down
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={busyId === entry.id}
-                            onClick={() => void handleTogglePin(entry)}
-                          >
-                            <Pin className="size-3.5" />
-                            {entry.is_pinned ? "Unpin" : "Pin"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={busyId === entry.id}
-                            onClick={() => void handleToggleActive(entry)}
-                          >
-                            {entry.is_active ? "Disable" : "Enable"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={busyId === entry.id}
-                            onClick={() => void handleRemove(entry)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      </li>
-                    ))
+                    manual.map((entry, index) => renderManualEntry(entry, index))
                   )}
                 </ul>
               </AdminPanel>
@@ -661,7 +851,7 @@ export default function AdminSubMenu() {
                 <h2 className="mb-1 text-base font-bold text-admin-heading">Manual pins</h2>
                 <p className="mb-4 text-sm text-admin-label">
                   {showScheduleFields
-                    ? "Curate editorial picks with optional start/end schedule windows."
+                    ? "Add picks with optional schedule windows. Manual items always appear before auto-fill."
                     : "Search and pin articles. Pinned items fill reserved slots first."}
                 </p>
 
@@ -713,120 +903,9 @@ export default function AdminSubMenu() {
                   {manual.length === 0 ? (
                     <li className="text-sm text-admin-label">No manual entries yet.</li>
                   ) : (
-                    manual.map((entry, index) => (
-                      <li
-                        key={entry.id}
-                        className="flex flex-col gap-2 rounded-md border border-border p-3"
-                      >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-admin-heading">
-                              {entry.article?.title ?? `Article #${entry.article_id}`}
-                            </p>
-                            <p className="mt-0.5 text-xs text-admin-label">
-                              {entry.is_pinned ? "Pinned" : "Manual"} |{" "}
-                              {entry.is_active ? "Active" : "Inactive"} | order {index + 1}
-                              {showScheduleFields
-                                ? ` | ${formatWhen(entry.starts_at)} -> ${formatWhen(entry.ends_at)}`
-                                : ""}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={busyId === entry.id || index === 0}
-                              onClick={() => void moveManual(entry.id, -1)}
-                            >
-                              Up
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={busyId === entry.id || index === manual.length - 1}
-                              onClick={() => void moveManual(entry.id, 1)}
-                            >
-                              Down
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={busyId === entry.id}
-                              onClick={() => void handleTogglePin(entry)}
-                            >
-                              <Pin className="size-3.5" />
-                              {entry.is_pinned ? "Unpin" : "Pin"}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={busyId === entry.id}
-                              onClick={() => void handleToggleActive(entry)}
-                            >
-                              {entry.is_active ? "Disable" : "Enable"}
-                            </Button>
-                            {showScheduleFields ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={busyId === entry.id}
-                                onClick={() =>
-                                  editingScheduleId === entry.id
-                                    ? setEditingScheduleId(null)
-                                    : openScheduleEditor(entry)
-                                }
-                              >
-                                {editingScheduleId === entry.id ? "Close" : "Schedule"}
-                              </Button>
-                            ) : null}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={busyId === entry.id}
-                              onClick={() => void handleRemove(entry)}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                        {showScheduleFields && editingScheduleId === entry.id ? (
-                          <div className="grid gap-3 rounded-md border border-dashed border-border bg-muted/40 p-3 sm:grid-cols-[1fr_1fr_auto]">
-                            <label className="space-y-1.5 text-sm">
-                              <span className="font-medium text-admin-label">Starts at</span>
-                              <Input
-                                type="datetime-local"
-                                value={editStartsAt}
-                                onChange={(e) => setEditStartsAt(e.target.value)}
-                              />
-                            </label>
-                            <label className="space-y-1.5 text-sm">
-                              <span className="font-medium text-admin-label">Ends at</span>
-                              <Input
-                                type="datetime-local"
-                                value={editEndsAt}
-                                onChange={(e) => setEditEndsAt(e.target.value)}
-                              />
-                            </label>
-                            <div className="flex items-end">
-                              <Button
-                                type="button"
-                                size="sm"
-                                disabled={busyId === entry.id}
-                                onClick={() => void handleSaveSchedule(entry)}
-                              >
-                                {busyId === entry.id ? "Saving..." : "Save schedule"}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : null}
-                      </li>
-                    ))
+                    manual.map((entry, index) =>
+                      renderManualEntry(entry, index, { showSchedule: showScheduleFields }),
+                    )
                   )}
                 </ul>
               </AdminPanel>
@@ -837,27 +916,31 @@ export default function AdminSubMenu() {
             <AdminPanel>
               <h2 className="mb-1 text-base font-bold text-admin-heading">Live preview</h2>
               <p className="mb-4 text-sm text-admin-label">
-                Merged public list (manual + algorithmic), limited by settings.
+                Merged public list (manual + algorithmic), limited by settings. Only
+                published manuals appear here.
                 {!isEnabled ? " Section is disabled - public site hides this card." : ""}
               </p>
               <ol className="space-y-2">
                 {preview.length === 0 ? (
                   <li className="text-sm text-admin-label">No items in preview.</li>
                 ) : (
-                  preview.map((article, index) => (
-                    <li
-                      key={article.id}
-                      className="rounded-md border border-border px-3 py-2 text-sm"
-                    >
-                      <span className="mr-2 font-bold text-primary">{index + 1}.</span>
-                      {article.title}
-                      {article.is_live ? (
-                        <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-800">
-                          Live
-                        </span>
-                      ) : null}
-                    </li>
-                  ))
+                  preview.map((article, index) => {
+                    const serial = article.serial && article.serial > 0 ? article.serial : index + 1;
+                    return (
+                      <li
+                        key={article.id}
+                        className="rounded-md border border-border px-3 py-2 text-sm"
+                      >
+                        <span className="mr-2 font-bold text-primary">{serial}.</span>
+                        {article.title}
+                        {article.is_live ? (
+                          <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-800">
+                            Live
+                          </span>
+                        ) : null}
+                      </li>
+                    );
+                  })
                 )}
               </ol>
             </AdminPanel>

@@ -87,10 +87,15 @@ function mapSectionPayload(raw: unknown, fallbackKey: SubMenuKey): SubMenuPayloa
       ? (record.section as SubMenuKey)
       : fallbackKey;
 
+  // Preserve API array order exactly — never re-sort on the client.
   const items = Array.isArray(record.items)
     ? record.items
         .map(mapArticleListItem)
         .filter((article): article is Article => article !== null)
+        .map((article, index) => ({
+          ...article,
+          serial: article.serial ?? index + 1,
+        }))
     : [];
 
   const algorithmic = Array.isArray(record.algorithmic)
