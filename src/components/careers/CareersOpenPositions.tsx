@@ -2,16 +2,31 @@ import { useMemo, useState } from "react";
 import { ArrowRight, MapPin, Search } from "lucide-react";
 
 import {
-  CAREERS_POSITIONS_SECTION,
   DEPARTMENT_FILTERS,
-  JOB_LISTINGS,
   TYPE_FILTERS,
   type DepartmentFilter,
+  type JobListing,
   type TypeFilter,
 } from "@/components/careers/careersData";
 import { cn } from "@/lib/utils";
 
-export function CareersOpenPositions() {
+type CareersOpenPositionsProps = {
+  section: {
+    eyebrow: string;
+    heading: string;
+    searchPlaceholder: string;
+  };
+  jobs: JobListing[];
+  loading?: boolean;
+  onApply: (job: JobListing) => void;
+};
+
+export function CareersOpenPositions({
+  section,
+  jobs,
+  loading = false,
+  onApply,
+}: CareersOpenPositionsProps) {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState<DepartmentFilter>("All");
   const [type, setType] = useState<TypeFilter>("All Types");
@@ -19,7 +34,7 @@ export function CareersOpenPositions() {
   const filteredJobs = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return JOB_LISTINGS.filter((job) => {
+    return jobs.filter((job) => {
       const matchesDepartment = department === "All" || job.department === department;
       const matchesType = type === "All Types" || job.type === type;
       const matchesSearch =
@@ -30,17 +45,17 @@ export function CareersOpenPositions() {
 
       return matchesDepartment && matchesType && matchesSearch;
     });
-  }, [department, search, type]);
+  }, [department, jobs, search, type]);
 
   return (
     <section id="open-positions" className="py-20 md:py-24">
       <div className="mx-auto container px-4">
         <header>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zbc-red-accent">
-            {CAREERS_POSITIONS_SECTION.eyebrow}
+            {section.eyebrow}
           </p>
           <h2 className="mt-3 text-3xl font-bold leading-tight text-zbc-gray-1000 md:text-4xl">
-            {CAREERS_POSITIONS_SECTION.heading}
+            {section.heading}
           </h2>
         </header>
 
@@ -54,7 +69,7 @@ export function CareersOpenPositions() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={CAREERS_POSITIONS_SECTION.searchPlaceholder}
+              placeholder={section.searchPlaceholder}
               className="h-12 w-full rounded-lg border border-zbc-gray-200 bg-white pl-12 pr-4 text-base text-zbc-gray-1000 placeholder:text-admin-label focus-visible:border-zbc-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zbc-blue/20"
             />
           </label>
@@ -101,7 +116,11 @@ export function CareersOpenPositions() {
         </div>
 
         <div className="mt-8 divide-y divide-zbc-gray-200 rounded-lg border border-zbc-gray-200 bg-white">
-          {filteredJobs.length === 0 ? (
+          {loading ? (
+            <p className="px-6 py-10 text-center text-base text-admin-label">
+              Loading open positions…
+            </p>
+          ) : filteredJobs.length === 0 ? (
             <p className="px-6 py-10 text-center text-base text-admin-label">
               No roles match your search. Try adjusting filters or keywords.
             </p>
@@ -126,6 +145,7 @@ export function CareersOpenPositions() {
                 </div>
                 <button
                   type="button"
+                  onClick={() => onApply(job)}
                   className="inline-flex shrink-0 items-center gap-2 self-start text-sm font-bold text-zbc-blue transition-colors hover:text-zbc-blue-deep sm:self-center"
                 >
                   Apply

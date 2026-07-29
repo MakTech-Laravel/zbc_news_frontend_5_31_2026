@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { CAREERS_FAQ_SECTION, FAQ_ITEMS } from "@/components/careers/careersData";
+import type { FaqItem } from "@/components/careers/careersData";
 import { cn } from "@/lib/utils";
 
-export function CareersFaq() {
+type CareersFaqProps = {
+  section: { eyebrow: string; heading: string };
+  faqs: FaqItem[];
+};
+
+export function CareersFaq({ section, faqs }: CareersFaqProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
@@ -12,15 +17,15 @@ export function CareersFaq() {
       <div className="mx-auto container max-w-3xl px-4">
         <div className="text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zbc-red-accent">
-            {CAREERS_FAQ_SECTION.eyebrow}
+            {section.eyebrow}
           </p>
           <h2 className="mt-3 text-3xl font-bold leading-tight text-zbc-gray-1000 md:text-4xl">
-            {CAREERS_FAQ_SECTION.heading}
+            {section.heading}
           </h2>
         </div>
 
         <div className="mt-12 divide-y divide-zbc-gray-200 rounded-lg border border-zbc-gray-200 bg-white">
-          {FAQ_ITEMS.map((item, index) => {
+          {faqs.map((item, index) => {
             const isOpen = openIndex === index;
 
             return (

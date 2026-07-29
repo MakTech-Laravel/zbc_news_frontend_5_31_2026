@@ -4,7 +4,10 @@ export type CareersStat = {
 };
 
 export type CareersPerk = {
-  emoji: string;
+  /** Image URL for the perk icon (preferred). */
+  icon?: string;
+  /** @deprecated Prefer `icon` image URL. Kept for legacy seeded data. */
+  emoji?: string;
   title: string;
   description: string;
 };
@@ -20,6 +23,7 @@ export type JobType = "Full-time" | "Contract";
 
 export type JobListing = {
   id: string;
+  numericId?: number;
   title: string;
   type: JobType;
   department: JobDepartment;
@@ -68,32 +72,32 @@ export const CAREERS_PERKS_SECTION = {
 
 export const CAREERS_PERKS: CareersPerk[] = [
   {
-    emoji: "🏥",
+    icon: "",
     title: "Full Health Coverage",
     description: "Medical, dental, and vision for you and your family.",
   },
   {
-    emoji: "🌍",
+    icon: "",
     title: "Remote-Friendly",
     description: "Flexible remote and hybrid arrangements across most roles.",
   },
   {
-    emoji: "📚",
+    icon: "",
     title: "Learning Budget",
     description: "$2,500/year for journalism conferences, courses, and books.",
   },
   {
-    emoji: "✈️",
+    icon: "",
     title: "Press Travel",
     description: "Budget for field reporting, international coverage, and press events.",
   },
   {
-    emoji: "🏖️",
+    icon: "",
     title: "Generous PTO",
     description: "25 days vacation + public holidays. Mandatory minimums enforced.",
   },
   {
-    emoji: "📡",
+    icon: "",
     title: "Equipment Stipend",
     description: "$1,200 home office setup + $600 annual refresh.",
   },

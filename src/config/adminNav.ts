@@ -105,6 +105,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.CONTACT_INQUIRIES.LIST,
   },
   {
+    label: 'Careers',
+    path: '/admin/careers',
+    segment: 'careers',
+    permission: PERMISSIONS.CAREER_JOBS.LIST,
+  },
+  {
     label: 'My Profile',
     path: '/admin/profile',
     segment: 'profile',

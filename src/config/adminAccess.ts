@@ -21,6 +21,9 @@ const ADMIN_PATH_PERMISSION_OVERRIDES: { test: RegExp; permission: PermissionKey
   { test: /^\/admin\/users\/[^/]+\/article-activities/, permission: PERMISSIONS.USERS.ARTICLE_ACTIVITIES },
   { test: /^\/admin\/settings\/seo\//, permission: PERMISSIONS.SITE_SETTINGS.UPDATE },
   { test: /^\/admin\/contact-messages\/[^/]+/, permission: PERMISSIONS.CONTACT_INQUIRIES.SHOW },
+  { test: /^\/admin\/careers\/jobs\/create/, permission: PERMISSIONS.CAREER_JOBS.CREATE },
+  { test: /^\/admin\/careers\/jobs\/[^/]+\/edit/, permission: PERMISSIONS.CAREER_JOBS.UPDATE },
+  { test: /^\/admin\/careers\/applications\/[^/]+/, permission: PERMISSIONS.CAREER_APPLICATIONS.SHOW },
   { test: /^\/admin\/notifications/, permission: PERMISSIONS.USER_NOTIFICATIONS.LIST },
 ]
 
