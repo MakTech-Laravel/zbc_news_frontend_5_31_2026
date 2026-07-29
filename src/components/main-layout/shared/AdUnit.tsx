@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useCookieConsent } from "@/context/CookieConsentProvider";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { cn } from "@/lib/utils";
 import { trackAdEvent } from "@/lib/adTracking";
@@ -33,6 +34,7 @@ function ManualHtmlEmbed({ html, title }: { html: string; title: string }) {
 
 export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) {
   const { settings } = useSiteSettings();
+  const { ready: consentReady, allowAdvertising } = useCookieConsent();
   const [slot, setSlot] = useState<PublicAdSlot | null>(null);
   const impressionTracked = useRef(false);
   const googlePushed = useRef(false);
@@ -63,15 +65,20 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
 
   useEffect(() => {
     if (!slotKey || !slot || impressionTracked.current) return;
+    if (slot.provider === "google" && !allowAdvertising) return;
     impressionTracked.current = true;
     void trackAdEvent(slotKey, "impression");
-  }, [slot, slotKey]);
+  }, [slot, slotKey, allowAdvertising]);
 
   const clientId =
     settings.googleAdsenseClient.trim() || (slot?.google_ad_client?.trim() ?? "");
   const adSlotId = slot?.google_ad_slot?.trim() ?? "";
   const isGoogle =
-    slot?.provider === "google" && Boolean(clientId) && Boolean(adSlotId);
+    consentReady &&
+    allowAdvertising &&
+    slot?.provider === "google" &&
+    Boolean(clientId) &&
+    Boolean(adSlotId);
 
   useEffect(() => {
     if (!isGoogle) return;
@@ -150,6 +157,17 @@ export function AdUnit({ variant = "banner", slotKey, className }: AdUnitProps) 
           data-full-width-responsive="true"
         />
       </div>
+    );
+  }
+
+  // Google slots stay empty until advertising cookies are accepted.
+  if (slot?.provider === "google") {
+    return (
+      <div
+        role="presentation"
+        aria-label="Advertisement"
+        className={cn("bg-muted/20", shellClass)}
+      />
     );
   }
 
