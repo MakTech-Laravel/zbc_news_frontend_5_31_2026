@@ -10,7 +10,6 @@ import {
   LogOut,
   Menu,
   Radio,
-  Search,
   Settings,
   Star,
   TrendingUp,
@@ -36,9 +35,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSiteSettings } from "@/context/SiteSettingsProvider";
-import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
+import { GlobalSearchField } from "@/components/search/GlobalSearchField";
 import { UserNotificationsDropdown } from "@/components/user/shared/UserNotificationsDropdown";
-import { Input } from "@/components/ui/input";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
@@ -312,31 +310,6 @@ function BreakingNewsTicker() {
 }
 
 
-function SearchField({
-  className,
-  onOpen,
-}: {
-  className?: string;
-  onOpen: () => void;
-}) {
-  return (
-    <div className={cn("relative min-w-0", className)}>
-      <Search
-        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zbc-gray-400"
-        aria-hidden
-      />
-      <Input
-        type="search"
-        readOnly
-        placeholder="Search news, topics..."
-        onClick={onOpen}
-        onFocus={onOpen}
-        className="h-10 w-full cursor-pointer rounded-full border-border bg-muted pl-10 font-sans text-[13px] text-foreground shadow-none placeholder:text-zbc-gray-400 focus-visible:border-zbc-gray-200 focus-visible:ring-2 focus-visible:ring-primary/30"
-        aria-label="Open search"
-      />
-    </div>
-  );
-}
 
 function AccountActions({ showLabel = true }: { showLabel?: boolean }) {
   const { isAuthenticated, isUserLoading, logout, user } = useAuth();
@@ -1249,7 +1222,6 @@ type FrontendHeaderProps = {
 export function FrontendHeader({
   variant = "compact",
 }: FrontendHeaderProps) {
-  const [searchOpen, setSearchOpen] = useState(false);
   const isStacked = variant === "stacked";
 
   return (
@@ -1261,7 +1233,6 @@ export function FrontendHeader({
       id="site-header"
       data-header-variant={variant}
     >
-      <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <BreakingNewsTicker />
 
       {/* One container: logo · search(+menu) · account */}
@@ -1307,10 +1278,7 @@ export function FrontendHeader({
                 isStacked && "flex-col gap-2",
               )}
             >
-              <SearchField
-                className="w-full"
-                onOpen={() => setSearchOpen(true)}
-              />
+              <GlobalSearchField className="w-full" />
               {isStacked ? <MainNavBar mode="under-search" /> : null}
             </div>
 
@@ -1335,7 +1303,7 @@ export function FrontendHeader({
 
         {/* Mobile (< md): search + menu still inside this same container */}
         <div className="flex flex-col gap-2 pb-2 md:hidden">
-          <SearchField onOpen={() => setSearchOpen(true)} />
+          <GlobalSearchField />
           {isStacked ? <MainNavBar mode="under-search" /> : null}
         </div>
 
