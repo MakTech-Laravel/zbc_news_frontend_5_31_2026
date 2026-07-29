@@ -37,6 +37,7 @@ const AdminCareerApplicationDetail = lazyWithRetry(
 );
 const AdminPrivacyPolicy = lazyWithRetry(() => import("@/pages/admin/AdminPrivacyPolicy"));
 const AdminTermsOfService = lazyWithRetry(() => import("@/pages/admin/AdminTermsOfService"));
+const AdminAboutUs = lazyWithRetry(() => import("@/pages/admin/AdminAboutUs"));
 const AdminSettings = lazyWithRetry(() => import("@/pages/admin/AdminSettings"));
 const AdminSettingsSeoEdit = lazyWithRetry(() => import("@/pages/admin/AdminSettingsSeoEdit"));
 const AdminProfile = lazyWithRetry(() => import("@/pages/admin/AdminProfile"));
@@ -83,6 +84,7 @@ function AdminRoutes() {
           />
           <Route path="privacy-policy" element={suspensePage(AdminPrivacyPolicy)} />
           <Route path="terms-of-service" element={suspensePage(AdminTermsOfService)} />
+          <Route path="about-us" element={suspensePage(AdminAboutUs)} />
           <Route path="settings" element={suspensePage(AdminSettings)} />
           <Route path="settings/seo/:pageId" element={suspensePage(AdminSettingsSeoEdit)} />
           <Route path="profile" element={suspensePage(AdminProfile)} />
