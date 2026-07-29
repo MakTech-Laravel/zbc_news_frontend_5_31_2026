@@ -135,6 +135,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.COOKIE_POLICY.SHOW,
   },
   {
+    label: 'Accessibility Statement',
+    path: '/admin/accessibility-statement',
+    segment: 'accessibility-statement',
+    permission: PERMISSIONS.ACCESSIBILITY_STATEMENT.SHOW,
+  },
+  {
     label: 'My Profile',
     path: '/admin/profile',
     segment: 'profile',
