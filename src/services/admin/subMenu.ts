@@ -28,6 +28,7 @@ export type SubMenuArticleSummary = {
   is_live?: boolean;
   live_started_at?: string | null;
   live_ended_at?: string | null;
+  serial?: number;
   category?: { id: number; title: string; slug: string } | null;
   user?: { id: number; name: string } | null;
 };
@@ -86,6 +87,10 @@ function asArticleSummary(raw: unknown): SubMenuArticleSummary | null {
     live_started_at:
       typeof record.live_started_at === "string" ? record.live_started_at : null,
     live_ended_at: typeof record.live_ended_at === "string" ? record.live_ended_at : null,
+    serial:
+      Number.isFinite(Number(record.serial)) && Number(record.serial) > 0
+        ? Math.trunc(Number(record.serial))
+        : undefined,
     category:
       record.category && typeof record.category === "object"
         ? (record.category as SubMenuArticleSummary["category"])

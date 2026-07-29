@@ -1,5 +1,6 @@
-import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
+import { ArticleCard } from "@/components/main-layout/content/ArticleCard";
 import { useSubMenuSection } from "@/hooks/useSubMenuSection";
+import type { Article } from "@/data/dummy/types";
 import type { SubMenuKey } from "@/services/frontend/subMenu";
 
 const SECTION_TITLES: Record<SubMenuKey, string> = {
@@ -12,6 +13,30 @@ const SECTION_TITLES: Record<SubMenuKey, string> = {
 type SubMenuFeedProps = {
   section: SubMenuKey;
 };
+
+/**
+ * Keep API array order exactly (no client re-sort). Serial badge matches backend `serial`.
+ */
+function OrderedSubMenuGrid({ articles }: { articles: Article[] }) {
+  return (
+    <ol className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 sm:gap-5 lg:gap-6">
+      {articles.map((article, index) => {
+        const serial = article.serial ?? index + 1;
+        return (
+          <li key={article.id} className="relative min-w-0">
+            <span
+              className="absolute left-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground shadow-sm"
+              aria-label={`Position ${serial}`}
+            >
+              {serial}
+            </span>
+            <ArticleCard article={article} />
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 export function SubMenuFeed({ section }: SubMenuFeedProps) {
   const { items, loading, enabled, settings } = useSubMenuSection(section);
@@ -47,15 +72,17 @@ export function SubMenuFeed({ section }: SubMenuFeedProps) {
         </h1>
         {settings?.limit ? (
           <p className="mt-1 text-sm text-muted-foreground">
-            Showing up to {settings.limit} curated articles.
+            Showing up to {settings.limit} curated articles in admin order.
           </p>
         ) : null}
       </div>
 
       {loading ? (
         <div className="h-64 animate-pulse rounded-xs bg-muted" />
+      ) : items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No articles in this section yet.</p>
       ) : (
-        <ArticleGrid articles={items} />
+        <OrderedSubMenuGrid articles={items} />
       )}
     </section>
   );
