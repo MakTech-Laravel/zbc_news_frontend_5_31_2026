@@ -15,6 +15,33 @@ import {
 import type { ArticleComment } from "@/types/comments";
 
 const MAX_COMMENT_LENGTH = 5000;
+const INITIAL_VISIBLE_COMMENTS = 5;
+const LOAD_MORE_STEP = 5;
+const COMMENT_PREVIEW_LENGTH = 280;
+
+function CommentBody({ body }: { body: string }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const needsTruncate = body.length > COMMENT_PREVIEW_LENGTH;
+  const displayBody =
+    !needsTruncate || expanded ? body : `${body.slice(0, COMMENT_PREVIEW_LENGTH).trimEnd()}…`;
+
+  return (
+    <div className="mt-2 min-w-0 max-w-full">
+      <p className="max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-inter text-sm leading-6 text-zbc-gray-700">
+        {displayBody}
+      </p>
+      {needsTruncate ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          className="mt-1 font-inter text-xs font-semibold text-primary hover:underline"
+        >
+          {expanded ? "See less" : "See more"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 type ArticleCommentsProps = {
   articleSlug: string;
@@ -248,13 +275,13 @@ function CommentThread({
   return (
     <article
       className={cn(
-        "rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5",
+        "min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5",
         depth > 0 && "ml-4 border-l-4 border-l-primary/30 sm:ml-8",
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         <CommentAuthorAvatar name={comment.authorName} avatar={comment.authorAvatar} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-inter text-sm font-semibold text-zbc-gray-1000">
               {comment.authorName}
@@ -266,9 +293,7 @@ function CommentThread({
             ) : null}
             <time className="font-inter text-xs text-zbc-gray-500">{comment.time}</time>
           </div>
-          <p className="mt-2 whitespace-pre-wrap font-inter text-sm leading-6 text-zbc-gray-700">
-            {comment.body}
-          </p>
+          <CommentBody body={comment.body} />
           {depth < 1 ? (
             <button
               type="button"
@@ -323,9 +348,11 @@ export function ArticleComments({
   const [comments, setComments] = React.useState<ArticleComment[]>([]);
   const [count, setCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
+  const [visibleCount, setVisibleCount] = React.useState(INITIAL_VISIBLE_COMMENTS);
 
   const loadComments = React.useCallback(async () => {
     setLoading(true);
+    setVisibleCount(INITIAL_VISIBLE_COMMENTS);
     try {
       const data = await fetchArticleComments(articleSlug);
       setComments(data.comments);
@@ -347,10 +374,13 @@ export function ArticleComments({
     return null;
   }
 
+  const visibleComments = comments.slice(0, visibleCount);
+  const hasMore = comments.length > visibleCount;
+
   return (
     <section
       id="comments"
-      className="border-t border-border pt-8 sm:pt-10"
+      className="min-w-0 max-w-full overflow-hidden border-t border-border pt-8 sm:pt-10"
       aria-labelledby="comments-heading"
     >
       <div className="text-center sm:text-left">
@@ -386,7 +416,7 @@ export function ArticleComments({
         />
       </div>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 min-w-0 space-y-3">
         {loading ? (
           <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-10">
             <Loader2 className="size-5 animate-spin text-primary" aria-hidden />
@@ -397,15 +427,33 @@ export function ArticleComments({
             No comments yet. Be the first to share your thoughts.
           </p>
         ) : (
-          comments.map((comment) => (
-            <CommentThread
-              key={comment.id}
-              comment={comment}
-              articleSlug={articleSlug}
-              requireRegistration={requireRegistration}
-              onRefresh={() => void loadComments()}
-            />
-          ))
+          <>
+            {visibleComments.map((comment) => (
+              <CommentThread
+                key={comment.id}
+                comment={comment}
+                articleSlug={articleSlug}
+                requireRegistration={requireRegistration}
+                onRefresh={() => void loadComments()}
+              />
+            ))}
+            {hasMore ? (
+              <div className="flex justify-center pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 rounded-lg px-5 font-inter text-sm"
+                  onClick={() =>
+                    setVisibleCount((current) =>
+                      Math.min(current + LOAD_MORE_STEP, comments.length),
+                    )
+                  }
+                >
+                  Load more
+                </Button>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </section>
