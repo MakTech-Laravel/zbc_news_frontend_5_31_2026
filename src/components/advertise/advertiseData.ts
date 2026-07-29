@@ -1,7 +1,7 @@
 export const ADVERTISE_ASSETS = {
-  analytics: "https://www.figma.com/api/mcp/asset/9353a076-fe79-4d47-b424-8635143454ee",
-  bankingCaseStudy: "https://www.figma.com/api/mcp/asset/b3c26fe8-1d03-426c-8954-20063069f3b8",
-  evCaseStudy: "https://www.figma.com/api/mcp/asset/acb116e2-2c3b-459f-a120-3c553a54c555",
+  analytics: "/images/advertise/analytics.jpg",
+  bankingCaseStudy: "/images/advertise/banking-case-study.jpg",
+  evCaseStudy: "/images/advertise/ev-case-study.jpg",
 } as const;
 
 export type AdvertiseStat = {
