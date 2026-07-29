@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { ImagePlus, Loader2, Search } from 'lucide-react'
+import { ImagePlus, Loader2, Search, Upload } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 import { MediaGrid } from '@/components/admin/media/MediaGrid'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import {
   isAudioMedia,
   isImageMedia,
   isVideoMedia,
+  uploadAdminMedia,
   type AdminMediaRow,
 } from '@/services/admin/media'
 
@@ -43,6 +45,8 @@ export function MediaPickerDialog({
   const [page, setPage] = React.useState(1)
   const [lastPage, setLastPage] = React.useState(1)
   const [totalItems, setTotalItems] = React.useState(0)
+  const [uploading, setUploading] = React.useState(false)
+  const uploadInputRef = React.useRef<HTMLInputElement>(null)
 
   const loadMedia = React.useCallback(async () => {
     setLoading(true)
@@ -89,6 +93,32 @@ export function MediaPickerDialog({
     onOpenChange(false)
   }
 
+  const uploadAccept = React.useMemo(() => {
+    if (filter === 'image') return 'image/*'
+    if (filter === 'video') return 'video/*'
+    if (filter === 'audio') return 'audio/*'
+    return 'image/*,video/*,audio/*'
+  }, [filter])
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files?.length) return
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        await uploadAdminMedia(file)
+      }
+      toast.success(files.length === 1 ? 'File uploaded' : `${files.length} files uploaded`)
+      setPage(1)
+      await loadMedia()
+    } catch (error) {
+      console.error('Media upload failed:', error)
+      toast.error('Failed to upload file')
+    } finally {
+      setUploading(false)
+      if (uploadInputRef.current) uploadInputRef.current.value = ''
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[min(90dvh,820px)] max-w-4xl flex-col gap-0 overflow-hidden p-0">
@@ -97,6 +127,14 @@ export function MediaPickerDialog({
         </DialogHeader>
 
         <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
+          <input
+            ref={uploadInputRef}
+            type="file"
+            multiple
+            accept={uploadAccept}
+            className="hidden"
+            onChange={(e) => void handleUpload(e.target.files)}
+          />
           <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -115,6 +153,16 @@ export function MediaPickerDialog({
           <Button type="button" variant="outline" size="sm" onClick={() => void loadMedia()}>
             Refresh
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="gap-1.5"
+            disabled={uploading}
+            onClick={() => uploadInputRef.current?.click()}
+          >
+            {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
+            {uploading ? 'Uploading…' : 'Upload'}
+          </Button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -129,6 +177,16 @@ export function MediaPickerDialog({
               <p className="text-sm text-muted-foreground">
                 No media found. Upload files from Admin → Media first.
               </p>
+              <Button
+                type="button"
+                size="sm"
+                className="mt-2 gap-1.5"
+                disabled={uploading}
+                onClick={() => uploadInputRef.current?.click()}
+              >
+                {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
+                {uploading ? 'Uploading…' : 'Upload media'}
+              </Button>
             </div>
           ) : (
             <MediaGrid

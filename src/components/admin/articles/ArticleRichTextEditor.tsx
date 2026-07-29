@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { ArticleRichTextEditorBody } from "@/components/admin/articles/editor/ArticleRichTextEditorBody";
 import { ArticleRichTextToolbar } from "@/components/admin/articles/editor/ArticleRichTextToolbar";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import InputError from "@/components/input-error";
@@ -26,12 +27,6 @@ export function ArticleRichTextEditor({
 }: ArticleRichTextEditorProps) {
   const editorRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    const el = editorRef.current;
-    if (!el || el.innerHTML === content) return;
-    el.innerHTML = content;
-  }, [content]);
-
   return (
     <AdminPanel padding="none" className={cn("overflow-hidden shadow-sm", className)}>
       <div>
@@ -48,15 +43,10 @@ export function ArticleRichTextEditor({
       <ArticleRichTextToolbar editorRef={editorRef} />
 
       <div>
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          role="textbox"
-          aria-multiline
-          data-placeholder="Write your story…"
-          onInput={(e) => onContentChange(e.currentTarget.innerHTML)}
-          className="article-editor-body min-h-[280px] px-4 py-4 text-base leading-relaxed text-admin-heading outline-none empty:before:pointer-events-none empty:before:text-admin-trend-muted empty:before:content-[attr(data-placeholder)] sm:min-h-[360px] sm:px-6 sm:py-6 [&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-admin-input-border [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-admin-input-border [&_th]:bg-muted/50 [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold"
+        <ArticleRichTextEditorBody
+          editorRef={editorRef}
+          content={content}
+          onContentChange={onContentChange}
         />
         <InputError message={contentError} className="px-4 pb-4 sm:px-6" />
       </div>

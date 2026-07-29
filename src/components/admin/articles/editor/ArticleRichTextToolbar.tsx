@@ -3,7 +3,7 @@ import {
   BetweenVerticalStart,
   Bold,
   Heading2,
-  Image,
+  ImagePlus,
   Italic,
   Link2,
   List,
@@ -14,7 +14,11 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
+import { MediaPickerDialog } from "@/components/admin/media/MediaPickerDialog";
 import { cn } from "@/lib/utils";
+import { isAudioMedia, isVideoMedia, type AdminMediaRow } from "@/services/admin/media";
+
+import { buildMediaInsertHtml } from "./articleEditorMediaUtils";
 
 type ArticleRichTextToolbarProps = {
   editorRef: React.RefObject<HTMLDivElement | null>;
@@ -35,7 +39,7 @@ const TOOLBAR_ACTIONS: ToolbarAction[] = [
   { label: "Bullet list", icon: <List className="size-4" />, command: "insertUnorderedList" },
   { label: "Quote", icon: <Quote className="size-4" />, command: "formatBlock", value: "blockquote" },
   { label: "Link", icon: <Link2 className="size-4" />, command: "createLink" },
-  { label: "Image", icon: <Image className="size-4" />, command: "insertImage" },
+  { label: "Insert media", icon: <ImagePlus className="size-4" />, command: "insertMedia" },
 ];
 
 type TableAction = {
@@ -258,6 +262,52 @@ const TABLE_ACTIONS: TableAction[] = [
 ];
 
 export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichTextToolbarProps) {
+  const [mediaPickerOpen, setMediaPickerOpen] = React.useState(false);
+  const savedRangeRef = React.useRef<Range | null>(null);
+
+  const saveSelection = React.useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    savedRangeRef.current = selection.getRangeAt(0).cloneRange();
+  }, []);
+
+  const restoreSelection = React.useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const selection = window.getSelection();
+    if (!selection || !savedRangeRef.current) return;
+    selection.removeAllRanges();
+    selection.addRange(savedRangeRef.current);
+  }, [editorRef]);
+
+  const escapeAttr = (value: string) =>
+    value
+      .replaceAll("&", "&amp;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+
+  const buildMediaHtml = (item: AdminMediaRow): string => {
+    const src = escapeAttr(item.url || "");
+    const alt = escapeAttr(item.name || item.fileName || "Media");
+    if (isVideoMedia(item)) {
+      return buildMediaInsertHtml("video", { src });
+    }
+    if (isAudioMedia(item)) {
+      return buildMediaInsertHtml("audio", { src });
+    }
+    return buildMediaInsertHtml("img", { src, alt });
+  };
+
+  const handleMediaSelect = (item: AdminMediaRow) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    restoreSelection();
+    document.execCommand("insertHTML", false, buildMediaHtml(item));
+    notifyEditorChange(editor);
+  };
+
   const runCommand = (action: ToolbarAction) => {
     editorRef.current?.focus();
     if (action.command === "createLink") {
@@ -265,9 +315,9 @@ export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichText
       if (url) document.execCommand(action.command, false, url);
       return;
     }
-    if (action.command === "insertImage") {
-      const url = window.prompt("Enter image URL");
-      if (url) document.execCommand(action.command, false, url);
+    if (action.command === "insertMedia") {
+      saveSelection();
+      setMediaPickerOpen(true);
       return;
     }
     document.execCommand(action.command, false, action.value);
@@ -318,6 +368,14 @@ export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichText
           {action.icon}
         </button>
       ))}
+
+      <MediaPickerDialog
+        open={mediaPickerOpen}
+        onOpenChange={setMediaPickerOpen}
+        onSelect={handleMediaSelect}
+        filter="all"
+        title="Insert media"
+      />
     </div>
   );
 }
