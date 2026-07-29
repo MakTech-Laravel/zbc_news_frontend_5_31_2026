@@ -123,6 +123,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.TERMS_OF_SERVICE.SHOW,
   },
   {
+    label: 'About Us',
+    path: '/admin/about-us',
+    segment: 'about-us',
+    permission: PERMISSIONS.ABOUT_US.SHOW,
+  },
+  {
     label: 'Cookie Policy',
     path: '/admin/cookie-policy',
     segment: 'cookie-policy',
