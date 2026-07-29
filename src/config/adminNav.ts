@@ -117,6 +117,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     permission: PERMISSIONS.PRIVACY_POLICY.SHOW,
   },
   {
+    label: 'Terms of Service',
+    path: '/admin/terms-of-service',
+    segment: 'terms-of-service',
+    permission: PERMISSIONS.TERMS_OF_SERVICE.SHOW,
+  },
+  {
     label: 'My Profile',
     path: '/admin/profile',
     segment: 'profile',
