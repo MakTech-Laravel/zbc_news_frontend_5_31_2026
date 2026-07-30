@@ -53,7 +53,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     label: 'Live Updates',
     path: '/admin/live-updates',
     segment: 'live-updates',
-    permission: PERMISSIONS.ARTICLES.LIST,
+    permission: PERMISSIONS.LIVE_UPDATES.LIST,
   },
   {
     label: 'Sub Menu',
@@ -84,13 +84,13 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     label: 'Monetization',
     path: '/admin/monetization',
     segment: 'monetization',
-    permission: PERMISSIONS.PLANS.LIST,
+    permission: PERMISSIONS.MONETIZATION.LIST,
   },
   {
     label: 'Newsletters',
     path: '/admin/newsletters',
     segment: 'newsletters',
-    permission: PERMISSIONS.SITE_SETTINGS.LIST,
+    permission: PERMISSIONS.NEWSLETTER.LIST,
   },
   {
     label: 'Announcements',
