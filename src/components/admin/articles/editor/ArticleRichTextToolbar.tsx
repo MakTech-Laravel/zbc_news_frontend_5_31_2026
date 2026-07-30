@@ -11,6 +11,7 @@ import {
   Table,
   TableCellsMerge,
   Trash2,
+  MonitorPlay,
 } from "lucide-react";
 import * as React from "react";
 
@@ -18,7 +19,8 @@ import { MediaPickerDialog } from "@/components/admin/media/MediaPickerDialog";
 import { cn } from "@/lib/utils";
 import { isAudioMedia, isVideoMedia, type AdminMediaRow } from "@/services/admin/media";
 
-import { buildMediaInsertHtml } from "./articleEditorMediaUtils";
+import { buildMediaInsertHtml, buildYouTubeEmbedHtml } from "./articleEditorMediaUtils";
+import { YouTubeEmbedDialog } from "./YouTubeEmbedDialog";
 
 type ArticleRichTextToolbarProps = {
   editorRef: React.RefObject<HTMLDivElement | null>;
@@ -40,6 +42,7 @@ const TOOLBAR_ACTIONS: ToolbarAction[] = [
   { label: "Quote", icon: <Quote className="size-4" />, command: "formatBlock", value: "blockquote" },
   { label: "Link", icon: <Link2 className="size-4" />, command: "createLink" },
   { label: "Insert media", icon: <ImagePlus className="size-4" />, command: "insertMedia" },
+  { label: "YouTube embed", icon: <MonitorPlay className="size-4" />, command: "insertYouTube" },
 ];
 
 type TableAction = {
@@ -263,6 +266,7 @@ const TABLE_ACTIONS: TableAction[] = [
 
 export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichTextToolbarProps) {
   const [mediaPickerOpen, setMediaPickerOpen] = React.useState(false);
+  const [youtubeDialogOpen, setYoutubeDialogOpen] = React.useState(false);
   const savedRangeRef = React.useRef<Range | null>(null);
 
   const saveSelection = React.useCallback(() => {
@@ -308,6 +312,14 @@ export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichText
     notifyEditorChange(editor);
   };
 
+  const handleYouTubeInsert = (embedUrl: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    restoreSelection();
+    document.execCommand("insertHTML", false, buildYouTubeEmbedHtml(embedUrl));
+    notifyEditorChange(editor);
+  };
+
   const runCommand = (action: ToolbarAction) => {
     editorRef.current?.focus();
     if (action.command === "createLink") {
@@ -318,6 +330,11 @@ export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichText
     if (action.command === "insertMedia") {
       saveSelection();
       setMediaPickerOpen(true);
+      return;
+    }
+    if (action.command === "insertYouTube") {
+      saveSelection();
+      setYoutubeDialogOpen(true);
       return;
     }
     document.execCommand(action.command, false, action.value);
@@ -375,6 +392,12 @@ export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichText
         onSelect={handleMediaSelect}
         filter="all"
         title="Insert media"
+      />
+
+      <YouTubeEmbedDialog
+        open={youtubeDialogOpen}
+        onOpenChange={setYoutubeDialogOpen}
+        onInsert={handleYouTubeInsert}
       />
     </div>
   );

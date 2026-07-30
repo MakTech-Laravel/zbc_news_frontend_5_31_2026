@@ -15,6 +15,7 @@ import {
   parseSubMenuSectionParam,
   SubMenuFeed,
 } from "@/components/main-layout/content/SubMenuFeed";
+import { LiveUpdatesFeed } from "@/components/main-layout/content/LiveUpdatesFeed";
 import { getTagPath } from "@/lib/tagPaths";
 import {
   fetchArticleBySlug,
@@ -70,7 +71,11 @@ export default function Home() {
     if (sectionFilter) {
       return (
         <article className="flex flex-col gap-5 sm:gap-7 lg:gap-8">
-          <SubMenuFeed section={sectionFilter} />
+          {sectionFilter === "live_updates" ? (
+            <LiveUpdatesFeed />
+          ) : (
+            <SubMenuFeed section={sectionFilter} />
+          )}
         </article>
       );
     }

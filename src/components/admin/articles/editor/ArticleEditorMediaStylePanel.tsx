@@ -100,7 +100,9 @@ export function ArticleEditorMediaStylePanel({
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-admin-heading">{getEditorMediaLabel(media)} settings</p>
-          <p className="text-xs text-admin-trend-muted">Adjust size, ratio, and alignment</p>
+          <p className="text-xs text-admin-trend-muted">
+            Adjust width, ratio, and alignment
+          </p>
         </div>
         <button
           type="button"

@@ -6,7 +6,6 @@ import {
   Loader2,
   Pin,
   Plus,
-  Radio,
   Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -19,11 +18,9 @@ import { toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import { searchAdminPanel } from "@/services/admin/search";
 import {
-  endSubMenuLiveCoverage,
   fetchAdminSubMenus,
   removeSubMenuManualEntry,
   reorderSubMenuManualEntries,
-  startSubMenuLiveCoverage,
   updateSubMenuSettings,
   upsertSubMenuManualEntry,
   type MostReadPeriod,
@@ -32,12 +29,11 @@ import {
   type SubMenuSnapshot,
 } from "@/services/admin/subMenu";
 
-type TabId = SubMenuKey;
+type TabId = Exclude<SubMenuKey, "live_updates">;
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "trending", label: "Trending" },
   { id: "most_read", label: "Most Read" },
-  { id: "live_updates", label: "Live Updates" },
   { id: "editorial_picks", label: "Editorial Picks" },
 ];
 
@@ -140,13 +136,8 @@ export default function AdminSubMenu() {
   const manual = snapshot?.manual ?? [];
   const preview = snapshot?.items ?? [];
   const algorithmic = snapshot?.algorithmic ?? [];
-  const liveArticles = useMemo(
-    () => algorithmic.filter((article) => article.is_live),
-    [algorithmic],
-  );
 
   const showScheduleFields = activeTab === "editorial_picks";
-  const showLiveControls = activeTab === "live_updates";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -262,39 +253,6 @@ export default function AdminSubMenu() {
       await load();
     } catch {
       toast.error("Only published articles can be added.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function handleStartLive() {
-    if (!selectedArticleId) {
-      toast.error("Select an article first.");
-      return;
-    }
-    setBusyId("live");
-    try {
-      await startSubMenuLiveCoverage(selectedArticleId);
-      toast.success("Live coverage started.");
-      setSelectedArticleId(null);
-      setArticleQuery("");
-      setSearchResults([]);
-      await load();
-    } catch {
-      toast.error("Failed to start live coverage.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function handleEndLive(articleId: number) {
-    setBusyId(articleId);
-    try {
-      await endSubMenuLiveCoverage(articleId);
-      toast.success("Live coverage ended.");
-      await load();
-    } catch {
-      toast.error("Failed to end live coverage.");
     } finally {
       setBusyId(null);
     }
@@ -634,7 +592,7 @@ export default function AdminSubMenu() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Sub Menu"
-        description="Configure Trending, Most Read, Live Updates, and Editorial Picks."
+        description="Configure Trending, Most Read, and Editorial Picks. Live Update articles are managed under Live Updates."
       />
 
       <div className="flex flex-wrap gap-2">
@@ -770,66 +728,12 @@ export default function AdminSubMenu() {
               </div>
             </AdminPanel>
 
-            {showLiveControls ? (
-              <AdminPanel>
-                <h2 className="mb-1 text-base font-bold text-admin-heading">Live coverage</h2>
-                <p className="mb-4 text-sm text-admin-label">
-                  Start live on a published article. Live articles fill this section
-                  automatically after manual pins.
-                </p>
-                {articleSearchBlock("Select an article, then start live coverage.")}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    onClick={() => void handleStartLive()}
-                    disabled={busyId === "live" || !selectedArticleId}
-                  >
-                    <Radio className="size-4" />
-                    {busyId === "live" ? "Starting..." : "Start live"}
-                  </Button>
-                </div>
-
-                <ul className="mt-4 space-y-2">
-                  {liveArticles.length === 0 ? (
-                    <li className="text-sm text-admin-label">No articles are live right now.</li>
-                  ) : (
-                    liveArticles.map((article) => (
-                      <li
-                        key={article.id}
-                        className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-admin-heading">
-                            {article.title}
-                          </p>
-                          <p className="mt-0.5 text-xs text-emerald-700">
-                            Live | started {formatWhen(article.live_started_at)}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={busyId === article.id}
-                          onClick={() => void handleEndLive(article.id)}
-                        >
-                          End live
-                        </Button>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </AdminPanel>
-            ) : null}
-
             <AdminPanel>
               <h2 className="mb-1 text-base font-bold text-admin-heading">Manual pins</h2>
               <p className="mb-4 text-sm text-admin-label">
                 {showScheduleFields
                   ? "Add picks with optional schedule windows. Manual items always appear before auto-fill. Use Up/Down within the same pin group."
-                  : showLiveControls
-                    ? "Pin articles to boost them above automatic live coverage. Same pin / reorder rules as other sections."
-                    : "Search and pin published articles. Pinned manuals appear first, then unpinned, then algorithmic fill. Use Up/Down within the same pin group."}
+                  : "Search and pin published articles. Pinned manuals appear first, then unpinned, then algorithmic fill. Use Up/Down within the same pin group."}
               </p>
 
               {articleSearchBlock()}
@@ -923,22 +827,18 @@ export default function AdminSubMenu() {
 
             <AdminPanel>
               <h2 className="mb-1 text-base font-bold text-admin-heading">
-                {showLiveControls
-                  ? "Currently live (algorithmic)"
-                  : showScheduleFields
-                    ? "Fallback latest (algorithmic)"
-                    : activeTab === "trending"
-                      ? "Trending candidates (algorithmic)"
-                      : activeTab === "most_read"
-                        ? "Most-read candidates (algorithmic)"
-                        : "Algorithmic feed"}
+                {showScheduleFields
+                  ? "Fallback latest (algorithmic)"
+                  : activeTab === "trending"
+                    ? "Trending candidates (algorithmic)"
+                    : activeTab === "most_read"
+                      ? "Most-read candidates (algorithmic)"
+                      : "Algorithmic feed"}
               </h2>
               <p className="mb-4 text-sm text-admin-label">
-                {showLiveControls
-                  ? "Articles with live coverage enabled — used after manual pins."
-                  : showScheduleFields
-                    ? "Latest published articles used when picks don't fill the limit."
-                    : "Ranked candidates used after manual pins to fill the limit."}
+                {showScheduleFields
+                  ? "Latest published articles used when picks don't fill the limit."
+                  : "Ranked candidates used after manual pins to fill the limit."}
               </p>
               <ol className="space-y-2">
                 {algorithmic.length === 0 ? (

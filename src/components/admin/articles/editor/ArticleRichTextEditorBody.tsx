@@ -8,6 +8,7 @@ import {
   clearMediaSelection,
   isEditorMediaElement,
   notifyEditorInput,
+  resolveEditorMediaFromTarget,
   selectMediaElement,
   type EditorMediaElement,
 } from "./articleEditorMediaUtils";
@@ -53,22 +54,17 @@ export function ArticleRichTextEditorBody({
   }, [editorRef, onContentChange, selectedMedia]);
 
   const handleEditorClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
+    const media = resolveEditorMediaFromTarget(event.target);
 
-    const media = isEditorMediaElement(target)
-      ? target
-      : target.closest("img, video, audio");
-
-    if (isEditorMediaElement(media) && editorRef.current?.contains(media)) {
+    if (media && editorRef.current?.contains(media)) {
       event.preventDefault();
       selectMediaElement(media, editorRef.current);
       setSelectedMedia(media);
       return;
     }
 
-    if (selectedMedia) {
-      clearMediaSelection(editorRef.current!);
+    if (selectedMedia && editorRef.current) {
+      clearMediaSelection(editorRef.current);
       setSelectedMedia(null);
     }
   };
@@ -111,6 +107,8 @@ export function ArticleRichTextEditorBody({
         className={cn(
           "article-editor-body min-h-[280px] px-4 py-4 text-base leading-relaxed text-admin-heading outline-none empty:before:pointer-events-none empty:before:text-admin-trend-muted empty:before:content-[attr(data-placeholder)] sm:min-h-[360px] sm:px-6 sm:py-6",
           "[&_img]:cursor-pointer [&_video]:cursor-pointer [&_audio]:cursor-pointer",
+          "[&_.article-embed--youtube]:cursor-pointer [&_.article-embed--youtube]:my-4",
+          "[&_.article-embed--youtube_iframe]:pointer-events-none",
           "[&_.article-editor-media-selected]:outline [&_.article-editor-media-selected]:outline-2 [&_.article-editor-media-selected]:outline-zbc-blue [&_.article-editor-media-selected]:outline-offset-2",
           "[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-admin-input-border [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-admin-input-border [&_th]:bg-muted/50 [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold",
           className,
