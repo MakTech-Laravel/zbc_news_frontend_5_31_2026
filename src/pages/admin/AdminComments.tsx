@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const STATUS_OPTIONS = [
-  { value: "all", label: "All" },
+  { value: "all", label: "All statuses" },
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
@@ -28,7 +28,7 @@ const STATUS_OPTIONS = [
 export default function AdminComments() {
   const [comments, setComments] = React.useState<AdminCommentRow[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [status, setStatus] = React.useState("pending");
+  const [status, setStatus] = React.useState("all");
   const [search, setSearch] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [meta, setMeta] = React.useState({
@@ -57,6 +57,8 @@ export default function AdminComments() {
   }, [page, search, status]);
 
   React.useEffect(() => {
+    // Data fetching intentionally owns the loading state for each filter/page change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadComments();
   }, [loadComments]);
 
@@ -195,7 +197,7 @@ export default function AdminComments() {
                   </div>
                 </div>
 
-                <p className="whitespace-pre-wrap text-sm leading-6 text-admin-label">
+                <p className="min-w-0 max-w-full whitespace-pre-wrap wrap-anywhere text-sm leading-6 text-admin-label">
                   {comment.body}
                 </p>
               </article>
