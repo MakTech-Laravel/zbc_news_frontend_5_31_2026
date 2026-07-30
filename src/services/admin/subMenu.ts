@@ -227,21 +227,3 @@ export async function reorderSubMenuManualEntries(
 export async function removeSubMenuManualEntry(id: number): Promise<void> {
   await request.delete(`/admin/sub-menu/manual/${id}`);
 }
-
-export async function startSubMenuLiveCoverage(
-  articleId: number,
-): Promise<SubMenuArticleSummary> {
-  const response = await request.post(`/admin/sub-menu/live/start/${articleId}`);
-  const mapped = asArticleSummary(response.data?.data);
-  if (!mapped) throw new Error("Failed to start live coverage");
-  return mapped;
-}
-
-export async function endSubMenuLiveCoverage(
-  articleId: number,
-): Promise<SubMenuArticleSummary> {
-  const response = await request.post(`/admin/sub-menu/live/end/${articleId}`);
-  const mapped = asArticleSummary(response.data?.data);
-  if (!mapped) throw new Error("Failed to end live coverage");
-  return mapped;
-}

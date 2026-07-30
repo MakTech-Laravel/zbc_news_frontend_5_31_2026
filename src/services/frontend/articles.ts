@@ -548,6 +548,47 @@ export async function fetchMostReadArticles(
   return requestPromise;
 }
 
+export type PaginationMeta = {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
+
+export type LiveBlogArticlesResult = {
+  articles: Article[];
+  meta: PaginationMeta;
+};
+
+export async function fetchLiveBlogArticles(
+  page = 1,
+  perPage = 12,
+): Promise<LiveBlogArticlesResult> {
+  const response = await request.get("/articles/live-blogs", {
+    params: { page, per_page: perPage },
+  });
+  const body = response.data;
+  const articles = extractArticleRows(body)
+    .map(mapArticleListItem)
+    .filter((article): article is Article => article !== null);
+
+  const payload = (body as { data?: Record<string, unknown> })?.data ?? body;
+  const rawMeta =
+    payload && typeof payload === "object" && "meta" in payload
+      ? (payload.meta as Record<string, unknown>)
+      : null;
+
+  return {
+    articles,
+    meta: {
+      current_page: Number(rawMeta?.current_page ?? page) || 1,
+      last_page: Number(rawMeta?.last_page ?? 1) || 1,
+      per_page: Number(rawMeta?.per_page ?? perPage) || perPage,
+      total: Number(rawMeta?.total ?? articles.length) || 0,
+    },
+  };
+}
+
 export async function fetchArticlesByCategory(
   categorySlug: string,
   page = 1,
