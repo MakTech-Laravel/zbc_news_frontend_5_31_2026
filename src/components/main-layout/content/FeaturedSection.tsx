@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { ArticleMediaHoverThumb } from "@/components/main-layout/shared/media/ArticleMediaHoverThumb";
+import { LiveCoverageBadge } from "@/components/main-layout/shared/LiveCoverageBadge";
 import { useMostReadArticles } from "@/hooks/useMostReadArticles";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +51,13 @@ export function FeaturedSection() {
             className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zbc-gray-900 via-zbc-gray-900/60 to-transparent"
             aria-hidden
           />
-          <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-5 lg:p-6">
+          <LiveCoverageBadge
+            isLiveBlog={topArticle.isLiveBlog}
+            isLive={topArticle.isLive}
+            liveEndedAtIso={topArticle.liveEndedAtIso}
+            className="pointer-events-none absolute left-4 top-4 z-10"
+          />
+          <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-4 sm:p-5 lg:p-6">
             {/* <div className="mt-4 flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -75,7 +82,7 @@ export function FeaturedSection() {
               <Link
                 to={articleHref}
                 className={cn(
-                  "shrink-0 rounded-full bg-primary px-3.5 py-1.5 font-sans text-[12px] font-medium text-primary-foreground transition-colors",
+                  "pointer-events-auto shrink-0 rounded-full bg-primary px-3.5 py-1.5 font-sans text-[12px] font-medium text-primary-foreground transition-colors",
                 )}
               >
                 {topArticle.category}

@@ -16,6 +16,20 @@ type ArticleMediaHoverThumbProps = {
 /** Only one hover preview should play at a time across the page. */
 let activeHoverVideo: HTMLVideoElement | null = null;
 
+function youtubeHoverUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("autoplay", "1");
+    parsed.searchParams.set("mute", "1");
+    parsed.searchParams.set("controls", "0");
+    parsed.searchParams.set("playsinline", "1");
+    parsed.searchParams.set("rel", "0");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 export function ArticleMediaHoverThumb({
   media,
   fallbackSrc,
@@ -26,19 +40,28 @@ export function ArticleMediaHoverThumb({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hovering, setHovering] = useState(false);
   const [canHoverPlay, setCanHoverPlay] = useState(false);
-  const poster = media?.posterUrl || media?.url || fallbackSrc;
-  const isVideo = media?.type === "video" && Boolean(media.url);
+  const poster = media?.posterUrl || (media?.type === "image" ? media.url : "") || fallbackSrc;
+  const isYouTube = media?.type === "video" && media.provider === "youtube";
+  const isNativeVideo =
+    media?.type === "video" && media.provider !== "youtube" && Boolean(media.url);
+  const isVideo = isYouTube || isNativeVideo;
   const isAudio = media?.type === "audio";
 
   useEffect(() => {
     const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const update = () => setCanHoverPlay(mq.matches);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setCanHoverPlay(mq.matches && !reduced.matches);
     update();
     mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    reduced.addEventListener("change", update);
+    return () => {
+      mq.removeEventListener("change", update);
+      reduced.removeEventListener("change", update);
+    };
   }, []);
 
   useEffect(() => {
+    if (!isNativeVideo) return;
     const el = videoRef.current;
     if (!el) return;
 
@@ -58,7 +81,7 @@ export function ArticleMediaHoverThumb({
     void el.play().catch(() => {
       /* autoplay may be blocked */
     });
-  }, [hovering, canHoverPlay]);
+  }, [hovering, canHoverPlay, isNativeVideo]);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -77,7 +100,7 @@ export function ArticleMediaHoverThumb({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [isVideo]);
+  }, [isNativeVideo]);
 
   return (
     <div
@@ -85,7 +108,34 @@ export function ArticleMediaHoverThumb({
       onMouseEnter={() => isVideo && canHoverPlay && setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
-      {isVideo ? (
+      {isYouTube ? (
+        <>
+          {hovering && canHoverPlay ? (
+            <iframe
+              src={youtubeHoverUrl(media!.url)}
+              title=""
+              className={cn(
+                "pointer-events-none h-full w-full border-0 object-cover",
+                imageClassName,
+              )}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              aria-hidden="true"
+              tabIndex={-1}
+            />
+          ) : (
+            <ArticleImage
+              src={poster || fallbackSrc}
+              alt={alt}
+              className={cn("h-full w-full object-cover", imageClassName)}
+            />
+          )}
+          {!hovering ? (
+            <span className="pointer-events-none absolute bottom-2 left-2 inline-flex size-7 items-center justify-center rounded-full bg-black/65 text-white">
+              <Play className="size-3.5 fill-current" aria-hidden />
+            </span>
+          ) : null}
+        </>
+      ) : isNativeVideo ? (
         <>
           <video
             ref={videoRef}

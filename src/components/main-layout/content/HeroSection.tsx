@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { ArticleMediaHoverThumb } from "@/components/main-layout/shared/media/ArticleMediaHoverThumb";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
+import { LiveCoverageBadge } from "@/components/main-layout/shared/LiveCoverageBadge";
 import type { Article } from "@/data/dummy/types";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
@@ -55,13 +56,18 @@ export function HeroSection({ className }: HeroSectionProps) {
             imageClassName="transition-transform duration-500 group-hover:scale-[1.02]"
           />
           <div
-            className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900 via-zbc-gray-900/50 to-zbc-gray-900/10"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zbc-gray-900 via-zbc-gray-900/50 to-zbc-gray-900/10"
             aria-hidden
           />
-          <div className="absolute top-4 left-4">
+          <div className="pointer-events-none absolute top-4 left-4 flex flex-wrap items-center gap-2">
             <CategoryTag label={article.category} />
+            <LiveCoverageBadge
+              isLiveBlog={article.isLiveBlog}
+              isLive={article.isLive}
+              liveEndedAtIso={article.liveEndedAtIso}
+            />
           </div>
-          <div className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-2.5 sm:p-6 lg:space-y-3 lg:p-4">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-2.5 sm:p-6 lg:space-y-3 lg:p-4">
             <h2 className="line-clamp-2 max-w-[95%] font-inter text-2xl font-bold leading-[1.15] text-primary-foreground sm:leading-tight lg:max-w-3xl lg:text-5xl">
               {article.title}
             </h2>

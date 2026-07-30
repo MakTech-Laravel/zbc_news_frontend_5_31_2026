@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArticleMediaThumb } from "@/components/main-layout/shared/media/ArticleMediaThumb";
 import { ArticleMeta } from "@/components/main-layout/shared/ArticleMeta";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
+import { LiveCoverageBadge } from "@/components/main-layout/shared/LiveCoverageBadge";
 import type { Article } from "@/data/dummy/types";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +33,14 @@ export function ArticleListItem({ article, className, hideViewsBelowSm }: Articl
         />
       </Link>
       <div className="min-w-0 flex-1 space-y-1.5">
-        <CategoryTag label={article.category} className="bg-brand-soft text-primary" />
+        <div className="flex flex-wrap items-center gap-2">
+          <CategoryTag label={article.category} className="bg-brand-soft text-primary" />
+          <LiveCoverageBadge
+            isLiveBlog={article.isLiveBlog}
+            isLive={article.isLive}
+            liveEndedAtIso={article.liveEndedAtIso}
+          />
+        </div>
         <Link to={article.slug ? `/${article.slug}` : "/"} className="block">
           <h3 className="line-clamp-2 font-inter text-base font-semibold leading-[1.15] text-zbc-gray-1000 mb-2 hover:text-primary">
             {article.title}

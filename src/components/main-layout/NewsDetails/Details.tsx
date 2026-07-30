@@ -10,6 +10,7 @@ import { ArticleGrid } from "@/components/main-layout/content/ArticleGrid";
 import { AuthorByline } from "@/components/main-layout/shared/AuthorByline";
 import { ArticleMediaHero } from "@/components/main-layout/shared/media/ArticleMediaHero";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
+import { LiveCoverageBadge } from "@/components/main-layout/shared/LiveCoverageBadge";
 import NotFound from "@/pages/global/NotFound";
 import { cn } from "@/lib/utils";
 import { getTagPath } from "@/lib/tagPaths";
@@ -114,6 +115,45 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
     };
   }, [location.hash, article.slug, settings.allowComments, settings.disqusShortname]);
 
+  const hasLiveFeaturedVideo =
+    article.isLiveBlog && article.featuredMedia?.type === "video";
+
+  const featuredMediaFigure =
+    article.featuredMedia || article.imageUrl ? (
+      <figure className="overflow-hidden rounded-lg border border-border bg-muted shadow-sm">
+        <ArticleMediaHero
+          media={
+            article.featuredMedia ?? {
+              type: "image",
+              url: article.imageUrl,
+              posterUrl: article.imageUrl,
+            }
+          }
+          alt={article.title}
+          autoPlay={hasLiveFeaturedVideo}
+          overlay={
+            <>
+              <div
+                className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900/90 via-zbc-gray-900/35 to-transparent"
+                aria-hidden
+              />
+              <figcaption className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-3 sm:p-6 lg:p-8">
+                <CategoryTag label={article.category} />
+                <p className="font-inter text-xl font-bold leading-tight text-primary-foreground sm:text-2xl lg:text-3xl">
+                  {article.title}
+                </p>
+                {article.subtitle ? (
+                  <p className="line-clamp-2 max-w-3xl font-inter text-sm leading-6 text-white/90 sm:text-base">
+                    {article.subtitle}
+                  </p>
+                ) : null}
+              </figcaption>
+            </>
+          }
+        />
+      </figure>
+    ) : null;
+
   return (
     <article className="bg-background text-foreground">
       <div className="mx-auto w-full max-w-4xl px-0 sm:px-2">
@@ -125,6 +165,8 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
           articleImageUrl={article.shareImageUrl || article.imageUrl}
         />
 
+        {hasLiveFeaturedVideo ? featuredMediaFigure : null}
+
         <header className="space-y-4 pb-6 pt-6 sm:space-y-5 sm:pb-8">
           <CategoryTag
             label={article.category}
@@ -135,12 +177,12 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
             {article.title}
           </h1>
 
-          {article.isLiveBlog && article.isLive ? (
-            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-700">
-              <span className="size-2 animate-pulse rounded-full bg-red-500" aria-hidden />
-              Live
-            </span>
-          ) : null}
+          <LiveCoverageBadge
+            isLiveBlog={article.isLiveBlog}
+            isLive={article.isLive}
+            liveEndedAtIso={article.liveEndedAtIso}
+            size="md"
+          />
 
           {article.subtitle ? (
             <p className="font-inter text-base font-normal leading-7 text-zbc-gray-700 sm:text-lg sm:leading-8">
@@ -172,39 +214,7 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
           </div>
         </header>
 
-        {article.featuredMedia || article.imageUrl ? (
-          <figure className="overflow-hidden rounded-lg border border-border bg-muted shadow-sm">
-            <ArticleMediaHero
-              media={
-                article.featuredMedia ?? {
-                  type: "image",
-                  url: article.imageUrl,
-                  posterUrl: article.imageUrl,
-                }
-              }
-              alt={article.title}
-              overlay={
-                <>
-                  <div
-                    className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900/90 via-zbc-gray-900/35 to-transparent"
-                    aria-hidden
-                  />
-                  <figcaption className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-3 sm:p-6 lg:p-8">
-                    <CategoryTag label={article.category} />
-                    <p className="font-inter text-xl font-bold leading-tight text-primary-foreground sm:text-2xl lg:text-3xl">
-                      {article.title}
-                    </p>
-                    {article.subtitle ? (
-                      <p className="line-clamp-2 max-w-3xl font-inter text-sm leading-6 text-white/90 sm:text-base">
-                        {article.subtitle}
-                      </p>
-                    ) : null}
-                  </figcaption>
-                </>
-              }
-            />
-          </figure>
-        ) : null}
+        {!hasLiveFeaturedVideo ? featuredMediaFigure : null}
 
         <div className="py-8 sm:py-10">
           {article.isLiveBlog ? (
@@ -221,6 +231,10 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-red-600">
                       <span className="size-1.5 animate-pulse rounded-full bg-red-500" />
                       Updating
+                    </span>
+                  ) : article.liveEndedAtIso ? (
+                    <span className="text-xs font-semibold uppercase tracking-wide text-zbc-gray-500">
+                      Coverage ended
                     </span>
                   ) : null}
                 </div>

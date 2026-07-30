@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArticleMediaHoverThumb } from "@/components/main-layout/shared/media/ArticleMediaHoverThumb";
 import { ArticleMeta } from "@/components/main-layout/shared/ArticleMeta";
 import { CategoryTag } from "@/components/main-layout/shared/CategoryTag";
+import { LiveCoverageBadge } from "@/components/main-layout/shared/LiveCoverageBadge";
 import type { Article } from "@/data/dummy/types";
 import { cn } from "@/lib/utils";
 
@@ -34,12 +35,11 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
       <div className="space-y-2 p-4">
         <Link to={articleHref} className="block space-y-2">
           <CategoryTag label={article.category} className="bg-brand-soft text-primary" />
-          {article.isLive ? (
-            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700">
-              <span className="size-1.5 animate-pulse rounded-full bg-red-500" aria-hidden />
-              Live
-            </span>
-          ) : null}
+          <LiveCoverageBadge
+            isLiveBlog={article.isLiveBlog}
+            isLive={article.isLive}
+            liveEndedAtIso={article.liveEndedAtIso}
+          />
           <h3 className="line-clamp-2 font-inter text-lg font-bold text-zbc-gray-1000 hover:text-primary cursor-pointer">
             {article.title}
           </h3>

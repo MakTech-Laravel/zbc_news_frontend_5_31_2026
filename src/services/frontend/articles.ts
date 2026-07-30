@@ -43,6 +43,7 @@ export type ArticleDetail = {
   shareImageUrl: string;
   isLive: boolean;
   isLiveBlog: boolean;
+  liveEndedAtIso: string;
   liveUpdates: ArticleLiveUpdateEntry[];
 };
 
@@ -239,6 +240,8 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     ),
     isLive: Boolean(record.is_live),
     isLiveBlog: Boolean(record.is_live_blog),
+    liveEndedAtIso:
+      typeof record.live_ended_at === "string" ? record.live_ended_at : "",
     liveUpdates,
   };
 }
@@ -363,6 +366,9 @@ export function mapArticleListItem(raw: unknown): Article | null {
     commentCount: Number(record.comments_count ?? 0),
     tags: parseTags(record.tags),
     isLive: Boolean(record.is_live),
+    isLiveBlog: Boolean(record.is_live_blog),
+    liveEndedAtIso:
+      typeof record.live_ended_at === "string" ? record.live_ended_at : undefined,
     serial:
       Number.isFinite(Number(record.serial)) && Number(record.serial) > 0
         ? Math.trunc(Number(record.serial))
@@ -456,8 +462,8 @@ type FetchMostReadOptions = {
   perPage?: number;
 };
 
-let mostReadPage1Cache = new Map<string, MostReadResult>();
-let mostReadPage1Promises = new Map<string, Promise<MostReadResult>>();
+const mostReadPage1Cache = new Map<string, MostReadResult>();
+const mostReadPage1Promises = new Map<string, Promise<MostReadResult>>();
 
 function parseMostReadMeta(raw: unknown): MostReadMeta {
   const fallback: MostReadMeta = {

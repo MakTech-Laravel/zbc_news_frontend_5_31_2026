@@ -54,6 +54,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     path: '/admin/live-updates',
     segment: 'live-updates',
     permission: PERMISSIONS.LIVE_UPDATES.LIST,
+    end: false,
   },
   {
     label: 'Sub Menu',

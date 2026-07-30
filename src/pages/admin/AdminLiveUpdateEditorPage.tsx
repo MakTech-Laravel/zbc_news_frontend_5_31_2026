@@ -84,8 +84,8 @@ const shellSchema = z
   .object({
     title: z.string().min(1, "Title is required"),
     article_description: z.string(),
-    status: z.string().pipe(z.enum(ARTICLE_STATUS_VALUES)),
-    visibility: z.string().pipe(z.enum(ARTICLE_VISIBILITY_VALUES)),
+    status: z.enum(ARTICLE_STATUS_VALUES),
+    visibility: z.enum(ARTICLE_VISIBILITY_VALUES),
     article_category_id: z.string().min(1, "Category is required"),
     tags: z.array(z.string()),
     excerpt: z.string().max(EXCERPT_MAX_LENGTH),
@@ -121,9 +121,21 @@ function appendMediaToPayload(
   featuredMedia: FeaturedMediaValue,
   openGraphImageUrl: string | null,
 ) {
+  const liveVideoUrl =
+    featuredMedia.type === "video" &&
+    featuredMedia.url?.includes("youtube.com/embed/")
+      ? featuredMedia.url
+      : "";
+
   payload.featured_image = featuredImageUrlFromMedia(featuredMedia) ?? "";
   payload.open_graph_image = openGraphImageUrl ?? "";
-  if (featuredMedia.mediaUuid) {
+  payload.live_video_url = liveVideoUrl;
+
+  if (liveVideoUrl) {
+    // YouTube is external media; the Cloudinary poster URL is persisted as featured_image.
+    payload.featured_media_uuid = "";
+    payload.poster_media_uuid = "";
+  } else if (featuredMedia.mediaUuid) {
     payload.featured_media_uuid = featuredMedia.mediaUuid;
     payload.poster_media_uuid =
       featuredMedia.type === "image" ? "" : (featuredMedia.posterUuid ?? "");
@@ -324,6 +336,17 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
     const valid = await form.trigger();
     if (!valid) return;
 
+    if (
+      featuredMedia.type === "video" &&
+      (featuredMedia.url || featuredMedia.mediaUuid) &&
+      !featuredMedia.posterUrl &&
+      !featuredMedia.posterUuid
+    ) {
+      toast("Poster image is recommended for Live featured media.", {
+        icon: "ℹ️",
+      });
+    }
+
     const data = form.getValues();
     setSaving(true);
     try {
@@ -359,7 +382,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
           });
         }
       });
-      toast.error(getAuthErrorMessage(error) || "Failed to save live update");
+      toast.error(getAuthErrorMessage(error, "Failed to save live update"));
     } finally {
       setSaving(false);
     }
@@ -430,7 +453,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
       setEntryEditorOpen(false);
       setEditingEntry(null);
     } catch (error) {
-      toast.error(getAuthErrorMessage(error) || "Failed to save update");
+      toast.error(getAuthErrorMessage(error, "Failed to save update"));
     } finally {
       setEntrySaving(false);
     }
@@ -457,7 +480,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
       setShellMeta(updated);
       toast.success(updated.isLive ? "Live coverage started" : "Live coverage ended");
     } catch (error) {
-      toast.error(getAuthErrorMessage(error) || "Failed to update live status");
+      toast.error(getAuthErrorMessage(error, "Failed to update live status"));
     }
   };
 
@@ -800,7 +823,13 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
 
           <AdminPanel className="space-y-4">
             <h2 className="text-sm font-semibold text-admin-heading">Featured media</h2>
-            <FeaturedMediaField value={featuredMedia} onChange={setFeaturedMedia} />
+            <FeaturedMediaField
+              value={featuredMedia}
+              onChange={setFeaturedMedia}
+              allowedTypes={["image", "video"]}
+              typeLabels={{ video: "Live" }}
+              videoSource="youtube"
+            />
             <div>
               <label className={fieldLabelClassName}>Open Graph image</label>
               <MediaImageField

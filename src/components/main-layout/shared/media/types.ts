@@ -2,6 +2,7 @@ export type ArticleFeaturedMediaType = "image" | "video" | "audio";
 
 export type ArticleFeaturedMedia = {
   type: ArticleFeaturedMediaType;
+  provider?: "native" | "youtube";
   url: string;
   posterUrl: string;
   thumbnailUrl?: string;
@@ -25,20 +26,28 @@ export function resolveFeaturedMediaFromApi(
         ? typeRaw
         : "image";
     const url = typeof media.url === "string" ? media.url.trim() : "";
+    const thumbnailUrl =
+      typeof media.thumbnail_url === "string" ? media.thumbnail_url.trim() : "";
+    const explicitPoster =
+      typeof media.poster_url === "string" ? media.poster_url.trim() : "";
+
+    // Never fall back to a video/audio URL for <img> posters.
     const posterUrl =
-      (typeof media.poster_url === "string" && media.poster_url.trim()) ||
-      (typeof media.thumbnail_url === "string" && media.thumbnail_url.trim()) ||
+      explicitPoster ||
+      thumbnailUrl ||
       (type === "image" ? url : "") ||
-      fallbackImageUrl;
-    const resolvedUrl = url || posterUrl;
+      fallbackImageUrl ||
+      "";
+
+    const resolvedUrl = type === "image" ? url || posterUrl : url;
     if (!resolvedUrl && !posterUrl) return null;
 
     return {
       type,
-      url: resolvedUrl,
-      posterUrl: posterUrl || resolvedUrl,
-      thumbnailUrl:
-        typeof media.thumbnail_url === "string" ? media.thumbnail_url : undefined,
+      provider: media.provider === "youtube" ? "youtube" : "native",
+      url: resolvedUrl || posterUrl,
+      posterUrl: posterUrl || (type === "image" ? resolvedUrl : ""),
+      thumbnailUrl: thumbnailUrl || undefined,
       mimeType: typeof media.mime_type === "string" ? media.mime_type : null,
       uuid: typeof media.uuid === "string" ? media.uuid : null,
     };
