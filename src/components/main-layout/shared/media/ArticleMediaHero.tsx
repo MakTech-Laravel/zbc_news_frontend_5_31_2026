@@ -5,11 +5,28 @@ import { ArticleImage } from "@/components/main-layout/shared/ArticleImage";
 import type { ArticleFeaturedMedia } from "@/components/main-layout/shared/media/types";
 import { cn } from "@/lib/utils";
 
+function withYouTubePlaybackParams(url: string, autoPlay: boolean): string {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("playsinline", "1");
+    parsed.searchParams.set("rel", "0");
+    if (autoPlay) {
+      parsed.searchParams.set("autoplay", "1");
+      parsed.searchParams.set("mute", "1");
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 type ArticleMediaHeroProps = {
   media: ArticleFeaturedMedia;
   alt: string;
   className?: string;
   overlay?: ReactNode;
+  /** Muted autoplay for live-blog featured video (browser policy requires muted). */
+  autoPlay?: boolean;
 };
 
 export function ArticleMediaHero({
@@ -17,14 +34,23 @@ export function ArticleMediaHero({
   alt,
   className,
   overlay,
+  autoPlay = false,
 }: ArticleMediaHeroProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
-    setPlaying(false);
-  }, [media.url, media.type]);
+    if (media.type !== "video" || !autoPlay) return;
+    const el = videoRef.current;
+    if (!el) return;
+
+    el.muted = true;
+    void el
+      .play()
+      .then(() => setPlaying(true))
+      .catch(() => setPlaying(false));
+  }, [media.type, media.url, autoPlay]);
 
   if (media.type === "image") {
     return (
@@ -39,6 +65,25 @@ export function ArticleMediaHero({
           fetchPriority="high"
         />
         {overlay}
+      </div>
+    );
+  }
+
+  if (media.type === "video" && media.provider === "youtube") {
+    return (
+      <div
+        className={cn(
+          "relative aspect-video min-h-[200px] w-full bg-black sm:min-h-[280px] lg:min-h-[360px]",
+          className,
+        )}
+      >
+        <iframe
+          src={withYouTubePlaybackParams(media.url, autoPlay)}
+          title={alt}
+          className="absolute inset-0 size-full border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
       </div>
     );
   }
@@ -63,7 +108,9 @@ export function ArticleMediaHero({
           poster={media.posterUrl || undefined}
           className="absolute inset-0 h-full w-full object-cover"
           playsInline
-          preload="metadata"
+          muted={autoPlay}
+          loop={autoPlay}
+          preload={autoPlay ? "auto" : "metadata"}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
           onEnded={() => setPlaying(false)}

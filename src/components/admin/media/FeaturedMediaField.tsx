@@ -1,6 +1,7 @@
 import * as React from "react";
-import { FolderOpen, Link2, Music2, Video, X } from "lucide-react";
+import { FolderOpen, Link2, Music2, Radio, Video, X } from "lucide-react";
 
+import { YouTubeEmbedDialog } from "@/components/admin/articles/editor/YouTubeEmbedDialog";
 import { MediaPickerDialog } from "@/components/admin/media/MediaPickerDialog";
 import { settingsInputClassName } from "@/components/admin/settings/settingsFormStyles";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,20 @@ type FeaturedMediaFieldProps = {
   value: FeaturedMediaValue;
   onChange: (value: FeaturedMediaValue) => void;
   className?: string;
+  /** Restrict visible type tabs (defaults to image/video/audio). */
+  allowedTypes?: FeaturedMediaType[];
+  /** Override tab labels, e.g. `{ video: "Live" }` on Live Updates editor. */
+  typeLabels?: Partial<Record<FeaturedMediaType, string>>;
+  /** Live Updates can collect a YouTube URL instead of library video. */
+  videoSource?: "media" | "youtube";
+};
+
+const DEFAULT_TYPES: FeaturedMediaType[] = ["image", "video", "audio"];
+
+const DEFAULT_LABELS: Record<FeaturedMediaType, string> = {
+  image: "Image",
+  video: "Video",
+  audio: "Audio",
 };
 
 const emptyValue = (type: FeaturedMediaType = "image"): FeaturedMediaValue => ({
@@ -49,23 +64,45 @@ export function FeaturedMediaField({
   value,
   onChange,
   className,
+  allowedTypes = DEFAULT_TYPES,
+  typeLabels,
+  videoSource = "media",
 }: FeaturedMediaFieldProps) {
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [posterPickerOpen, setPosterPickerOpen] = React.useState(false);
-  const [urlDraft, setUrlDraft] = React.useState(value.url ?? "");
+  const [youtubeDialogOpen, setYoutubeDialogOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    setUrlDraft(value.url ?? "");
-  }, [value.url]);
+  const labels = { ...DEFAULT_LABELS, ...typeLabels };
+  const videoLabel = labels.video;
+  const isLiveLabel = videoLabel.toLowerCase() === "live";
+  const isYouTubeVideo = value.type === "video" && videoSource === "youtube";
 
   const needsPoster = value.type === "video" || value.type === "audio";
   const previewSrc = resolveMediaUrl(
-    value.posterUrl || value.thumbnailUrl || value.url || "",
+    value.posterUrl ||
+      (value.type === "image" ? value.url : null) ||
+      value.thumbnailUrl ||
+      "",
   );
 
   const setType = (type: FeaturedMediaType) => {
+    if (type === "video" && videoSource === "youtube") {
+      setYoutubeDialogOpen(true);
+      return;
+    }
     if (type === value.type) return;
     onChange(emptyValue(type));
+  };
+
+  const handleYouTubeInsert = (embedUrl: string) => {
+    onChange({
+      type: "video",
+      mediaUuid: null,
+      url: embedUrl,
+      thumbnailUrl: null,
+      posterUuid: value.posterUuid,
+      posterUrl: value.posterUrl,
+    });
   };
 
   const handlePick = (item: AdminMediaRow) => {
@@ -90,7 +127,7 @@ export function FeaturedMediaField({
   };
 
   const applyUrl = () => {
-    const trimmed = urlDraft.trim();
+    const trimmed = value.url?.trim() ?? "";
     if (!trimmed) {
       onChange(emptyValue(value.type));
       return;
@@ -105,7 +142,6 @@ export function FeaturedMediaField({
 
   const clear = () => {
     onChange(emptyValue(value.type));
-    setUrlDraft("");
   };
 
   const clearPoster = () => {
@@ -116,16 +152,12 @@ export function FeaturedMediaField({
     });
   };
 
+  const typeDisplayName = labels[value.type];
+
   return (
     <div className={cn("space-y-3", className)}>
       <div className="flex flex-wrap gap-1 rounded-[10px] border border-admin-input-border bg-muted/30 p-1">
-        {(
-          [
-            ["image", "Image"],
-            ["video", "Video"],
-            ["audio", "Audio"],
-          ] as const
-        ).map(([type, label]) => (
+        {allowedTypes.map((type) => (
           <button
             key={type}
             type="button"
@@ -137,14 +169,24 @@ export function FeaturedMediaField({
                 : "text-admin-trend-muted hover:text-admin-heading",
             )}
           >
-            {label}
+            {labels[type]}
           </button>
         ))}
       </div>
 
-      {previewSrc ? (
+      {previewSrc || (value.type === "video" && value.url) || value.type === "audio" ? (
         <div className="relative max-h-48 overflow-hidden rounded-[10px] border border-admin-input-border bg-muted/20">
-          {value.type === "video" && value.url && !value.posterUrl ? (
+          {isYouTubeVideo && value.url && !value.posterUrl ? (
+            <div className="relative aspect-video w-full">
+              <iframe
+                src={value.url}
+                title="Live YouTube preview"
+                className="absolute inset-0 size-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          ) : value.type === "video" && value.url && !value.posterUrl && !value.thumbnailUrl ? (
             <video
               src={resolveMediaUrl(value.url)}
               className="mx-auto max-h-48 w-auto max-w-full object-contain"
@@ -157,17 +199,30 @@ export function FeaturedMediaField({
               <Music2 className="size-10 opacity-50" aria-hidden />
               <span className="text-xs">Audio selected — add a poster image</span>
             </div>
-          ) : (
+          ) : previewSrc ? (
             <img
               src={previewSrc}
               alt="Featured media preview"
               className="mx-auto max-h-48 w-auto max-w-full object-contain"
             />
+          ) : (
+            <div className="flex h-36 flex-col items-center justify-center gap-2 text-admin-trend-muted">
+              {isLiveLabel ? (
+                <Radio className="size-10 opacity-50" aria-hidden />
+              ) : (
+                <Video className="size-10 opacity-50" aria-hidden />
+              )}
+              <span className="text-xs">{typeDisplayName} selected</span>
+            </div>
           )}
           {value.type === "video" ? (
             <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/65 px-2 py-1 text-[11px] font-medium text-white">
-              <Video className="size-3" aria-hidden />
-              Video
+              {isLiveLabel ? (
+                <Radio className="size-3" aria-hidden />
+              ) : (
+                <Video className="size-3" aria-hidden />
+              )}
+              {typeDisplayName}
             </span>
           ) : null}
           {value.type === "audio" ? (
@@ -189,10 +244,12 @@ export function FeaturedMediaField({
         <div className="flex w-full flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-admin-input-border bg-white px-4 py-8 text-center">
           <FolderOpen className="size-8 text-admin-label" aria-hidden />
           <span className="text-sm font-medium text-admin-heading">
-            No {value.type} selected
+            No {typeDisplayName.toLowerCase()} selected
           </span>
           <span className="text-xs text-admin-trend-muted">
-            Choose from the media library or paste a URL below
+            {value.type === "image"
+              ? "Choose from the media library or paste a URL below"
+              : "Choose from the media library"}
           </span>
         </div>
       )}
@@ -202,10 +259,16 @@ export function FeaturedMediaField({
           type="button"
           variant="outline"
           className="h-9 gap-2 rounded-[10px] border-admin-input-border"
-          onClick={() => setPickerOpen(true)}
+          onClick={() => {
+            if (isYouTubeVideo) {
+              setYoutubeDialogOpen(true);
+              return;
+            }
+            setPickerOpen(true);
+          }}
         >
           <FolderOpen className="size-4" aria-hidden />
-          Select {value.type}
+          Select {typeDisplayName.toLowerCase()}
         </Button>
       </div>
 
@@ -218,8 +281,15 @@ export function FeaturedMediaField({
             />
             <input
               type="url"
-              value={urlDraft}
-              onChange={(e) => setUrlDraft(e.target.value)}
+              value={value.url ?? ""}
+              onChange={(e) =>
+                onChange({
+                  ...value,
+                  mediaUuid: null,
+                  url: e.target.value,
+                  thumbnailUrl: e.target.value,
+                })
+              }
               onBlur={applyUrl}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -238,7 +308,7 @@ export function FeaturedMediaField({
         <div className="space-y-2 rounded-[10px] border border-admin-input-border bg-muted/20 p-3">
           <div className="flex items-center justify-between gap-2">
             <label className="text-xs font-medium text-admin-heading">
-              Poster image {value.type === "video" || value.type === "audio" ? "(recommended)" : ""}
+              Poster image (recommended)
             </label>
             {value.posterUrl ? (
               <button
@@ -258,7 +328,9 @@ export function FeaturedMediaField({
             />
           ) : (
             <p className="text-xs text-admin-trend-muted">
-              Used on cards, share previews, and before playback.
+              {isLiveLabel
+                ? "Shown on list cards by default; live video plays on hover."
+                : "Used on cards, share previews, and before playback."}
             </p>
           )}
           <Button
@@ -279,7 +351,7 @@ export function FeaturedMediaField({
         onOpenChange={setPickerOpen}
         onSelect={handlePick}
         filter={value.type}
-        title={`Select ${value.type}`}
+        title={`Select ${typeDisplayName.toLowerCase()}`}
       />
       <MediaPickerDialog
         open={posterPickerOpen}
@@ -288,10 +360,16 @@ export function FeaturedMediaField({
         filter="image"
         title="Select poster image"
       />
+      <YouTubeEmbedDialog
+        open={youtubeDialogOpen}
+        onOpenChange={setYoutubeDialogOpen}
+        onInsert={handleYouTubeInsert}
+      />
     </div>
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function emptyFeaturedMediaValue(
   type: FeaturedMediaType = "image",
 ): FeaturedMediaValue {

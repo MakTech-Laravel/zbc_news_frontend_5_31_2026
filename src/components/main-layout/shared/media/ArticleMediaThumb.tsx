@@ -24,7 +24,7 @@ export function ArticleMediaThumb({
   width,
   height,
 }: ArticleMediaThumbProps) {
-  const src = media?.posterUrl || media?.url || fallbackSrc;
+  const src = media?.posterUrl || (media?.type === "image" ? media.url : "") || fallbackSrc;
   const showVideo = media?.type === "video";
   const showAudio = media?.type === "audio";
 
