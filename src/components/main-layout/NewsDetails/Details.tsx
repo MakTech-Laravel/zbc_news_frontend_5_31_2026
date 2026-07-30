@@ -33,6 +33,11 @@ const articleBodyClassName = cn(
   "[&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6",
   "[&_a]:text-primary [&_a]:underline",
   "[&_img]:my-4 [&_img]:max-h-[420px] [&_img]:w-full [&_img]:rounded-lg [&_img]:object-cover",
+  "[&_video]:my-4 [&_video]:w-full [&_video]:rounded-lg",
+  "[&_table]:my-4 [&_table]:w-full [&_table]:border-collapse",
+  "[&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2",
+  "[&_.article-embed]:my-4 [&_.article-embed]:overflow-hidden [&_.article-embed]:rounded-lg",
+  "[&_iframe]:max-w-full",
 );
 
 export function DetailsSkeleton() {
@@ -81,6 +86,14 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
 
   useArticleTracking(Number(article.id));
 
+  const sortedLiveUpdates = [...article.liveUpdates].sort((a, b) => {
+    const aTime = a.postedAtIso ? new Date(a.postedAtIso).getTime() : 0;
+    const bTime = b.postedAtIso ? new Date(b.postedAtIso).getTime() : 0;
+    return bTime - aTime || b.id - a.id;
+  });
+  const latestLiveUpdate = sortedLiveUpdates[0] ?? null;
+  const earlierLiveUpdates = sortedLiveUpdates.slice(1);
+
   useEffect(() => {
     if (location.hash !== "#comments") return;
 
@@ -121,6 +134,13 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
           <h1 className="font-inter text-2xl font-bold leading-[1.2] tracking-tight text-zbc-gray-1000 sm:text-3xl sm:leading-[1.15] lg:text-4xl lg:leading-[1.12]">
             {article.title}
           </h1>
+
+          {article.isLiveBlog && article.isLive ? (
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-700">
+              <span className="size-2 animate-pulse rounded-full bg-red-500" aria-hidden />
+              Live
+            </span>
+          ) : null}
 
           {article.subtitle ? (
             <p className="font-inter text-base font-normal leading-7 text-zbc-gray-700 sm:text-lg sm:leading-8">
@@ -187,14 +207,110 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
         ) : null}
 
         <div className="py-8 sm:py-10">
-          <div
-            className={articleBodyClassName}
-            dangerouslySetInnerHTML={{
-              __html:
-                article.articleDescription.trim() ||
-                "<p>No content available for this article.</p>",
-            }}
-          />
+          {article.isLiveBlog ? (
+            <div className="space-y-8">
+              <section aria-labelledby="live-timeline-heading" className="space-y-6">
+                <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+                  <h2
+                    id="live-timeline-heading"
+                    className="font-inter text-lg font-bold text-zbc-gray-1000"
+                  >
+                    Live updates
+                  </h2>
+                  {article.isLive ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-red-600">
+                      <span className="size-1.5 animate-pulse rounded-full bg-red-500" />
+                      Updating
+                    </span>
+                  ) : null}
+                </div>
+
+                {!latestLiveUpdate ? (
+                  <p className="font-inter text-sm text-zbc-gray-500">
+                    No updates have been posted yet.
+                  </p>
+                ) : (
+                  <ol className="relative space-y-8 border-l border-border pl-6">
+                    <li className="relative">
+                      <span
+                        className="absolute -left-[1.625rem] top-1.5 size-2.5 rounded-full bg-primary ring-4 ring-background"
+                        aria-hidden
+                      />
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <time
+                          dateTime={latestLiveUpdate.postedAtIso}
+                          className="block font-inter text-sm font-semibold text-zbc-gray-1000"
+                        >
+                          {latestLiveUpdate.postedAtIso
+                            ? new Date(latestLiveUpdate.postedAtIso).toLocaleString()
+                            : "—"}
+                        </time>
+                        <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          Latest
+                        </span>
+                      </div>
+                      <div
+                        className={articleBodyClassName}
+                        dangerouslySetInnerHTML={{
+                          __html: latestLiveUpdate.body.trim() || "<p></p>",
+                        }}
+                      />
+                    </li>
+
+                    {earlierLiveUpdates.map((entry) => (
+                      <li key={entry.id} className="relative">
+                        <span
+                          className="absolute -left-[1.625rem] top-1.5 size-2.5 rounded-full bg-primary ring-4 ring-background"
+                          aria-hidden
+                        />
+                        <time
+                          dateTime={entry.postedAtIso}
+                          className="mb-2 block font-inter text-sm font-semibold text-zbc-gray-1000"
+                        >
+                          {entry.postedAtIso
+                            ? new Date(entry.postedAtIso).toLocaleString()
+                            : "—"}
+                        </time>
+                        <div
+                          className={articleBodyClassName}
+                          dangerouslySetInnerHTML={{
+                            __html: entry.body.trim() || "<p></p>",
+                          }}
+                        />
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+
+              {article.articleDescription.trim() ? (
+                <section
+                  aria-labelledby="live-intro-heading"
+                  className="space-y-4 border-t border-border pt-8"
+                >
+                  <h2
+                    id="live-intro-heading"
+                    className="font-inter text-lg font-bold text-zbc-gray-1000"
+                  >
+                    About this coverage
+                  </h2>
+                  <div
+                    className={articleBodyClassName}
+                    dangerouslySetInnerHTML={{ __html: article.articleDescription }}
+                  />
+                </section>
+              ) : null}
+            </div>
+          ) : (
+            <div
+              className={articleBodyClassName}
+              dangerouslySetInnerHTML={{
+                __html:
+                  article.articleDescription.trim() ||
+                  "<p>No content available for this article.</p>",
+              }}
+            />
+          )}
         </div>
 
         {article.tags.length > 0 ? (

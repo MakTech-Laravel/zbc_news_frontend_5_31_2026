@@ -13,6 +13,11 @@ const AdminArticlesEdit = lazyWithRetry(() => import("@/pages/admin/AdminArticle
 const AdminArticlesTrash = lazyWithRetry(() => import("@/pages/admin/AdminArticlesTrash"));
 const AdminArticleActivities = lazyWithRetry(() => import("@/pages/admin/AdminArticleActivities"));
 const AdminBreakingNews = lazyWithRetry(() => import("@/pages/admin/AdminBreakingNews"));
+const AdminLiveUpdates = lazyWithRetry(() => import("@/pages/admin/AdminLiveUpdates"));
+const AdminLiveUpdatesCreate = lazyWithRetry(
+  () => import("@/pages/admin/AdminLiveUpdatesCreate"),
+);
+const AdminLiveUpdatesEdit = lazyWithRetry(() => import("@/pages/admin/AdminLiveUpdatesEdit"));
 const AdminSubMenu = lazyWithRetry(() => import("@/pages/admin/AdminSubMenu"));
 const AdminUser = lazyWithRetry(() => import("@/pages/admin/AdminUser"));
 const AdminUserArticleActivities = lazyWithRetry(
@@ -66,6 +71,12 @@ function AdminRoutes() {
           <Route path="articles/:articleSlug/activities" element={suspensePage(AdminArticleActivities)} />
           <Route path="articles/create" element={suspensePage(AdminArticlesCreate)} />
           <Route path="breaking-news" element={suspensePage(AdminBreakingNews)} />
+          <Route path="live-updates" element={suspensePage(AdminLiveUpdates)} />
+          <Route path="live-updates/create" element={suspensePage(AdminLiveUpdatesCreate)} />
+          <Route
+            path="live-updates/edit/:articleSlug"
+            element={suspensePage(AdminLiveUpdatesEdit)}
+          />
           <Route path="sub-menu" element={suspensePage(AdminSubMenu)} />
           <Route path="categories" element={suspensePage(AdminCategories)} />
           <Route path="menus" element={suspensePage(AdminMenus)} />

@@ -10,6 +10,12 @@ import {
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { resolveEstimatedReadTime } from "@/lib/readTime";
 
+export type ArticleLiveUpdateEntry = {
+  id: number;
+  body: string;
+  postedAtIso: string;
+};
+
 export type ArticleDetail = {
   id: string;
   slug: string;
@@ -35,6 +41,9 @@ export type ArticleDetail = {
   metaDescription: string;
   metaKeywords: string;
   shareImageUrl: string;
+  isLive: boolean;
+  isLiveBlog: boolean;
+  liveUpdates: ArticleLiveUpdateEntry[];
 };
 
 function resolveAuthorName(raw: Record<string, unknown>): string {
@@ -165,6 +174,23 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
       }
     : null;
 
+  const liveUpdatesRaw = Array.isArray(record.live_updates) ? record.live_updates : [];
+  const liveUpdates: ArticleLiveUpdateEntry[] = liveUpdatesRaw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const row = entry as Record<string, unknown>;
+      const entryId = Number(row.id);
+      if (!Number.isFinite(entryId)) return null;
+      const status = row.status === "draft" ? "draft" : "published";
+      if (status === "draft") return null;
+      return {
+        id: entryId,
+        body: typeof row.body === "string" ? row.body : "",
+        postedAtIso: typeof row.posted_at === "string" ? row.posted_at : "",
+      };
+    })
+    .filter((entry): entry is ArticleLiveUpdateEntry => entry !== null);
+
   return {
     id: String(id),
     slug,
@@ -211,6 +237,9 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
         ? record.open_graph_image
         : featuredMedia?.posterUrl || imageUrl,
     ),
+    isLive: Boolean(record.is_live),
+    isLiveBlog: Boolean(record.is_live_blog),
+    liveUpdates,
   };
 }
 
