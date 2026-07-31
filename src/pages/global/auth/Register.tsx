@@ -6,6 +6,10 @@ import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
+import {
+  getPasswordValidationError,
+  PASSWORD_REQUIREMENTS,
+} from "@/features/auth/passwordValidation";
 import { resolveAuthRole, saveAuthRole } from "@/features/auth/roleSelection";
 import { registerAndLoginUser, resolveDashboardPath } from "@/features/auth/service";
 import { type AuthRole } from "@/features/auth/types";
@@ -42,6 +46,12 @@ export default function Register() {
 
     if (!acceptedTerms) {
       setError("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
+
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -158,10 +168,11 @@ export default function Register() {
                 <Input
                   type={showPassword ? "text" : "password"}
                   className="w-full px-3 py-2 pr-10 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="8+ characters"
+                  placeholder="Create a strong password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
@@ -171,6 +182,21 @@ export default function Register() {
                   <Eye className="w-4 h-4" />
                 </button>
               </div>
+              <ul className="mt-2 space-y-1">
+                {PASSWORD_REQUIREMENTS.map((requirement) => {
+                  const met = requirement.test(password);
+                  return (
+                    <li
+                      key={requirement.id}
+                      className={`text-xs ${
+                        met ? "text-emerald-600" : "text-muted-foreground"
+                      }`}
+                    >
+                      {met ? "✓" : "•"} {requirement.label}
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
 
             <div>

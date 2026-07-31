@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import InputError from "@/components/input-error";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
+import {
+  getPasswordValidationError,
+  PASSWORD_REQUIREMENTS,
+} from "@/features/auth/passwordValidation";
 import { resetPassword } from "@/features/auth/service";
 
 const RESET_OTP_STORAGE_KEY = "password_reset_otp";
@@ -39,8 +43,9 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -91,8 +96,9 @@ export default function ResetPassword() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-3 py-2 pr-10 border border-border rounded-lg"
-                  placeholder="8+ characters"
+                  placeholder="Create a strong password"
                   autoComplete="new-password"
+                  required
                 />
                 <button
                   type="button"
@@ -102,6 +108,21 @@ export default function ResetPassword() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <ul className="mt-2 space-y-1 text-left">
+                {PASSWORD_REQUIREMENTS.map((requirement) => {
+                  const met = requirement.test(password);
+                  return (
+                    <li
+                      key={requirement.id}
+                      className={`text-xs ${
+                        met ? "text-emerald-600" : "text-muted-foreground"
+                      }`}
+                    >
+                      {met ? "✓" : "•"} {requirement.label}
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
 
             <div>
@@ -114,8 +135,9 @@ export default function ResetPassword() {
                   value={passwordConfirmation}
                   onChange={(e) => setPasswordConfirmation(e.target.value)}
                   className="w-full px-3 py-2 pr-10 border border-border rounded-lg"
-                  placeholder="8+ characters"
+                  placeholder="Confirm your password"
                   autoComplete="new-password"
+                  required
                 />
                 <button
                   type="button"
