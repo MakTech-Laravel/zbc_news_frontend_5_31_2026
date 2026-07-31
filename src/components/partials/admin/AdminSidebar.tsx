@@ -17,6 +17,7 @@ import {
   Settings,
   ShieldCheck,
   UserCircle,
+  UserX,
   Users,
   Zap,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/media": Image,
   "/admin/rabc": ShieldCheck,
   "/admin/users": Users,
+  "/admin/account-deletions": UserX,
   "/admin/monetization": CreditCard,
   "/admin/newsletters": Megaphone,
   "/admin/announcements": Bell,

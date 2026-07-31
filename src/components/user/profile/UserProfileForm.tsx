@@ -1,6 +1,6 @@
 import * as React from "react";
-import { Bell, Globe, Link2, LogOut, Mail, MapPin, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Bell, Globe, Link2, LogOut, Mail, MapPin, Trash2, User } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -28,6 +28,10 @@ import { request } from "@/api/request";
 import { canManagePublicAuthorProfile } from "@/auth/roles";
 import { useAuth } from "@/auth/useAuth";
 import { logoutAllDevices } from "@/features/auth/service";
+import {
+  getAccountDeletionError,
+  requestAccountDeletion,
+} from "@/services/user/accountDeletion";
 import { uploadAdminMedia } from "@/services/admin/media";
 import toast from "react-hot-toast";
 import InputError from "@/components/input-error";
@@ -120,13 +124,17 @@ function NotificationToggleRow({
 }
 
 export function UserProfileForm() {
-  const { user, logout } = useAuth();
+  const { user, logout, resetAuthState } = useAuth();
+  const navigate = useNavigate();
   const showAuthorProfile = canManagePublicAuthorProfile(user);
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const {
     register,
@@ -316,6 +324,39 @@ export function UserProfileForm() {
       toast.error("Unable to sign out from all devices. Please try again.");
     } finally {
       setLoggingOutAll(false);
+    }
+  };
+
+  const resetDeleteForm = () => {
+    setDeletePassword("");
+    setDeleteConfirmed(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      toast.error("Enter your current password to continue.");
+      return;
+    }
+    if (!deleteConfirmed) {
+      toast.error("Confirm that you understand the 30-day grace period.");
+      return;
+    }
+
+    setDeletingAccount(true);
+    try {
+      await requestAccountDeletion({
+        password: deletePassword,
+        confirm: true,
+      });
+      toast.success(
+        "Deletion requested. Check your email for the final deletion date and cancellation instructions.",
+      );
+      resetAuthState();
+      navigate("/", { replace: true });
+    } catch (error) {
+      toast.error(getAccountDeletionError(error, "Unable to delete account."));
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -543,6 +584,83 @@ export function UserProfileForm() {
           </Button>
         </div>
       </UserDashboardCard>
+
+      {!showAuthorProfile ? (
+        <UserDashboardCard>
+          <SettingsCardHeader
+            title="Delete My Account"
+            subtitle="Request permanent deletion with a 30-day grace period"
+            icon={<Trash2 className="size-5" aria-hidden />}
+          />
+          <div className="space-y-4 px-6 pb-6">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <p className="font-medium">Before you continue</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                <li>Your account will be disabled immediately and you will be signed out.</li>
+                <li>
+                  You have a 30-day grace period. To keep your account, send a cancellation request
+                  from your email; an administrator must review and restore it.
+                </li>
+                <li>
+                  If you do not cancel within 30 days, your account and personal data will be
+                  permanently deleted or anonymized.
+                </li>
+                <li>
+                  If you send a cancel request, permanent deletion is paused until an admin reviews
+                  it.
+                </li>
+                <li>You will not receive normal newsletters during the grace period.</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="delete-account-password" className="text-sm font-medium text-admin-heading">
+                Current password
+              </label>
+              <Input
+                id="delete-account-password"
+                type="password"
+                autoComplete="current-password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <label className="flex items-start gap-3 text-sm text-admin-label">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={deleteConfirmed}
+                onChange={(e) => setDeleteConfirmed(e.target.checked)}
+              />
+              <span>
+                I understand that my account will be permanently deleted after the 30-day grace
+                period unless I cancel the request.
+              </span>
+            </label>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={deletingAccount}
+                onClick={resetDeleteForm}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deletingAccount || !deletePassword.trim() || !deleteConfirmed}
+                onClick={() => void handleDeleteAccount()}
+              >
+                {deletingAccount ? "Deleting…" : "Delete My Account"}
+              </Button>
+            </div>
+          </div>
+        </UserDashboardCard>
+      ) : null}
 
       {!showAuthorProfile ? (
         <>

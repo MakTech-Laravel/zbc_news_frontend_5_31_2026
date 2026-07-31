@@ -46,6 +46,7 @@ export default [
     route("newsletter/verify", "pages/newsletter/NewsletterVerifyPage.tsx"),
     route("newsletter/unsubscribe", "pages/newsletter/NewsletterUnsubscribePage.tsx"),
     route("newsletter/preferences", "pages/newsletter/NewsletterPreferencesPage.tsx"),
+    route("account/cancel-deletion", "pages/frontend/CancelAccountDeletion.tsx"),
     route("demo/new", "pages/demo/NewDemo.tsx"),
   ]),
 

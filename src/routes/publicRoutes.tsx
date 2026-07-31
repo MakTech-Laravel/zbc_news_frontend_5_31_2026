@@ -13,6 +13,7 @@ import {
   CookiePolicy,
   Home,
   Newsletter,
+  CancelAccountDeletion,
   TagArticles,
   AuthorProfile,
   PrivacyPolicy,
@@ -43,6 +44,7 @@ export const publicRoutes: RouteObject = {
     { path: "/advertise", element: suspensePage(Advertise) },
     { path: "/careers", element: suspensePage(Careers) },
     { path: "/newsletter", element: suspensePage(Newsletter) },
+    { path: "/account/cancel-deletion", element: suspensePage(CancelAccountDeletion) },
     {
       element: <MainLayout />,
       children: [

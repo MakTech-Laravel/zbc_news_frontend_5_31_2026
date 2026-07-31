@@ -23,6 +23,9 @@ export const AccessibilityStatement = lazyWithRetry(() => import("@/pages/fronte
 export const Advertise = lazyWithRetry(() => import("@/pages/frontend/Advertise"));
 export const Careers = lazyWithRetry(() => import("@/pages/frontend/Careers"));
 export const Newsletter = lazyWithRetry(() => import("@/pages/frontend/Newsletter"));
+export const CancelAccountDeletion = lazyWithRetry(
+  () => import("@/pages/frontend/CancelAccountDeletion"),
+);
 
 
 // Backend

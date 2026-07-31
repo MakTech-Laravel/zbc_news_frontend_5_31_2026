@@ -20,6 +20,9 @@ const AdminLiveUpdatesCreate = lazyWithRetry(
 const AdminLiveUpdatesEdit = lazyWithRetry(() => import("@/pages/admin/AdminLiveUpdatesEdit"));
 const AdminSubMenu = lazyWithRetry(() => import("@/pages/admin/AdminSubMenu"));
 const AdminUser = lazyWithRetry(() => import("@/pages/admin/AdminUser"));
+const AdminAccountDeletions = lazyWithRetry(
+  () => import("@/pages/admin/AdminAccountDeletions"),
+);
 const AdminUserArticleActivities = lazyWithRetry(
   () => import("@/pages/admin/AdminUserArticleActivities"),
 );
@@ -86,6 +89,7 @@ function AdminRoutes() {
           <Route path="rabc/edit/:roleId" element={suspensePage(AdminRoleEdit)} />
           <Route path="users" element={suspensePage(AdminUser)} />
           <Route path="users/:userId/article-activities" element={suspensePage(AdminUserArticleActivities)} />
+          <Route path="account-deletions" element={suspensePage(AdminAccountDeletions)} />
           <Route path="monetization" element={suspensePage(AdminMonetization)} />
           <Route path="newsletters" element={suspensePage(AdminNewsletters)} />
           <Route path="announcements" element={suspensePage(AdminAnnouncements)} />
