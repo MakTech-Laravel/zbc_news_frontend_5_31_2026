@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 
 import { NewsletterHtmlEditor } from "@/components/admin/newsletters/NewsletterHtmlEditor";
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
 import {
   createNewsletterCampaign,
@@ -10,16 +11,20 @@ import {
   EMPTY_ANALYTICS,
   EMPTY_ELIGIBLE_COUNT,
   fetchNewsletterAnalytics,
+  fetchNewsletterArticleEmailBlock,
   fetchNewsletterCampaignEligibleCount,
   fetchNewsletterCampaigns,
   fetchNewsletterSubscribers,
   getNewsletterApiError,
   resendNewsletterVerification,
   scheduleNewsletterCampaign,
+  searchNewsletterArticles,
   sendNewsletterCampaign,
+  sendNewsletterCampaignTest,
   updateNewsletterCampaign,
   updateNewsletterSubscriberStatus,
   type NewsletterAnalytics,
+  type NewsletterArticleOption,
   type NewsletterCampaign,
   type NewsletterEligibleCount,
   type NewsletterSubscriber,
@@ -34,6 +39,9 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 export default function AdminNewsletters() {
+  const { settings } = useSiteSettings();
+  const siteTimeZone = settings.timezone || "America/New_York";
+
   const [activeTab, setActiveTab] = useState<TabId>("subscribers");
   const [analytics, setAnalytics] = useState<NewsletterAnalytics>(EMPTY_ANALYTICS);
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
@@ -48,6 +56,12 @@ export default function AdminNewsletters() {
   const [contentHtml, setContentHtml] = useState("");
   const [premiumOnly, setPremiumOnly] = useState(false);
   const [editorScheduleAt, setEditorScheduleAt] = useState("");
+  const [articleQuery, setArticleQuery] = useState("");
+  const [articleOptions, setArticleOptions] = useState<NewsletterArticleOption[]>([]);
+  const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null);
+  const [addingArticle, setAddingArticle] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
   const [eligibleByPremium, setEligibleByPremium] = useState<{
     standard: NewsletterEligibleCount;
     premium: NewsletterEligibleCount;
@@ -91,7 +105,10 @@ export default function AdminNewsletters() {
       const nextScheduleTimes: Record<number, string> = {};
       for (const campaign of nextCampaigns) {
         if (campaign.scheduled_at) {
-          nextScheduleTimes[campaign.id] = toDatetimeLocalValue(campaign.scheduled_at);
+          nextScheduleTimes[campaign.id] = toDatetimeLocalValue(
+            campaign.scheduled_at,
+            siteTimeZone,
+          );
         }
       }
       setCampaignScheduleTimes(nextScheduleTimes);
@@ -142,6 +159,10 @@ export default function AdminNewsletters() {
     setContentHtml("");
     setPremiumOnly(false);
     setEditorScheduleAt("");
+    setArticleQuery("");
+    setArticleOptions([]);
+    setSelectedArticleId(null);
+    setTestEmail("");
   }
 
   function loadCampaignIntoEditor(campaign: NewsletterCampaign) {
@@ -150,13 +171,81 @@ export default function AdminNewsletters() {
     setPreviewText(campaign.preview_text ?? "");
     setContentHtml(campaign.content_html ?? "");
     setPremiumOnly(Boolean(campaign.premium_only));
-    setEditorScheduleAt(toDatetimeLocalValue(campaign.scheduled_at));
+    setEditorScheduleAt(toDatetimeLocalValue(campaign.scheduled_at, siteTimeZone));
+    setSelectedArticleId(campaign.article_id ?? null);
+    setArticleQuery("");
+    setArticleOptions([]);
+    setTestEmail("");
     setActiveTab("campaigns");
   }
 
   function formatCampaignSchedule(value?: string | null) {
     if (!value) return "—";
-    return new Date(value).toLocaleString();
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: siteTimeZone,
+      }).format(new Date(value));
+    } catch {
+      return new Date(value).toLocaleString();
+    }
+  }
+
+  async function handleSearchArticles() {
+    try {
+      const results = await searchNewsletterArticles(articleQuery.trim() || undefined);
+      setArticleOptions(results);
+      if (results.length === 0) {
+        toast.error("No published articles matched that search.");
+      }
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to search articles"));
+    }
+  }
+
+  async function handleInsertArticleBlock() {
+    if (!selectedArticleId) {
+      toast.error("Select an article first.");
+      return;
+    }
+
+    setAddingArticle(true);
+    try {
+      const block = await fetchNewsletterArticleEmailBlock(selectedArticleId);
+      setContentHtml((current) =>
+        current.trim() ? `${current}\n${block.html}` : block.html,
+      );
+      if (!title.trim()) {
+        setTitle(block.title);
+      }
+      toast.success("Article block added to campaign content");
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to insert article"));
+    } finally {
+      setAddingArticle(false);
+    }
+  }
+
+  async function handleSendTest() {
+    if (!editingId) {
+      toast.error("Save the campaign first, then send a test.");
+      return;
+    }
+    if (!testEmail.trim()) {
+      toast.error("Enter a test email address.");
+      return;
+    }
+
+    setSendingTest(true);
+    try {
+      await sendNewsletterCampaignTest(editingId, testEmail.trim());
+      toast.success("Test email sent");
+    } catch (error) {
+      toast.error(getNewsletterApiError(error, "Failed to send test email"));
+    } finally {
+      setSendingTest(false);
+    }
   }
 
   async function handleSaveCampaign(e: React.FormEvent<HTMLFormElement>) {
@@ -172,6 +261,7 @@ export default function AdminNewsletters() {
       preview_text: previewText.trim() || undefined,
       content_html: contentHtml,
       premium_only: premiumOnly,
+      article_id: selectedArticleId,
     };
 
     try {
@@ -180,8 +270,9 @@ export default function AdminNewsletters() {
         : await createNewsletterCampaign(payload);
 
       if (editorScheduleAt) {
-        const scheduleUtc = toApiDatetimeValue(editorScheduleAt);
-        const isPastOrDue = new Date(editorScheduleAt).getTime() <= Date.now();
+        const scheduleUtc = toApiDatetimeValue(editorScheduleAt, siteTimeZone);
+        const scheduleInstant = scheduleUtc ? new Date(scheduleUtc).getTime() : NaN;
+        const isPastOrDue = Number.isFinite(scheduleInstant) && scheduleInstant <= Date.now();
         await scheduleNewsletterCampaign(campaign.id, scheduleUtc);
         toast.success(
           isPastOrDue
@@ -211,13 +302,13 @@ export default function AdminNewsletters() {
       return;
     }
 
-    const scheduleUtc = toApiDatetimeValue(scheduleValue);
+    const scheduleUtc = toApiDatetimeValue(scheduleValue, siteTimeZone);
     if (!scheduleUtc) {
       toast.error("Invalid schedule date and time");
       return;
     }
 
-    const isPastOrDue = new Date(scheduleValue).getTime() <= Date.now();
+    const isPastOrDue = new Date(scheduleUtc).getTime() <= Date.now();
 
     setCampaignActionId(campaignId);
     try {
@@ -453,6 +544,62 @@ export default function AdminNewsletters() {
 
               <NewsletterHtmlEditor value={contentHtml} onChange={setContentHtml} />
 
+              <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
+                <div>
+                  <label className="block text-sm font-medium text-zbc-gray-800">
+                    Insert published article
+                  </label>
+                  <p className="mt-1 text-xs text-zbc-gray-500">
+                    Search and insert headline, image, summary, and link HTML into the campaign body.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    className="min-w-[220px] flex-1 rounded-md border border-border px-3 py-2 text-sm"
+                    placeholder="Search published articles…"
+                    value={articleQuery}
+                    onChange={(e) => setArticleQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleSearchArticles();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSearchArticles()}
+                    className="rounded-md border border-border px-3 py-2 text-sm font-medium text-zbc-gray-700"
+                  >
+                    Search
+                  </button>
+                </div>
+                {articleOptions.length > 0 ? (
+                  <select
+                    className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    value={selectedArticleId ?? ""}
+                    onChange={(e) =>
+                      setSelectedArticleId(e.target.value ? Number(e.target.value) : null)
+                    }
+                  >
+                    <option value="">Select an article…</option>
+                    {articleOptions.map((article) => (
+                      <option key={article.id} value={article.id}>
+                        {article.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void handleInsertArticleBlock()}
+                  disabled={!selectedArticleId || addingArticle}
+                  className="rounded-md border border-border px-3 py-2 text-sm font-medium text-zbc-gray-700 disabled:opacity-50"
+                >
+                  {addingArticle ? "Inserting…" : "Insert article block"}
+                </button>
+              </div>
+
               <div className="space-y-3 rounded-lg border border-border/70 bg-muted/30 p-4">
                 <label className="flex items-center gap-2 text-sm text-zbc-gray-700">
                   <input
@@ -517,8 +664,8 @@ export default function AdminNewsletters() {
                   Schedule send (optional)
                 </label>
                 <p className="mt-1 text-xs text-zbc-gray-500">
-                  Uses your local timezone and is stored as UTC. Leave empty to save as a draft. If
-                  the time is already past, the campaign sends immediately.
+                  Uses the website timezone ({siteTimeZone}) and is stored as UTC. Leave empty to
+                  save as a draft. If the time is already past, the campaign sends immediately.
                 </p>
                 <input
                   type="datetime-local"
@@ -527,6 +674,35 @@ export default function AdminNewsletters() {
                   className="mt-3 w-full max-w-xs rounded-md border border-border px-3 py-2 text-sm"
                 />
               </div>
+
+              {editingId ? (
+                <div className="rounded-lg border border-border/70 bg-muted/20 p-4">
+                  <label className="block text-sm font-medium text-zbc-gray-800">
+                    Send test email
+                  </label>
+                  <p className="mt-1 text-xs text-zbc-gray-500">
+                    Sends the current saved campaign HTML to one address with a [TEST] subject. Does
+                    not mark the campaign as sent.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <input
+                      type="email"
+                      className="min-w-[220px] flex-1 rounded-md border border-border px-3 py-2 text-sm"
+                      placeholder="you@example.com"
+                      value={testEmail}
+                      onChange={(e) => setTestEmail(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleSendTest()}
+                      disabled={sendingTest}
+                      className="rounded-md border border-border px-3 py-2 text-sm font-medium text-zbc-gray-700 disabled:opacity-50"
+                    >
+                      {sendingTest ? "Sending…" : "Send test"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </form>
           </section>
 
@@ -535,9 +711,9 @@ export default function AdminNewsletters() {
               <div>
                 <h2 className="text-lg font-semibold text-zbc-gray-1000">Campaign list</h2>
                 <p className="mt-1 text-xs text-zbc-gray-500">
-                  Save drafts below, send instantly, or pick a schedule time per campaign (local
-                  timezone, stored as UTC). Past times send immediately. Scheduled campaigns also
-                  run automatically every minute.
+                  Save drafts below, send instantly, or pick a schedule time per campaign (website
+                  timezone: {siteTimeZone}, stored as UTC). Past times send immediately. Scheduled
+                  campaigns also run automatically every minute.
                 </p>
               </div>
             </div>

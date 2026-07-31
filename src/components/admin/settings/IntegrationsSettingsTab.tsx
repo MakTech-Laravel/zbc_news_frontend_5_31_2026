@@ -89,6 +89,29 @@ export function IntegrationsSettingsTab({ settings }: IntegrationsSettingsTabPro
         />
       </AdminFormField>
 
+      <AdminFormField label="Brevo contact list ID" htmlFor="brevo-list-id">
+        <input
+          id="brevo-list-id"
+          type="text"
+          value={form.brevoListId}
+          onChange={(e) => setField("brevoListId", e.target.value)}
+          placeholder="Optional — sync verified subscribers to this list"
+          className={settingsInputClassName}
+        />
+      </AdminFormField>
+
+      <AdminFormField label="Newsletter webhook secret" htmlFor="newsletter-webhook-secret">
+        <input
+          id="newsletter-webhook-secret"
+          type="password"
+          value={form.newsletterWebhookSecret}
+          onChange={(e) => setField("newsletterWebhookSecret", e.target.value)}
+          placeholder="Shared secret for Brevo webhook auth"
+          className={settingsInputClassName}
+          autoComplete="off"
+        />
+      </AdminFormField>
+
       <AdminFormField label="Mailchimp API key" htmlFor="mailchimp-api">
         <input
           id="mailchimp-api"

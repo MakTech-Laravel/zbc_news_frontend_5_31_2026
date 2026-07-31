@@ -72,6 +72,8 @@ export async function updateAdminSiteSettings(
   formData.append("newsletter_from_name", form.newsletterFromName);
   formData.append("resend_api_key", form.resendApiKey);
   formData.append("brevo_api_key", form.brevoApiKey);
+  formData.append("brevo_list_id", form.brevoListId);
+  formData.append("newsletter_webhook_secret", form.newsletterWebhookSecret);
   formData.append("mailchimp_list_id", form.mailchimpListId);
   formData.append("disqus_shortname", form.disqusShortname);
   formData.append("slack_webhook_url", form.slackWebhookUrl);

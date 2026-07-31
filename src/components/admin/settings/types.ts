@@ -36,6 +36,8 @@ export type AdminSettingsForm = {
   newsletterFromName: string;
   resendApiKey: string;
   brevoApiKey: string;
+  brevoListId: string;
+  newsletterWebhookSecret: string;
   mailchimpListId: string;
   disqusShortname: string;
   slackWebhookUrl: string;
@@ -69,6 +71,8 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettingsForm = {
   newsletterFromName: "",
   resendApiKey: "",
   brevoApiKey: "",
+  brevoListId: "",
+  newsletterWebhookSecret: "",
   mailchimpListId: "",
   disqusShortname: "",
   slackWebhookUrl: "",

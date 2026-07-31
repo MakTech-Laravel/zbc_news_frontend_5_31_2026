@@ -27,6 +27,7 @@ export type NewsletterCampaign = {
   click_count: number;
   failed_count?: number;
   premium_only?: boolean;
+  article_id?: number | null;
   segments?: {
     category_slugs?: string[];
     audience_tags?: string[];
@@ -244,6 +245,7 @@ export async function createNewsletterCampaign(payload: {
   status?: "draft" | "scheduled";
   scheduled_at?: string;
   premium_only?: boolean;
+  article_id?: number | null;
 }): Promise<NewsletterCampaign> {
   const response = await request.post("/admin/newsletter/campaigns/store", payload);
   return extractData<NewsletterCampaign>(response.data);
@@ -257,6 +259,7 @@ export async function updateNewsletterCampaign(
     preview_text: string;
     content_html: string;
     premium_only: boolean;
+    article_id: number | null;
   }>,
 ): Promise<NewsletterCampaign> {
   const response = await request.post(`/admin/newsletter/campaigns/update/${id}`, payload);
@@ -271,4 +274,46 @@ export async function scheduleNewsletterCampaign(id: number, scheduledAt: string
 
 export async function sendNewsletterCampaign(id: number): Promise<void> {
   await request.post(`/admin/newsletter/campaigns/send/${id}`);
+}
+
+export async function sendNewsletterCampaignTest(
+  id: number,
+  email: string,
+): Promise<void> {
+  await request.post(`/admin/newsletter/campaigns/test/${id}`, { email });
+}
+
+export type NewsletterArticleOption = {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  published_at?: string | null;
+};
+
+export type NewsletterArticleEmailBlock = {
+  html: string;
+  title: string;
+  excerpt?: string | null;
+  image_url?: string | null;
+  url: string;
+};
+
+export async function searchNewsletterArticles(
+  query?: string,
+): Promise<NewsletterArticleOption[]> {
+  const response = await request.get("/admin/newsletter/articles/search", {
+    params: query ? { q: query } : undefined,
+  });
+  const data = extractData<NewsletterArticleOption[]>(response.data);
+  return Array.isArray(data) ? data : [];
+}
+
+export async function fetchNewsletterArticleEmailBlock(
+  articleId: number,
+): Promise<NewsletterArticleEmailBlock> {
+  const response = await request.get(
+    `/admin/newsletter/articles/${articleId}/email-block`,
+  );
+  return extractData<NewsletterArticleEmailBlock>(response.data);
 }
