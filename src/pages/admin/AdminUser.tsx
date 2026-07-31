@@ -157,8 +157,18 @@ const ADMIN_USER_TABLE_COLUMNS: DataTableColumn<AdminUserRow>[] = [
     hideOnMobile: true,
     type: "badge",
     badge: (row) => ({
-      variant: row.status,
-      label: row.status === "active" ? "Active" : "Inactive",
+      variant:
+        row.status === "pending_deletion" || row.status === "cancel_requested"
+          ? "inactive"
+          : row.status,
+      label:
+        row.status === "cancel_requested"
+          ? "Cancel requested"
+          : row.status === "pending_deletion"
+            ? "Pending deletion"
+            : row.status === "active"
+              ? "Active"
+              : "Inactive",
     }),
     className: "whitespace-nowrap",
   },
@@ -286,7 +296,7 @@ export default function AdminUser() {
       name: user.name,
       email: user.email,
       role: user.role,
-      status: user.status,
+      status: user.status === "inactive" ? "inactive" : "active",
       password: "",
       password_confirmation: "",
     });
@@ -298,15 +308,15 @@ export default function AdminUser() {
   };
 
   const deleteUser = async (user: AdminUserRow) => {
-    if (!window.confirm(`Delete user "${user.name}"?`)) return;
+    const confirmed = window.confirm(`Delete user "${user.name}"? This cannot be undone.`);
+    if (!confirmed) return;
 
     try {
       await deleteAdminUser(user.id);
-      toast.success("User deleted successfully");
+      toast.success("User deleted");
       await fetchUsers();
     } catch (error) {
-      console.error("Failed to delete user:", error);
-      toast.error("Failed to delete user");
+      toast.error(getAdminUserApiError(error, "Failed to delete user"));
     }
   };
 

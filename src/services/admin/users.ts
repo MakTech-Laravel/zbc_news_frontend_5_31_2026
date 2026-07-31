@@ -1,4 +1,5 @@
 import type { AdminUserRow } from "@/components/admin/users/useUsersDataTable";
+export type { AdminUserRow } from "@/components/admin/users/useUsersDataTable";
 import { api } from "@/api/client";
 import { request } from "@/api/request";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
@@ -59,6 +60,16 @@ function extractRoleNames(raw: unknown): string[] {
 }
 
 function resolveUserStatus(raw: Record<string, unknown>): AdminUserRow["status"] {
+  const hasCancelRequest =
+    raw.has_deletion_cancel_request === true ||
+    (typeof raw.deletion_cancel_requested_at === "string" &&
+      Boolean(raw.deletion_cancel_requested_at));
+  if (hasCancelRequest) {
+    return "cancel_requested";
+  }
+  if (raw.is_pending_deletion === true || raw.deletion_requested_at) {
+    return "pending_deletion";
+  }
   const status = raw.status;
   if (status === "inactive" || status === 0 || status === false) return "inactive";
   if (status === "active" || status === 1 || status === true) return "active";
@@ -73,6 +84,13 @@ export function normalizeAdminUser(raw: Record<string, unknown>): AdminUserRow |
 
   const roles = extractRoleNames(raw.roles);
   const primaryRole = roles[0] ?? "";
+  const isPendingDeletion =
+    raw.is_pending_deletion === true ||
+    (typeof raw.deletion_requested_at === "string" && Boolean(raw.deletion_requested_at));
+  const hasDeletionCancelRequest =
+    raw.has_deletion_cancel_request === true ||
+    (typeof raw.deletion_cancel_requested_at === "string" &&
+      Boolean(raw.deletion_cancel_requested_at));
 
   return {
     id: String(id),
@@ -91,6 +109,18 @@ export function normalizeAdminUser(raw: Record<string, unknown>): AdminUserRow |
         : typeof raw.avatar_url === "string" && raw.avatar_url.trim()
           ? raw.avatar_url
           : null,
+    isPendingDeletion,
+    hasDeletionCancelRequest,
+    deletionRequestedAt:
+      typeof raw.deletion_requested_at === "string" ? raw.deletion_requested_at : null,
+    deletionCancelRequestedAt:
+      typeof raw.deletion_cancel_requested_at === "string"
+        ? raw.deletion_cancel_requested_at
+        : null,
+    scheduledPermanentDeletionAt:
+      typeof raw.scheduled_permanent_deletion_at === "string"
+        ? raw.scheduled_permanent_deletion_at
+        : null,
   };
 }
 
@@ -106,6 +136,11 @@ export function normalizeAdminUsers(payload: unknown): AdminUserRow[] {
 
 export async function fetchAdminUsers(): Promise<AdminUserRow[]> {
   const response = await request.get("/admin/users");
+  return normalizeAdminUsers(response.data);
+}
+
+export async function fetchPendingAccountDeletions(): Promise<AdminUserRow[]> {
+  const response = await request.get("/admin/users/pending-deletions");
   return normalizeAdminUsers(response.data);
 }
 
@@ -141,6 +176,10 @@ export function getAdminUserApiError(error: unknown, fallback: string): string {
 
 export async function deleteAdminUser(userId: string | number): Promise<void> {
   await request.delete(`/admin/users/delete/${userId}`);
+}
+
+export async function restoreAdminUserDeletion(userId: string | number): Promise<void> {
+  await request.post(`/admin/users/restore-deletion/${userId}`);
 }
 
 export function userMatchesRoleFilter(user: AdminUserRow, roleFilter: string): boolean {

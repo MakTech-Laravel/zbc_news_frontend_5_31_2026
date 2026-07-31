@@ -32,6 +32,8 @@ export type SiteSettingsApi = {
   newsletter_from_name: string | null;
   resend_api_key: string | null;
   brevo_api_key: string | null;
+  brevo_list_id: string | null;
+  newsletter_webhook_secret: string | null;
   mailchimp_list_id: string | null;
   disqus_shortname: string | null;
   slack_webhook_url: string | null;
@@ -144,6 +146,8 @@ export function mapSiteSettingsToForm(raw: SiteSettingsApi) {
     newsletterFromName: raw.newsletter_from_name ?? "",
     resendApiKey: raw.resend_api_key ?? "",
     brevoApiKey: raw.brevo_api_key ?? "",
+    brevoListId: raw.brevo_list_id ?? "",
+    newsletterWebhookSecret: raw.newsletter_webhook_secret ?? "",
     mailchimpListId: raw.mailchimp_list_id ?? "",
     disqusShortname: raw.disqus_shortname ?? "",
     slackWebhookUrl: raw.slack_webhook_url ?? "",

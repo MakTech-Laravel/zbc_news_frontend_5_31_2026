@@ -2,19 +2,24 @@ import * as React from "react";
 import { ArrowRight, Eye } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  isTurnstileRequired,
+  TurnstileWidget,
+} from "@/components/auth/TurnstileWidget";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
+import {
+  getPasswordValidationError,
+  PASSWORD_REQUIREMENTS,
+} from "@/features/auth/passwordValidation";
 import { resolveAuthRole, saveAuthRole } from "@/features/auth/roleSelection";
-import { registerAndLoginUser, resolveDashboardPath } from "@/features/auth/service";
+import { registerUser } from "@/features/auth/service";
 import { type AuthRole } from "@/features/auth/types";
-
 
 export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setToken, setUser, refreshSession, resetAuthState, authStrategy } = useAuth();
   const [firstName, setFirstName] = React.useState("");
   const [lastName, setLastName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -23,6 +28,7 @@ export default function Register() {
   const [passwordConfirmation, setPasswordConfirmation] = React.useState("");
   const [role, setRole] = React.useState<AuthRole>("user");
   const [acceptedTerms, setAcceptedTerms] = React.useState(false);
+  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -45,8 +51,19 @@ export default function Register() {
       return;
     }
 
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
     if (password !== passwordConfirmation) {
       setError("Password and confirmation do not match.");
+      return;
+    }
+
+    if (isTurnstileRequired() && !captchaToken) {
+      setError("Please complete the bot verification check.");
       return;
     }
 
@@ -54,22 +71,27 @@ export default function Register() {
     saveAuthRole(role);
 
     try {
-      const loggedInUser = await registerAndLoginUser(
-        {
-          first_name: firstName,
-          last_name: lastName,
-          email,
-          phone,
-          password,
-          password_confirmation: passwordConfirmation,
-          role,
-        },
-        { authStrategy, setToken, setUser, refreshSession, resetAuthState },
+      await registerUser({
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone,
+        password,
+        password_confirmation: passwordConfirmation,
+        role,
+        accepted_terms: true,
+        ...(captchaToken ? { captcha_token: captchaToken } : {}),
+      });
+
+      const normalizedEmail = email.trim().toLowerCase();
+      setSuccess("Registration successful. Please verify your email.");
+      navigate(
+        `/otp-verification?purpose=register&email=${encodeURIComponent(normalizedEmail)}&role=${role}`,
+        { replace: true },
       );
-      setSuccess("Registration successful. Redirecting to your dashboard...");
-      navigate(resolveDashboardPath(loggedInUser), { replace: true });
     } catch (err) {
       setError(getAuthErrorMessage(err, "Registration failed. Please try again."));
+      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -158,10 +180,11 @@ export default function Register() {
                 <Input
                   type={showPassword ? "text" : "password"}
                   className="w-full px-3 py-2 pr-10 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="8+ characters"
+                  placeholder="Create a strong password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
@@ -171,6 +194,21 @@ export default function Register() {
                   <Eye className="w-4 h-4" />
                 </button>
               </div>
+              <ul className="mt-2 space-y-1">
+                {PASSWORD_REQUIREMENTS.map((requirement) => {
+                  const met = requirement.test(password);
+                  return (
+                    <li
+                      key={requirement.id}
+                      className={`text-xs ${
+                        met ? "text-emerald-600" : "text-muted-foreground"
+                      }`}
+                    >
+                      {met ? "✓" : "•"} {requirement.label}
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
 
             <div>
@@ -224,6 +262,8 @@ export default function Register() {
                 </Link>
               </span>
             </div>
+
+            <TurnstileWidget onTokenChange={setCaptchaToken} className="my-2" />
 
             {error ? (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

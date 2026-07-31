@@ -11,9 +11,14 @@ export type AdminUserRow = {
   role: string;
   roleLabel: string;
   roles: string[];
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "pending_deletion" | "cancel_requested";
   joined: string;
   avatarUrl?: string | null;
+  isPendingDeletion?: boolean;
+  hasDeletionCancelRequest?: boolean;
+  deletionRequestedAt?: string | null;
+  deletionCancelRequestedAt?: string | null;
+  scheduledPermanentDeletionAt?: string | null;
 };
 
 type Options = {

@@ -1,11 +1,10 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 import { resolveAuthRole, saveAuthRole } from "@/features/auth/roleSelection";
-import { getAccessToken, getStoredAuthUser } from "@/auth/token";
 import {
   requestPasswordResetOtp,
   resendRegistrationOtp,
@@ -87,22 +86,6 @@ export default function OTPVerification() {
     return getLimiterStorageKey(purpose, email);
   }, [purpose, email]);
 
-  // Sync the registration token from storage into React auth state so the
-  // user appears logged in immediately after registration (without reload).
-  // GuestGate's register-OTP bypass ensures this page still renders.
-  React.useEffect(() => {
-    if (purpose === "register") {
-      const storedToken = getAccessToken();
-      const storedUser = getStoredAuthUser();
-      if (storedToken) {
-        setToken(storedToken);
-      }
-      if (storedUser) {
-        setUser(storedUser);
-      }
-    }
-  }, [purpose, setToken, setUser]);
-
   React.useEffect(() => {
     saveAuthRole(role);
   }, [role]);
@@ -139,15 +122,46 @@ export default function OTPVerification() {
     return () => window.clearInterval(timer);
   }, [limiterKey]);
 
-  function updateOtpAtIndex(index: number, value: string) {
-    const digit = value.replace(/\D/g, "").slice(-1);
+  function applyOtpDigits(raw: string, startIndex = 0) {
+    const digits = raw.replace(/\D/g, "").slice(0, OTP_LENGTH);
+    if (!digits) return;
+
     setOtp((prev) => {
       const next = [...prev];
-      next[index] = digit;
+      for (let i = 0; i < digits.length && startIndex + i < OTP_LENGTH; i += 1) {
+        next[startIndex + i] = digits[i] ?? "";
+      }
       return next;
     });
 
-    if (digit && index < OTP_LENGTH - 1) {
+    const focusIndex = Math.min(startIndex + digits.length, OTP_LENGTH - 1);
+    inputRefs.current[focusIndex]?.focus();
+  }
+
+  function updateOtpAtIndex(index: number, value: string) {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) {
+      setOtp((prev) => {
+        const next = [...prev];
+        next[index] = "";
+        return next;
+      });
+      return;
+    }
+
+    // Paste / autofill can deliver multiple digits into one input.
+    if (digits.length > 1) {
+      applyOtpDigits(digits, index);
+      return;
+    }
+
+    setOtp((prev) => {
+      const next = [...prev];
+      next[index] = digits;
+      return next;
+    });
+
+    if (index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   }
@@ -156,6 +170,11 @@ export default function OTPVerification() {
     if (event.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
+  }
+
+  function onPaste(index: number, event: React.ClipboardEvent<HTMLInputElement>) {
+    event.preventDefault();
+    applyOtpDigits(event.clipboardData.getData("text"), index);
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -283,8 +302,18 @@ export default function OTPVerification() {
                 OTP Verification
               </h2>
               <p className="text-base font-inter font-normal text-muted-foreground text-start">
-                Enter the verification code we just sent to your Phone number.
+                Enter the verification code we just sent to{" "}
+                {email || "your email address"}.
               </p>
+              {purpose === "register" ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  If you do not receive a code, you may already have an account.{" "}
+                  <Link to="/login" className="text-primary hover:underline">
+                    Sign in instead
+                  </Link>
+                  .
+                </p>
+              ) : null}
             </div>
 
             <form className="space-y-4" onSubmit={onSubmit}>
@@ -301,11 +330,12 @@ export default function OTPVerification() {
                       }}
                       type="text"
                       inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={1}
+                      autoComplete={index === 0 ? "one-time-code" : "off"}
+                      maxLength={index === 0 ? OTP_LENGTH : 1}
                       value={digit}
                       onChange={(event) => updateOtpAtIndex(index, event.target.value)}
                       onKeyDown={(event) => onKeyDown(index, event)}
+                      onPaste={(event) => onPaste(index, event)}
                       className="w-12 h-12 text-center text-lg font-semibold border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                       placeholder="0"
                     />

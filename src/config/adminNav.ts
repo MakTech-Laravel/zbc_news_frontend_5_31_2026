@@ -82,6 +82,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     end: true,
   },
   {
+    label: 'Account deletions',
+    path: '/admin/account-deletions',
+    segment: 'account-deletions',
+    permission: PERMISSIONS.USERS.LIST,
+  },
+  {
     label: 'Monetization',
     path: '/admin/monetization',
     segment: 'monetization',
