@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
@@ -19,6 +20,7 @@ import {
   stripHtml,
 } from "@/components/admin/articles/articleEditorUtils";
 import { ArticleEditorTopBar } from "@/components/admin/articles/editor/ArticleEditorTopBar";
+import { ArticlePreviewDialog } from "@/components/admin/articles/editor/ArticlePreviewDialog";
 import {
   emptyFeaturedMediaValue,
   FeaturedMediaField,
@@ -26,6 +28,11 @@ import {
 } from "@/components/admin/media/FeaturedMediaField";
 import { MediaImageField } from "@/components/admin/media/MediaImageField";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
+import {
+  CategorySearchSelect,
+  flattenCategoryOptions,
+  type CategorySearchOption,
+} from "@/components/admin/shared/CategorySearchSelect";
 import InputError from "@/components/input-error";
 import {
   Select,
@@ -39,6 +46,7 @@ import { Input } from "@/components/ui/input";
 import {
   ARTICLE_STATUS_LABELS,
   ARTICLE_WORKFLOW_STATUSES,
+  formatArticleLastSaved,
   resolveStatusAfterPublish,
 } from "@/data/admin/articleWorkflow";
 import {
@@ -47,9 +55,13 @@ import {
 } from "@/data/admin/articleVisibility";
 import { slugifyCategoryName } from "@/data/admin/categoryStore";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
-import { toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { getAuthErrorMessage, getAuthFieldErrors } from "@/features/auth/errorMessage";
+import { useArticleAutoSave } from "@/hooks/useArticleAutoSave";
+import { toApiDatetimeValue, toDatetimeLocalValue } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
+import type { ArticleAutoSaveResult } from "@/services/admin/articles";
+import { autoSaveAdminArticle } from "@/services/admin/articles";
 import {
   createLiveUpdate,
   createLiveUpdateEntry,
@@ -70,6 +82,7 @@ type CategoryRow = {
   id: string | number;
   title: string;
   status?: string;
+  parent_title?: string;
 };
 
 const ARTICLE_STATUS_VALUES = [
@@ -108,6 +121,22 @@ const shellSchema = z
 
 type ShellFormValues = z.infer<typeof shellSchema>;
 
+const SHELL_FORM_FIELDS: (keyof ShellFormValues)[] = [
+  "title",
+  "article_description",
+  "status",
+  "visibility",
+  "article_category_id",
+  "tags",
+  "excerpt",
+  "meta_title",
+  "meta_description",
+  "meta_keywords",
+  "slug",
+  "scheduled_publishing",
+  "published_at",
+];
+
 const fieldLabelClassName =
   "block text-xs font-semibold tracking-wider text-[#8C8070] uppercase sm:text-sm";
 
@@ -132,7 +161,6 @@ function appendMediaToPayload(
   payload.live_video_url = liveVideoUrl;
 
   if (liveVideoUrl) {
-    // YouTube is external media; the Cloudinary poster URL is persisted as featured_image.
     payload.featured_media_uuid = "";
     payload.poster_media_uuid = "";
   } else if (featuredMedia.mediaUuid) {
@@ -194,6 +222,94 @@ function buildShellPayload(
   return payload;
 }
 
+function buildLiveAutoSavePayload(
+  data: ShellFormValues,
+  featuredMedia: FeaturedMediaValue,
+  openGraphImageUrl: string | null,
+  categories: CategoryRow[],
+): Record<string, unknown> | null {
+  const title = data.title.trim();
+  const content = stripHtml(data.article_description ?? "").trim();
+  const featuredImageUrl = featuredImageUrlFromMedia(featuredMedia);
+
+  if (
+    !title &&
+    !content &&
+    !featuredImageUrl &&
+    !openGraphImageUrl &&
+    !featuredMedia.url
+  ) {
+    return null;
+  }
+
+  const categoryTitle =
+    categories.find((c) => String(c.id) === data.article_category_id)?.title ?? "";
+  const seoDefaults = buildArticleSeoDefaults({
+    title: data.title,
+    excerpt: data.excerpt,
+    articleDescription: data.article_description,
+    tags: data.tags,
+    categoryTitle,
+  });
+
+  const payload: Record<string, unknown> = {
+    title: data.title || "Untitled live update",
+    article_description: data.article_description || "",
+    slug: data.slug.trim() || slugifyCategoryName(title || "untitled-live-update"),
+    visibility: data.visibility,
+    is_live_blog: true,
+    excerpt: data.excerpt,
+    meta_title: data.meta_title.trim() || seoDefaults.meta_title,
+    meta_description: data.meta_description.trim() || seoDefaults.meta_description,
+    meta_keywords: data.meta_keywords.trim() || seoDefaults.meta_keywords,
+    tags: data.tags,
+  };
+
+  if (data.article_category_id.trim()) {
+    payload.article_category_id = Number(data.article_category_id) || data.article_category_id;
+  }
+
+  if (data.scheduled_publishing.trim()) {
+    payload.scheduled_publishing = toApiDatetimeValue(data.scheduled_publishing);
+  }
+  if (data.published_at.trim()) {
+    payload.published_at = toApiDatetimeValue(data.published_at);
+  }
+
+  appendMediaToPayload(payload, featuredMedia, openGraphImageUrl);
+
+  // Empty string fails Laravel `url` validation — omit when unset.
+  if (!payload.live_video_url) {
+    delete payload.live_video_url;
+  }
+
+  return payload;
+}
+
+function applyServerErrors(
+  error: unknown,
+  setError: ReturnType<typeof useForm<ShellFormValues>>["setError"],
+): boolean {
+  const fieldErrors = getAuthFieldErrors(error);
+  let applied = false;
+
+  for (const [field, message] of Object.entries(fieldErrors)) {
+    if (!SHELL_FORM_FIELDS.includes(field as keyof ShellFormValues)) continue;
+    setError(field as keyof ShellFormValues, { message });
+    applied = true;
+  }
+
+  if (!applied && axios.isAxiosError(error)) {
+    const message = (error.response?.data as { message?: string } | undefined)?.message;
+    if (typeof message === "string" && /slug/i.test(message)) {
+      setError("slug", { message });
+      applied = true;
+    }
+  }
+
+  return applied;
+}
+
 function formatWhen(value: string | null | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
@@ -252,8 +368,12 @@ function mediaFromShell(shell: LiveUpdateShell): FeaturedMediaValue {
 
 export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
+  const { settings } = useSiteSettings();
   const { articleSlug } = useParams<{ articleSlug: string }>();
+  const timeZone = settings.timezone || "America/New_York";
+
   const [categories, setCategories] = React.useState<CategoryRow[]>([]);
+  const [categoryOptions, setCategoryOptions] = React.useState<CategorySearchOption[]>([]);
   const [loading, setLoading] = React.useState(mode === "edit");
   const [saving, setSaving] = React.useState(false);
   const [shellMeta, setShellMeta] = React.useState<LiveUpdateShell | null>(null);
@@ -262,7 +382,10 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
     emptyFeaturedMediaValue(),
   );
   const [openGraphImageUrl, setOpenGraphImageUrl] = React.useState<string | null>(null);
+  const [imagesDirty, setImagesDirty] = React.useState(false);
   const [slugTouched, setSlugTouched] = React.useState(mode === "edit");
+  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+  const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null);
 
   const [entryEditorOpen, setEntryEditorOpen] = React.useState(false);
   const [editingEntry, setEditingEntry] = React.useState<LiveUpdateEntry | null>(null);
@@ -270,6 +393,15 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
   const [entryPostedAt, setEntryPostedAt] = React.useState("");
   const [entryStatus, setEntryStatus] = React.useState<LiveUpdateEntryStatus>("published");
   const [entrySaving, setEntrySaving] = React.useState(false);
+
+  const featuredMediaRef = React.useRef(featuredMedia);
+  const openGraphImageUrlRef = React.useRef(openGraphImageUrl);
+  const categoriesRef = React.useRef(categories);
+  const navigatedAfterCreateRef = React.useRef(false);
+
+  featuredMediaRef.current = featuredMedia;
+  openGraphImageUrlRef.current = openGraphImageUrl;
+  categoriesRef.current = categories;
 
   const form = useForm<ShellFormValues>({
     resolver: zodResolver(shellSchema),
@@ -282,14 +414,18 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
     handleSubmit,
     watch,
     setValue,
+    setError,
+    getValues,
     reset,
     formState: { errors, isDirty },
   } = form;
 
-  const titleValue = watch("title");
-  const statusValue = watch("status");
-  const descriptionValue = watch("article_description");
-  const currentSlug = watch("slug");
+  const watchedValues = watch();
+  const titleValue = watchedValues.title;
+  const statusValue = watchedValues.status;
+  const descriptionValue = watchedValues.article_description;
+  const currentSlug = watchedValues.slug;
+  const hasUnsavedChanges = isDirty || imagesDirty;
 
   React.useEffect(() => {
     if (slugTouched || mode === "edit") return;
@@ -301,9 +437,23 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
       try {
         const response = await request.get("/categories");
         const data = response.data?.data ?? response.data;
-        setCategories(Array.isArray(data) ? data : []);
+        const rows = Array.isArray(data) ? data : [];
+        const options = flattenCategoryOptions(rows);
+        setCategoryOptions(options);
+        setCategories(
+          options.map((option) => ({
+            id: option.id,
+            title: option.title,
+            status: option.status,
+            parent_title:
+              option.label.includes(" / ")
+                ? option.label.split(" / ")[0]
+                : undefined,
+          })),
+        );
       } catch {
         setCategories([]);
+        setCategoryOptions([]);
       }
     })();
   }, []);
@@ -319,6 +469,9 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
         reset(shellFromApi(shell));
         setFeaturedMedia(mediaFromShell(shell));
         setOpenGraphImageUrl(shell.openGraphImageUrl);
+        setImagesDirty(false);
+        setLastSavedAt(shell.updatedAtIso ?? null);
+        setSlugTouched(true);
       } catch {
         toast.error("Failed to load live update");
         navigate("/admin/live-updates");
@@ -328,9 +481,79 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
     })();
   }, [mode, articleSlug, navigate, reset]);
 
+  const autoSaveChangeSignature = React.useMemo(
+    () =>
+      JSON.stringify({
+        values: watchedValues,
+        featuredMedia,
+        openGraphImageUrl,
+      }),
+    [watchedValues, featuredMedia, openGraphImageUrl],
+  );
+
+  const handleAutoSaveSuccess = React.useCallback(
+    (result: ArticleAutoSaveResult) => {
+      setLastSavedAt(result.updated_at);
+      const current = getValues();
+      if (result.slug && result.slug !== current.slug) {
+        setValue("slug", result.slug, { shouldDirty: false });
+        setSlugTouched(true);
+      }
+      reset(getValues(), { keepDirty: false });
+      setImagesDirty(false);
+
+      if (result.slug) {
+        void fetchLiveUpdateBySlug(result.slug)
+          .then((shell) => {
+            setShellMeta(shell);
+            setEntries(shell.entries);
+            if (shell.categoryId && !getValues("article_category_id")) {
+              setValue("article_category_id", shell.categoryId, { shouldDirty: false });
+            }
+          })
+          .catch(() => {
+            /* ignore — next save will refresh */
+          });
+      }
+
+      if (mode === "create" && result.slug && !navigatedAfterCreateRef.current) {
+        navigatedAfterCreateRef.current = true;
+        navigate(`/admin/live-updates/edit/${encodeURIComponent(result.slug)}`, {
+          replace: true,
+        });
+      }
+    },
+    [getValues, mode, navigate, reset, setValue],
+  );
+
+  const { autoSaveStatus, getPersistedSlug, setPersistedSlug, resetAutoSaveSnapshot } =
+    useArticleAutoSave({
+      enabled: settings.enableAutoSave,
+      initialSlug: mode === "edit" ? articleSlug : undefined,
+      isDirty: hasUnsavedChanges,
+      isManualSaving: saving,
+      changeSignature: autoSaveChangeSignature,
+      getPayload: () =>
+        buildLiveAutoSavePayload(
+          getValues(),
+          featuredMediaRef.current,
+          openGraphImageUrlRef.current,
+          categoriesRef.current,
+        ),
+      onSaved: handleAutoSaveSuccess,
+      saveFn: (payload, slug, signal) => autoSaveAdminArticle(payload, slug, signal),
+    });
+
+  React.useEffect(() => {
+    if (shellMeta?.slug) {
+      setPersistedSlug(shellMeta.slug);
+    }
+  }, [shellMeta?.slug, setPersistedSlug]);
+
   const wordCount = countWords(stripHtml(descriptionValue ?? ""));
   const charCount = stripHtml(descriptionValue ?? "").length;
-  const savedSlug = shellMeta?.slug ?? articleSlug ?? currentSlug;
+  const savedSlug =
+    getPersistedSlug() ?? shellMeta?.slug ?? articleSlug ?? currentSlug;
 
   const saveShell = async (status: ArticleStatus) => {
     const valid = await form.trigger();
@@ -357,32 +580,48 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
         openGraphImageUrl,
         categories,
       );
-      const saved =
-        mode === "create"
-          ? await createLiveUpdate(payload)
-          : await updateLiveUpdate(savedSlug, payload);
+      const updateSlug = mode === "edit" ? savedSlug : getPersistedSlug();
+      const saved = updateSlug
+        ? await updateLiveUpdate(updateSlug, payload)
+        : await createLiveUpdate(payload);
 
       setShellMeta(saved);
       setEntries(saved.entries);
       reset(shellFromApi(saved));
       setFeaturedMedia(mediaFromShell(saved));
-      toast.success(mode === "create" ? "Live update created" : "Live update saved");
+      setOpenGraphImageUrl(saved.openGraphImageUrl);
+      setImagesDirty(false);
+      setLastSavedAt(saved.updatedAtIso ?? new Date().toISOString());
+      setPersistedSlug(saved.slug);
+      resetAutoSaveSnapshot(
+        buildLiveAutoSavePayload(
+          shellFromApi(saved),
+          mediaFromShell(saved),
+          saved.openGraphImageUrl,
+          categories,
+        ) ?? undefined,
+      );
 
-      if (mode === "create") {
+      if (saved.slug !== data.slug) {
+        setSlugTouched(true);
+      }
+
+      toast.success(
+        mode === "create" && !updateSlug ? "Live update created" : "Live update saved",
+      );
+
+      if (mode === "create" || (updateSlug && updateSlug !== saved.slug)) {
+        navigatedAfterCreateRef.current = true;
         navigate(`/admin/live-updates/edit/${encodeURIComponent(saved.slug)}`, {
           replace: true,
         });
       }
     } catch (error) {
-      const fieldErrors = getAuthFieldErrors(error);
-      Object.entries(fieldErrors).forEach(([key, messages]) => {
-        if (key in form.getValues()) {
-          form.setError(key as keyof ShellFormValues, {
-            message: messages[0],
-          });
-        }
-      });
-      toast.error(getAuthErrorMessage(error, "Failed to save live update"));
+      if (!applyServerErrors(error, setError)) {
+        toast.error(getAuthErrorMessage(error, "Failed to save live update"));
+      } else {
+        toast.error(getAuthErrorMessage(error, "Please fix the highlighted fields"));
+      }
     } finally {
       setSaving(false);
     }
@@ -411,7 +650,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
   };
 
   const saveEntry = async () => {
-    if (!savedSlug || mode === "create") {
+    if (!savedSlug || (mode === "create" && !getPersistedSlug() && !shellMeta)) {
       toast.error("Save the live update shell before adding entries");
       return;
     }
@@ -492,15 +731,41 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
     );
   }
 
+  const previewPublishSource =
+    statusValue === "scheduled"
+      ? watchedValues.scheduled_publishing
+      : statusValue === "published"
+        ? watchedValues.published_at
+        : "";
+
+  const previewData = {
+    title: watchedValues.title ?? "",
+    article_description: watchedValues.article_description ?? "",
+    excerpt: watchedValues.excerpt ?? "",
+    category:
+      categoryOptions.find((c) => c.id === watchedValues.article_category_id)?.label ?? "",
+    tags: watchedValues.tags ?? [],
+    authorName: "",
+    featuredImageUrl: featuredImageUrlFromMedia(featuredMedia) ?? "",
+    status: (statusValue || "draft") as ArticleStatus,
+    publishDisplayAt: previewPublishSource
+      ? toApiDatetimeValue(previewPublishSource) || previewPublishSource
+      : undefined,
+  };
+
+  const canEditTimeline = Boolean(savedSlug && (mode === "edit" || shellMeta));
+
   return (
     <div className="space-y-4 pb-10 sm:space-y-6">
       <ArticleEditorTopBar
         wordCount={wordCount}
         charCount={charCount}
         status={statusValue}
-        lastSavedLabel={shellMeta?.updatedAtIso ? formatWhen(shellMeta.updatedAtIso) : "—"}
-        isDirty={isDirty}
+        lastSavedLabel={formatArticleLastSaved(lastSavedAt, timeZone)}
+        isDirty={hasUnsavedChanges}
+        autoSaveStatus={autoSaveStatus}
         onBack={() => navigate("/admin/live-updates")}
+        onPreview={() => setIsPreviewOpen(true)}
         onSave={() => void saveShell(statusValue)}
         onSaveDraft={() => void saveShell("draft")}
         onPublish={onPublish}
@@ -509,7 +774,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
       <div className="flex flex-wrap items-center justify-between gap-3 px-1">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-semibold text-admin-heading sm:text-xl">
-            {mode === "create" ? "New Live Update" : "Edit Live Update"}
+            {mode === "create" && !shellMeta ? "New Live Update" : "Edit Live Update"}
           </h1>
           {shellMeta?.isLive ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
@@ -518,7 +783,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
             </span>
           ) : null}
         </div>
-        {mode === "edit" && shellMeta?.status === "published" ? (
+        {shellMeta?.status === "published" ? (
           <Button
             type="button"
             variant={shellMeta.isLive ? "outline" : "default"}
@@ -552,7 +817,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
             Optional intro shown above the live timeline on the public page.
           </p>
 
-          {mode === "edit" ? (
+          {canEditTimeline ? (
             <AdminPanel className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -691,8 +956,8 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
           ) : (
             <AdminPanel>
               <p className="text-sm text-admin-label">
-                Save the live update shell first, then add unlimited timestamped updates from
-                the editor.
+                Save the live update shell first (or wait for autosave), then add unlimited
+                timestamped updates from the editor.
               </p>
             </AdminPanel>
           )}
@@ -773,18 +1038,15 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
                 control={control}
                 name="article_category_id"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={String(category.id)} value={String(category.id)}>
-                          {category.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CategorySearchSelect
+                    options={categoryOptions}
+                    value={field.value}
+                    onChange={(next) => {
+                      field.onChange(next);
+                    }}
+                    placeholder="Select category"
+                    className="mt-1.5"
+                  />
                 )}
               />
               <InputError message={errors.article_category_id?.message} />
@@ -794,6 +1056,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
               <label className={fieldLabelClassName}>Slug</label>
               <Input
                 className="mt-1.5"
+                placeholder="live-update-url-slug"
                 {...register("slug", {
                   onChange: () => setSlugTouched(true),
                 })}
@@ -825,7 +1088,10 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
             <h2 className="text-sm font-semibold text-admin-heading">Featured media</h2>
             <FeaturedMediaField
               value={featuredMedia}
-              onChange={setFeaturedMedia}
+              onChange={(next) => {
+                setFeaturedMedia(next);
+                setImagesDirty(true);
+              }}
               allowedTypes={["image", "video"]}
               typeLabels={{ video: "Live" }}
               videoSource="youtube"
@@ -834,7 +1100,10 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
               <label className={fieldLabelClassName}>Open Graph image</label>
               <MediaImageField
                 value={openGraphImageUrl}
-                onChange={setOpenGraphImageUrl}
+                onChange={(url) => {
+                  setOpenGraphImageUrl(url);
+                  setImagesDirty(true);
+                }}
                 className="mt-1.5"
               />
             </div>
@@ -860,6 +1129,12 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
           </AdminPanel>
         </div>
       </form>
+
+      <ArticlePreviewDialog
+        open={isPreviewOpen}
+        onOpenChange={setIsPreviewOpen}
+        preview={previewData}
+      />
     </div>
   );
 }

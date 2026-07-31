@@ -16,21 +16,25 @@ export function parsePublishDate(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function formatPublishDate(value: unknown): PublishDateParts {
+export function formatPublishDate(value: unknown, timeZone = "America/New_York"): PublishDateParts {
   const date = parsePublishDate(value);
   if (!date) {
     return { date: "", time: "", iso: "", combined: "" };
   }
 
+  const tz = timeZone.trim() || "America/New_York";
+
   const dateLabel = date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone: tz,
   });
 
   const timeLabel = date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: tz,
   });
 
   return {
@@ -41,7 +45,7 @@ export function formatPublishDate(value: unknown): PublishDateParts {
   };
 }
 
-export function formatPublishDateTime(value: unknown): string {
-  const parts = formatPublishDate(value);
+export function formatPublishDateTime(value: unknown, timeZone = "America/New_York"): string {
+  const parts = formatPublishDate(value, timeZone);
   return parts.combined || "—";
 }

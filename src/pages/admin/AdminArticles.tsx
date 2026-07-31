@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 import { useArticlesDataTable } from "@/components/admin/articles/useArticlesDataTable";
 import { AdminFilterBar } from "@/components/admin/shared/AdminFilterBar";
@@ -11,6 +11,14 @@ import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { DataTable } from "@/components/ui/data-table";
 import { request } from "@/api/request";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   ARTICLE_STATUS_FILTER_OPTIONS,
   type AdminArticle,
@@ -25,11 +33,24 @@ import {
   matchesArticleSearch,
   type AdminArticleApiCategory,
 } from "@/services/admin/articles";
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
+import { DEFAULT_SITE_TIMEZONE } from "@/lib/articleTimestamps";
+import { usePermission, PERMISSIONS } from "@/hooks/usePermission";
 
 const PAGE_SIZE = 10;
 
 export default function AdminArticles() {
   const navigate = useNavigate();
+  const { can } = usePermission();
+  const { settings } = useSiteSettings();
+  const timeZone = settings.timezone || DEFAULT_SITE_TIMEZONE;
+
+  const canCreate = can(PERMISSIONS.ARTICLES.CREATE);
+  const canDelete = can(PERMISSIONS.ARTICLES.DELETE);
+  const canTrashed = can(PERMISSIONS.ARTICLES.TRASHED);
+  const canUpdate = can(PERMISSIONS.ARTICLES.UPDATE);
+  const canActivities = can(PERMISSIONS.ARTICLES.ACTIVITIES);
+
   const [articles, setArticles] = React.useState<AdminArticle[]>([]);
   const [categories, setCategories] = React.useState<AdminArticleApiCategory[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -41,6 +62,8 @@ export default function AdminArticles() {
   const [archiveAuthorFilter, setArchiveAuthorFilter] = React.useState("all");
   const [page, setPage] = React.useState(1);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [pendingDelete, setPendingDelete] = React.useState<AdminArticle | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const fetchArticles = React.useCallback(async () => {
     try {
@@ -146,14 +169,19 @@ export default function AdminArticles() {
 
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const deleteArticle = async (article: AdminArticle) => {
+  const confirmSoftDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
     try {
-      await request.delete(`/admin/articles/delete/${article.slug}`);
-      toast.success("Article deleted successfully");
+      await request.delete(`/admin/articles/delete/${pendingDelete.slug}`);
+      toast.success("Article moved to Trash");
+      setPendingDelete(null);
       await fetchArticles();
     } catch (error) {
       console.error("Failed to delete article:", error);
       toast.error("Failed to delete article");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -161,17 +189,21 @@ export default function AdminArticles() {
     data: paged,
     selectedIds,
     onSelectionChange: setSelectedIds,
-    onEdit: (article) => {
-      navigate(`/admin/articles/edit/${encodeURIComponent(article.slug)}`);
-    },
-    onActivityLog: (article) => {
-      navigate(`/admin/articles/${encodeURIComponent(article.slug)}/activities`, {
-        state: { articleTitle: article.title },
-      });
-    },
-    onDelete: deleteArticle,
+    timeZone,
+    onEdit: canUpdate
+      ? (article) => {
+          navigate(`/admin/articles/edit/${encodeURIComponent(article.slug)}`);
+        }
+      : undefined,
+    onActivityLog: canActivities
+      ? (article) => {
+          navigate(`/admin/articles/${encodeURIComponent(article.slug)}/activities`, {
+            state: { articleTitle: article.title },
+          });
+        }
+      : undefined,
+    onDelete: canDelete ? (article) => setPendingDelete(article) : undefined,
   });
-
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -184,22 +216,26 @@ export default function AdminArticles() {
         }
         actions={
           <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/admin/articles/trash")}
-              className="h-10 w-full gap-2 sm:w-auto"
-            >
-              <Trash2 className="size-4" aria-hidden />
-              Trash
-            </Button>
-            <Button
-              type="button"
-              onClick={() => navigate("/admin/articles/create")}
-              className="h-10 w-full gap-2 rounded-[10px] bg-zbc-blue px-4 text-base font-medium hover:bg-zbc-blue/90 sm:w-auto"
-            >
-              New Article
-            </Button>
+            {canTrashed ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/admin/articles/trash")}
+                className="h-10 w-full gap-2 sm:w-auto"
+              >
+                <Trash2 className="size-4" aria-hidden />
+                Trash
+              </Button>
+            ) : null}
+            {canCreate ? (
+              <Button
+                type="button"
+                onClick={() => navigate("/admin/articles/create")}
+                className="h-10 w-full gap-2 rounded-[10px] bg-zbc-blue px-4 text-base font-medium hover:bg-zbc-blue/90 sm:w-auto"
+              >
+                New Article
+              </Button>
+            ) : null}
           </>
         }
       />
@@ -263,6 +299,60 @@ export default function AdminArticles() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />
+
+      <Dialog
+        open={Boolean(pendingDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete article?</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Move{" "}
+                  <span className="font-medium text-foreground">
+                    “{pendingDelete?.title}”
+                  </span>{" "}
+                  to Trash?
+                </p>
+                <p>
+                  The article will leave the public site but can be restored from Trash later.
+                  This is not a permanent delete.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleting}
+              onClick={() => setPendingDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="gap-2"
+              disabled={deleting}
+              onClick={() => void confirmSoftDelete()}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                "Confirm Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

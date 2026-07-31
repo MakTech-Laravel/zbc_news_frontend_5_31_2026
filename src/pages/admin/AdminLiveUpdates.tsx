@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Radio } from "lucide-react";
+import { Loader2, Radio } from "lucide-react";
 
 import { AdminFilterBar } from "@/components/admin/shared/AdminFilterBar";
 import { AdminPageHeader } from "@/components/admin/shared/AdminPageHeader";
@@ -9,6 +9,14 @@ import { AdminPagination } from "@/components/admin/shared/AdminPagination";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import { AdminStatusBadge } from "@/components/admin/shared/AdminStatusBadge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ARTICLE_STATUS_FILTER_OPTIONS } from "@/data/admin/mockArticles";
 import { ARTICLE_STATUS_LABELS } from "@/data/admin/articleWorkflow";
 import {
@@ -33,6 +41,8 @@ export default function AdminLiveUpdates() {
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [page, setPage] = React.useState(1);
+  const [pendingDelete, setPendingDelete] = React.useState<LiveUpdateShell | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const load = React.useCallback(async () => {
     try {
@@ -65,14 +75,18 @@ export default function AdminLiveUpdates() {
     setPage(1);
   }, [search, statusFilter]);
 
-  const handleDelete = async (item: LiveUpdateShell) => {
-    if (!window.confirm(`Delete live update “${item.title}”?`)) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
     try {
-      await deleteLiveUpdate(item.slug);
+      await deleteLiveUpdate(pendingDelete.slug);
       toast.success("Live update deleted");
+      setPendingDelete(null);
       await load();
     } catch {
       toast.error("Failed to delete live update");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -179,7 +193,7 @@ export default function AdminLiveUpdates() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => void handleDelete(item)}
+                          onClick={() => setPendingDelete(item)}
                         >
                           Delete
                         </Button>
@@ -201,6 +215,60 @@ export default function AdminLiveUpdates() {
           />
         </div>
       </AdminPanel>
+
+      <Dialog
+        open={Boolean(pendingDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete live update?</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Delete{" "}
+                  <span className="font-medium text-foreground">
+                    “{pendingDelete?.title}”
+                  </span>
+                  ?
+                </p>
+                <p>
+                  This removes the live update and its timeline entries from the admin list
+                  and public site. This action cannot be undone from this screen.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleting}
+              onClick={() => setPendingDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="gap-2"
+              disabled={deleting}
+              onClick={() => void confirmDelete()}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                "Confirm Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

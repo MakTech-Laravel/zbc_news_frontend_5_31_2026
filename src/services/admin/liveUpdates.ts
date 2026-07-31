@@ -199,8 +199,9 @@ export async function fetchLiveUpdateBySlug(slug: string): Promise<LiveUpdateShe
 
 export async function createLiveUpdate(
   payload: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<LiveUpdateShell> {
-  const response = await request.post("/admin/live-updates/store", payload);
+  const response = await request.post("/admin/live-updates/store", payload, { signal });
   const mapped = mapShell(unwrapData(response.data));
   if (!mapped) throw new Error("Failed to create live update");
   return mapped;
@@ -209,10 +210,12 @@ export async function createLiveUpdate(
 export async function updateLiveUpdate(
   slug: string,
   payload: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<LiveUpdateShell> {
   const response = await request.post(
     `/admin/live-updates/update/${encodeURIComponent(slug)}`,
     payload,
+    { signal },
   );
   const mapped = mapShell(unwrapData(response.data));
   if (!mapped) throw new Error("Failed to update live update");

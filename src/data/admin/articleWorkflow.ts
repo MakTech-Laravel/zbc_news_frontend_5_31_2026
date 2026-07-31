@@ -16,7 +16,10 @@ export const ARTICLE_STATUS_LABELS: Record<ArticleStatus, string> = {
   archived: "Archived",
 };
 
-export function formatArticleLastSaved(iso: string | null | undefined): string {
+export function formatArticleLastSaved(
+  iso: string | null | undefined,
+  timeZone = "America/New_York",
+): string {
   if (!iso) return "Not saved yet";
 
   const saved = new Date(iso);
@@ -34,11 +37,14 @@ export function formatArticleLastSaved(iso: string | null | undefined): string {
   const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return `Saved ${diffHr}h ago`;
 
-  return `Last saved ${saved.toLocaleString(undefined, {
+  const tz = timeZone.trim() || "America/New_York";
+
+  return `Last saved ${saved.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: tz,
   })}`;
 }
 
