@@ -4,6 +4,7 @@ export type LoginPayload = {
   email: string
   password: string
   role: AuthRole
+  captcha_token?: string
 }
 
 export type RegisterPayload = {
@@ -14,6 +15,8 @@ export type RegisterPayload = {
   password: string
   password_confirmation: string
   role: AuthRole
+  accepted_terms: boolean
+  captcha_token?: string
 }
 
 export type VerifyOtpPayload = {
@@ -23,4 +26,5 @@ export type VerifyOtpPayload = {
 
 export type PasswordResetOtpPayload = {
   email: string
+  captcha_token?: string
 }

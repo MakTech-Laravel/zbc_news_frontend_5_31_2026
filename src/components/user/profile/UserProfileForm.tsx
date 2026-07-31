@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bell, Globe, Link2, Mail, MapPin, User } from "lucide-react";
+import { Bell, Globe, Link2, LogOut, Mail, MapPin, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -27,6 +27,7 @@ import {
 import { request } from "@/api/request";
 import { canManagePublicAuthorProfile } from "@/auth/roles";
 import { useAuth } from "@/auth/useAuth";
+import { logoutAllDevices } from "@/features/auth/service";
 import { uploadAdminMedia } from "@/services/admin/media";
 import toast from "react-hot-toast";
 import InputError from "@/components/input-error";
@@ -119,10 +120,11 @@ function NotificationToggleRow({
 }
 
 export function UserProfileForm() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const showAuthorProfile = canManagePublicAuthorProfile(user);
   const [profileLoading, setProfileLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
 
@@ -297,6 +299,24 @@ export function UserProfileForm() {
         void loadPreferences();
       }
     }, 500);
+  };
+
+  const handleLogoutAllDevices = async () => {
+    const confirmed = window.confirm(
+      "Sign out from all devices? You will need to sign in again on this device and every other device.",
+    );
+    if (!confirmed) return;
+
+    setLoggingOutAll(true);
+    try {
+      await logoutAllDevices();
+      toast.success("Signed out from all devices.");
+      await logout();
+    } catch {
+      toast.error("Unable to sign out from all devices. Please try again.");
+    } finally {
+      setLoggingOutAll(false);
+    }
   };
 
   return (
@@ -499,6 +519,28 @@ export function UserProfileForm() {
               </form>
             )}
           </div>
+        </div>
+      </UserDashboardCard>
+
+      <UserDashboardCard>
+        <SettingsCardHeader
+          title="Security"
+          subtitle="Manage active sessions across your devices"
+          icon={<LogOut className="size-5" aria-hidden />}
+        />
+        <div className="space-y-3 px-6 pb-6">
+          <p className="text-sm text-admin-label">
+            If you shared a device or suspect unauthorized access, sign out everywhere
+            and sign in again with your password.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={loggingOutAll}
+            onClick={() => void handleLogoutAllDevices()}
+          >
+            {loggingOutAll ? "Signing out…" : "Log out of all devices"}
+          </Button>
         </div>
       </UserDashboardCard>
 

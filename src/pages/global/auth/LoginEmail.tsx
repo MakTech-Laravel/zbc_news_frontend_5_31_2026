@@ -1,8 +1,13 @@
 import * as React from "react";
 import { useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { ArrowRight, Eye } from "lucide-react";
+import axios from "axios";
 
 import { useAuth } from "@/auth/useAuth";
+import {
+  isTurnstileRequired,
+  TurnstileWidget,
+} from "@/components/auth/TurnstileWidget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAuthErrorMessage, getAuthFieldErrors } from "@/features/auth/errorMessage";
@@ -10,6 +15,15 @@ import { resolveAuthRole, saveAuthRole } from "@/features/auth/roleSelection";
 import { resolveDashboardPath, loginUserWithRole } from "@/features/auth/service";
 import { type AuthRole } from "@/features/auth/types";
 import { resolvePostLoginPath } from "@/auth/loginNavigation";
+
+function extractVerificationEmail(error: unknown): string | null {
+  if (!axios.isAxiosError(error)) return null;
+  const data = error.response?.data as
+    | { data?: { requires_email_verification?: boolean; email?: string } }
+    | undefined;
+  if (!data?.data?.requires_email_verification) return null;
+  return typeof data.data.email === "string" ? data.data.email : null;
+}
 
 export default function LoginEmail() {
   const navigate = useNavigate();
@@ -20,6 +34,7 @@ export default function LoginEmail() {
   const [identifier, setIdentifier] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState<AuthRole>("user");
+  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
@@ -38,12 +53,19 @@ export default function LoginEmail() {
     setFieldErrors({});
     saveAuthRole(role);
 
+    if (isTurnstileRequired() && !captchaToken) {
+      setError("Please complete the bot verification check.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const loggedInUser = await loginUserWithRole(
         {
           email: identifier,
           password,
           role,
+          ...(captchaToken ? { captcha_token: captchaToken } : {}),
         },
         { authStrategy, setToken, setUser, refreshSession, resetAuthState },
       );
@@ -56,9 +78,19 @@ export default function LoginEmail() {
 
       navigate(resolveDashboardPath(loggedInUser), { replace: true });
     } catch (err) {
+      const verificationEmail = extractVerificationEmail(err);
+      if (verificationEmail) {
+        navigate(
+          `/otp-verification?purpose=register&email=${encodeURIComponent(verificationEmail)}&role=${role}`,
+          { replace: true },
+        );
+        return;
+      }
+
       const errors = getAuthFieldErrors(err);
       setFieldErrors(errors);
       setError(getAuthErrorMessage(err, "Login failed. Please try again."));
+      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -118,6 +150,8 @@ export default function LoginEmail() {
                 <p className="mt-1 text-sm text-destructive">{fieldErrors.password}</p>
               ) : null}
             </div>
+
+            <TurnstileWidget onTokenChange={setCaptchaToken} />
 
             {error ? (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

@@ -18,8 +18,7 @@ export function getAuthFieldErrors(error: unknown): FieldErrorMap {
     }
   }
 
-  // Some APIs return only a generic message (e.g. "Invalid credentials")
-  // without per-field errors. Map those to both login fields for clearer UX.
+  // Keep credential failures generic — do not hint which field was wrong.
   const msg = data?.message?.toLowerCase() ?? ''
   const isGenericCredentialError =
     msg.includes('invalid credentials') ||
@@ -28,8 +27,8 @@ export function getAuthFieldErrors(error: unknown): FieldErrorMap {
     msg.includes('incorrect credentials')
 
   if (isGenericCredentialError) {
-    if (!out.email) out.email = 'Invalid email'
-    if (!out.password) out.password = 'Incorrect password'
+    if (!out.email) out.email = 'Invalid email or password'
+    if (!out.password) out.password = 'Invalid email or password'
   }
 
   return out

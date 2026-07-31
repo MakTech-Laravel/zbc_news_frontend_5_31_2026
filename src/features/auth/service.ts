@@ -8,6 +8,7 @@ import { type AuthContextValue } from '@/auth/context'
 import { getUserRoles, isAdminPanelUser } from '@/auth/roles'
 import { setRefreshToken } from '@/auth/token'
 import { type AuthUser } from '@/auth/types'
+import { env } from '@/config/env'
 import {
   type AuthRole,
   type LoginPayload,
@@ -130,28 +131,17 @@ export async function loginUserWithRole(payload: LoginPayload, handlers: AuthHan
 export async function registerUser(payload: RegisterPayload) {
   const res = await request.post<unknown>('/auth/register', payload)
   logOtpFromResponse(res.data, 'register')
+  return res.data
 }
 
 export async function registerAndLoginUser(
   payload: RegisterPayload,
   handlers: AuthHandlers,
 ) {
-  try {
-    const res = await request.post<unknown>('/auth/register', payload)
-
-    const user = await hydrateSessionFromLoginBody(
-      res.data,
-      handlers,
-      'Unable to restore your session after registration.',
-      'Registration response is missing access token.',
-    )
-    ensureRoleMatchesExpected(user, payload.role)
-
-    return user
-  } catch (error) {
-    handlers.resetAuthState()
-    throw error
-  }
+  // Kept for compatibility; registration now requires email OTP before login.
+  await registerUser(payload)
+  handlers.resetAuthState()
+  throw new Error('Please verify your email before signing in.')
 }
 
 export async function requestPasswordResetOtp(payload: PasswordResetOtpPayload) {
@@ -188,37 +178,18 @@ export async function verifyRegistrationOtp(
   const res = await request.post<unknown>('/auth/otp/verify', verifyPayload)
   logOtpFromResponse(res.data, 'verify-otp')
 
-  // Registration already writes the login token to storage.
-  // OTP verification should validate/activate that session, not require a new token.
-  if (handlers.authStrategy === 'http_only_cookie') {
-    const currentUser = await handlers.refreshSession()
-    if (!currentUser) {
-      throw new Error('OTP verified, but we could not restore your session.')
-    }
-    return currentUser
-  }
+  const user = await hydrateSessionFromLoginBody(
+    res.data,
+    handlers,
+    'OTP verified, but we could not restore your session.',
+    'OTP verified, but the response is missing an access token.',
+  )
+  ensureRoleMatchesExpected(user, selectedRole)
+  return user
+}
 
-  const responseUser = extractUserFromAuthPayload(res.data)
-  if (responseUser) {
-    handlers.setUser(responseUser)
-  }
-
-  const refreshedUser = await handlers.refreshSession()
-  const resolvedUser = refreshedUser ?? responseUser
-  if (!resolvedUser) {
-    // Some APIs verify OTP successfully but don't return user payload,
-    // and profile endpoint may be unavailable. Keep role context so routing
-    // can still proceed to the correct dashboard.
-    const fallbackUser: AuthUser = {
-      id: payload.email,
-      email: payload.email,
-      role: selectedRole,
-      roles: [selectedRole],
-    }
-    handlers.setUser(fallbackUser)
-    return fallbackUser
-  }
-  return resolvedUser
+export async function logoutAllDevices() {
+  await request.post(env.authLogoutAllPath)
 }
 
 export function resolveDashboardPath(user: unknown) {

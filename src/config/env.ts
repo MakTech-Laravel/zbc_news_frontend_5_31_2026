@@ -145,6 +145,10 @@ export const env = {
   authMePath: import.meta.env.VITE_AUTH_ME_PATH ?? '/auth/profile',
   /** Logout endpoint path (Laravel12 auth routes commonly use `/auth/logout`). */
   authLogoutPath: import.meta.env.VITE_AUTH_LOGOUT_PATH ?? '/auth/logout',
+  /** Logout-all-devices endpoint (revokes every Passport token for the user). */
+  authLogoutAllPath: import.meta.env.VITE_AUTH_LOGOUT_ALL_PATH ?? '/auth/logout-all',
+  /** Cloudflare Turnstile site key. Empty = bot protection widget disabled. */
+  turnstileSiteKey: optionalViteString('VITE_TURNSTILE_SITE_KEY') ?? '',
   /** Role parsing: `single` uses `user.role`, `multi` uses `user.roles` (array) */
   roleMode: roleModeFromEnv(),
   /** Optional JSON overrides for role policy (fallback/dashboard mappings). */

@@ -3,15 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+
+import {
+  isTurnstileRequired,
+  TurnstileWidget,
+} from "@/components/auth/TurnstileWidget";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 import { requestPasswordResetOtp } from "@/features/auth/service";
-import { toast } from "react-hot-toast";
 import { type AuthRole } from "@/features/auth/types";
-
 
 export default function ForgetPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = React.useState("");
+  const [captchaToken, setCaptchaToken] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [role] = React.useState<AuthRole>("user");
@@ -19,18 +24,30 @@ export default function ForgetPassword() {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setLoading(true);
-    try {
-      await requestPasswordResetOtp({ email });
 
-      toast.success("Reset code sent to your email");
-      setLoading(false);
-      navigate(`/otp-verification?purpose=reset&email=${encodeURIComponent(email)}`, {
-        replace: true,
+    if (isTurnstileRequired() && !captchaToken) {
+      setError("Please complete the bot verification check.");
+      return;
+    }
+
+    setLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      await requestPasswordResetOtp({
+        email: normalizedEmail,
+        ...(captchaToken ? { captcha_token: captchaToken } : {}),
       });
+
+      toast.success("If an account exists for that email, a reset code has been sent.");
+      navigate(
+        `/otp-verification?purpose=reset&email=${encodeURIComponent(normalizedEmail)}`,
+        { replace: true },
+      );
     } catch (err) {
-      setError(getAuthErrorMessage(err, "Failed to send reset code. Please try again."));
-      toast.error(getAuthErrorMessage(err, "Failed to send reset code. Please try again."));
+      setError(getAuthErrorMessage(err, "Unable to process your request. Please try again."));
+      toast.error(getAuthErrorMessage(err, "Unable to process your request. Please try again."));
+      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -38,26 +55,22 @@ export default function ForgetPassword() {
 
   return (
     <div>
-      {" "}
       <div className="min-h-screen flex items-center justify-center bg-auth-bg p-4">
         <div className="max-w-md w-full bg-card p-8 rounded-lg shadow-lg">
           <div className="space-y-6">
-            {/* Header */}
             <div className="text-center mb-8">
               <h2 className="text-2xl font-inter font-semibold text-foreground mb-2">
                 Forget Password
               </h2>
               <p className="text-base font-inter font-normal text-muted-foreground text-center">
-                Enter the email address or mobile phone number associated with
-                your account.
+                Enter the email address associated with your account.
               </p>
             </div>
 
-            {/* Email Login Form */}
             <form className="space-y-4" onSubmit={onSubmit}>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Email/phone
+                  Email
                 </label>
                 <Input
                   type="email"
@@ -68,6 +81,8 @@ export default function ForgetPassword() {
                   required
                 />
               </div>
+
+              <TurnstileWidget onTokenChange={setCaptchaToken} />
 
               {error ? (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -90,7 +105,6 @@ export default function ForgetPassword() {
               </div>
             </form>
 
-            {/* Sign Up Link */}
             <div className="flex items-center gap-2 mb-2">
               <p className="text-base font-inter font-normal text-muted-foreground">
                 Already have account?
@@ -104,11 +118,10 @@ export default function ForgetPassword() {
                 Don't have an account?
               </p>
               <Link to={`/register?role=${role}`} className="text-primary hover:underline">
-              Sign Up
-            </Link>
+                Sign Up
+              </Link>
             </div>
 
-            {/* Divider */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t-2 border-border"></div>
@@ -116,8 +129,14 @@ export default function ForgetPassword() {
               <div className="relative flex justify-center text-sm"></div>
             </div>
 
-            <div className="">
-              <p className="text-base font-inter font-normal text-muted-foreground">You may contact <Link to="#" className="text-lg text-brand-red">Customer Service</Link> for help restoring access to your account.</p>
+            <div>
+              <p className="text-base font-inter font-normal text-muted-foreground">
+                You may contact{" "}
+                <Link to="#" className="text-lg text-brand-red">
+                  Customer Service
+                </Link>{" "}
+                for help restoring access to your account.
+              </p>
             </div>
           </div>
         </div>
