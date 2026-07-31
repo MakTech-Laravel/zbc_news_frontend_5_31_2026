@@ -1,7 +1,11 @@
 import { request } from "@/api/request";
 import { normalizeArticleVisibility } from "@/data/admin/articleVisibility";
 import type { AdminArticle, ArticleStatus } from "@/data/admin/mockArticles";
-import { formatPublishDateTime, parsePublishDate } from "@/lib/publishDate";
+import {
+  DEFAULT_SITE_TIMEZONE,
+  formatArticleTimestamp,
+} from "@/lib/articleTimestamps";
+import { parsePublishDate } from "@/lib/publishDate";
 
 export type AdminArticleApiCategory = {
   id?: number | string;
@@ -35,8 +39,8 @@ function normalizeArticleStatus(value: unknown): ArticleStatus {
   return "draft";
 }
 
-function formatArticleDate(value: unknown): string {
-  return formatPublishDateTime(value);
+function formatArticleDate(value: unknown, timeZone = DEFAULT_SITE_TIMEZONE): string {
+  return formatArticleTimestamp(value, timeZone).label || "—";
 }
 
 function resolveCategoryLabel(raw: Record<string, unknown>): string {
@@ -97,6 +101,8 @@ function mapApiArticle(raw: unknown): AdminArticle | null {
     date: formatArticleDate(record.published_at ?? record.created_at),
     publishedAtIso:
       typeof record.published_at === "string" ? record.published_at : undefined,
+    createdAtIso:
+      typeof record.created_at === "string" ? record.created_at : undefined,
     updatedAtIso:
       typeof record.updated_at === "string" ? record.updated_at : undefined,
     updatedAt: formatArticleDate(record.updated_at),

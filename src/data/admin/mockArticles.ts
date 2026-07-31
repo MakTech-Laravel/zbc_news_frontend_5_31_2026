@@ -15,6 +15,7 @@ export type AdminArticle = {
   /** Published date & time shown to readers */
   date: string;
   publishedAtIso?: string;
+  createdAtIso?: string;
   updatedAtIso?: string;
   /** Last editorial update timestamp (internal) */
   updatedAt?: string;

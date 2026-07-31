@@ -6,6 +6,8 @@ import { Navigate, useBlocker, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { z } from "zod";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import { request } from "@/api/request";
 import { ArticleRichTextEditor } from "@/components/admin/articles/ArticleRichTextEditor";
 import { ArticleTagInput } from "@/components/admin/articles/ArticleTagInput";
@@ -548,10 +550,12 @@ function applyServerErrors(
 
 export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { settings } = useSiteSettings();
   const { articleSlug } = useParams<{ articleSlug: string }>();
   const isEdit = mode === "edit";
   const articleSlugParam = articleSlug ? decodeURIComponent(articleSlug) : undefined;
+  const timeZone = settings.timezone || "America/New_York";
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -830,6 +834,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         buildAutoSavePayload(enriched, featuredMedia, openGraphImageUrl, categories) ??
           undefined,
       );
+      await queryClient.invalidateQueries({ queryKey: ["articles"] });
       skipUnsavedPromptRef.current = true;
       setShowLeaveDialog(false);
       pendingLeaveRef.current = null;
@@ -976,7 +981,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         wordCount={wordCount}
         charCount={charCount}
         status={displayStatus}
-        lastSavedLabel={formatArticleLastSaved(lastSavedAt)}
+        lastSavedLabel={formatArticleLastSaved(lastSavedAt, timeZone)}
         isDirty={hasUnsavedChanges}
         autoSaveStatus={autoSaveStatus}
         onBack={() => requestLeave(() => navigate("/admin/articles"))}

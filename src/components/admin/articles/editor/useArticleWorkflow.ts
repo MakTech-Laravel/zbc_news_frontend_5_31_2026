@@ -89,7 +89,10 @@ export function useArticleWorkflow(options: UseArticleWorkflowOptions = {}) {
 
   const isDirty =
     savedSnapshot !== serializeForCompare(editor.form) || savedStatus !== status;
-  const lastSavedLabel = formatArticleLastSaved(lastSavedAt);
+  const lastSavedLabel = formatArticleLastSaved(
+    lastSavedAt,
+    settings.timezone || "America/New_York",
+  );
 
   const persist = React.useCallback(
     (nextStatus: ArticleStatus, saveOptions?: { auto?: boolean }) => {

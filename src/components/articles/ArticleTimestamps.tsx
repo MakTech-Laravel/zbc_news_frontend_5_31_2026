@@ -1,8 +1,10 @@
 import { Calendar, Clock } from "lucide-react";
 
+import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { useRelativeTime } from "@/hooks/useRelativeTime";
 import {
   articleWasUpdated,
+  DEFAULT_SITE_TIMEZONE,
   formatArticleTimestamp,
   getArticleRelativeTimeIso,
 } from "@/lib/articleTimestamps";
@@ -16,6 +18,8 @@ type ArticleTimestampsProps = {
   variant?: "detail" | "compact";
   light?: boolean;
   fallback?: string;
+  /** Override site settings timezone (defaults to Site Settings). */
+  timeZone?: string;
 };
 
 function RelativeTimeSuffix({ iso }: { iso?: string }) {
@@ -31,10 +35,14 @@ export function ArticleTimestamps({
   variant = "detail",
   light = false,
   fallback,
+  timeZone: timeZoneProp,
 }: ArticleTimestampsProps) {
+  const { settings } = useSiteSettings();
+  const timeZone = timeZoneProp?.trim() || settings.timezone || DEFAULT_SITE_TIMEZONE;
+
   const wasUpdated = articleWasUpdated(publishedAtIso, updatedAtIso);
-  const published = formatArticleTimestamp(publishedAtIso);
-  const updated = formatArticleTimestamp(updatedAtIso);
+  const published = formatArticleTimestamp(publishedAtIso, timeZone);
+  const updated = formatArticleTimestamp(updatedAtIso, timeZone);
   const relativeIso = getArticleRelativeTimeIso(publishedAtIso, updatedAtIso);
   const compactLabel = useRelativeTime(relativeIso);
 

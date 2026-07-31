@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Trash2, Undo2 } from "lucide-react";
+import { Loader2, Trash2, Undo2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -23,11 +23,23 @@ import {
 } from "@/services/admin/articles";
 import { useArticlesDataTable } from "@/components/admin/articles/useArticlesDataTable";
 import { Button } from "@/components/ui/button";
-// import { request } from "@/api/request";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { usePermission, PERMISSIONS } from "@/hooks/usePermission";
 
 const PAGE_SIZE = 10;
 
 export default function AdminArticlesTrash() {
+  const { can } = usePermission();
+  const canRestore = can(PERMISSIONS.ARTICLES.RESTORE);
+  const canForceDelete = can(PERMISSIONS.ARTICLES.FORCE_DELETE);
+
   const [articles, setArticles] = React.useState<AdminArticle[]>([]);
   const [categories, setCategories] = React.useState<AdminArticleApiCategory[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -36,6 +48,9 @@ export default function AdminArticlesTrash() {
   const [categoryFilter, setCategoryFilter] = React.useState("all");
   const [page, setPage] = React.useState(1);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [pendingForceDelete, setPendingForceDelete] =
+    React.useState<AdminArticle | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const fetchArticles = React.useCallback(async () => {
     try {
@@ -95,39 +110,47 @@ export default function AdminArticlesTrash() {
     [fetchArticles],
   );
 
-  const permanentDelete = React.useCallback(
-    async (article: AdminArticle) => {
-      try {
-        await permanentlyDeleteAdminArticle(article.slug);
-        toast.success("Article permanently deleted");
-        await fetchArticles();
-      } catch (error) {
-        console.error("Failed to permanently delete article:", error);
-        toast.error("Failed to permanently delete article");
-      }
-    },
-    [fetchArticles],
-  );
+  const confirmPermanentDelete = React.useCallback(async () => {
+    if (!pendingForceDelete) return;
+    setDeleting(true);
+    try {
+      await permanentlyDeleteAdminArticle(pendingForceDelete.slug);
+      toast.success("Article permanently deleted");
+      setPendingForceDelete(null);
+      await fetchArticles();
+    } catch (error) {
+      console.error("Failed to permanently delete article:", error);
+      toast.error("Failed to permanently delete article");
+    } finally {
+      setDeleting(false);
+    }
+  }, [fetchArticles, pendingForceDelete]);
 
-  const actions = React.useMemo<DataTableAction<AdminArticle>[]>(
-    () => [
-      {
+  const actions = React.useMemo<DataTableAction<AdminArticle>[]>(() => {
+    const next: DataTableAction<AdminArticle>[] = [];
+
+    if (canRestore) {
+      next.push({
         id: "restore",
         label: "Restore article",
         icon: Undo2,
         variant: "primary",
         onClick: restore,
-      },
-      {
+      });
+    }
+
+    if (canForceDelete) {
+      next.push({
         id: "permanent-delete",
         label: "Permanently delete article",
         icon: Trash2,
         variant: "destructive",
-        onClick: permanentDelete,
-      },
-    ],
-    [restore, permanentDelete],
-  );
+        onClick: (article) => setPendingForceDelete(article),
+      });
+    }
+
+    return next;
+  }, [canRestore, canForceDelete, restore]);
 
   const table = useArticlesDataTable({
     data: paged,
@@ -200,7 +223,60 @@ export default function AdminArticlesTrash() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />
+
+      <Dialog
+        open={Boolean(pendingForceDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingForceDelete(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Permanently delete article?</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Permanently delete{" "}
+                  <span className="font-medium text-foreground">
+                    “{pendingForceDelete?.title}”
+                  </span>
+                  ?
+                </p>
+                <p className="font-medium text-destructive">
+                  This cannot be undone. The article and its associated images will be
+                  removed forever.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleting}
+              onClick={() => setPendingForceDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="gap-2"
+              disabled={deleting}
+              onClick={() => void confirmPermanentDelete()}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                "Confirm permanent delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

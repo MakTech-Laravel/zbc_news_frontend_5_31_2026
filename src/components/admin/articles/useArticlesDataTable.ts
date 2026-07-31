@@ -9,84 +9,105 @@ import {
   formatArticleLastSaved,
 } from "@/data/admin/articleWorkflow";
 import { ARTICLE_VISIBILITY_LABELS } from "@/data/admin/articleVisibility";
+import {
+  DEFAULT_SITE_TIMEZONE,
+  articleShowsUpdatedTimestamp,
+  formatArticleTimestamp,
+} from "@/lib/articleTimestamps";
 
 function formatViews(views: number) {
   return views.toLocaleString("en-US");
 }
 
-const ARTICLES_COLUMNS: DataTableColumn<AdminArticle>[] = [
-  {
-    id: "title",
-    header: "Title",
-    type: "stack",
-    primary: (row) => row.title,
-    secondary: (row) => {
-      const draftHint = row.hasUnsavedDraft ? " • Unsaved draft" : "";
-      return `by ${row.author}${draftHint}`;
+function buildArticlesColumns(timeZone: string): DataTableColumn<AdminArticle>[] {
+  const tz = timeZone.trim() || DEFAULT_SITE_TIMEZONE;
+
+  return [
+    {
+      id: "title",
+      header: "Title",
+      type: "stack",
+      primary: (row) => row.title,
+      secondary: (row) => {
+        const draftHint = row.hasUnsavedDraft ? " • Unsaved draft" : "";
+        return `by ${row.author}${draftHint}`;
+      },
+      className: "max-w-md min-w-[180px]",
     },
-    className: "max-w-md min-w-[180px]",
-  },
-  {
-    id: "status",
-    header: "Status",
-    hideOnMobile: true,
-    type: "badge",
-    badge: (row) => ({
-      variant: row.status,
-      label: ARTICLE_STATUS_LABELS[row.status],
-    }),
-    className: "whitespace-nowrap",
-  },
-  {
-    id: "visibility",
-    header: "Visibility",
-    hideOnMobile: true,
-    type: "text",
-    accessor: (row) => ARTICLE_VISIBILITY_LABELS[row.visibility],
-    className: "whitespace-nowrap",
-  },
-  {
-    id: "category",
-    header: "Category",
-    hideOnMobile: true,
-    type: "text",
-    accessor: (row) => row.category,
-    className: "whitespace-nowrap",
-  },
-  {
-    id: "views",
-    header: "Views",
-    hideOnMobile: true,
-    type: "iconText",
-    icon: Eye,
-    iconText: (row) => formatViews(row.views),
-    className: "whitespace-nowrap",
-  },
-  {
-    id: "lastSaved",
-    header: "Last saved",
-    hideOnMobile: true,
-    type: "text",
-    accessor: (row) => formatArticleLastSaved(row.lastSavedAt),
-    className: "whitespace-nowrap text-admin-trend-muted text-xs",
-  },
-  {
-    id: "date",
-    header: "Published",
-    hideOnMobile: true,
-    type: "text",
-    accessor: (row) => row.date,
-    className: "whitespace-nowrap text-admin-trend-muted",
-  },
-  {
-    id: "updatedAt",
-    header: "Updated",
-    hideOnMobile: true,
-    type: "text",
-    accessor: (row) => row.updatedAt ?? "—",
-    className: "whitespace-nowrap text-admin-trend-muted text-xs",
-  },
-];
+    {
+      id: "status",
+      header: "Status",
+      hideOnMobile: true,
+      type: "badge",
+      badge: (row) => ({
+        variant: row.status,
+        label: ARTICLE_STATUS_LABELS[row.status],
+      }),
+      className: "whitespace-nowrap",
+    },
+    {
+      id: "visibility",
+      header: "Visibility",
+      hideOnMobile: true,
+      type: "text",
+      accessor: (row) => ARTICLE_VISIBILITY_LABELS[row.visibility],
+      className: "whitespace-nowrap",
+    },
+    {
+      id: "category",
+      header: "Category",
+      hideOnMobile: true,
+      type: "text",
+      accessor: (row) => row.category,
+      className: "whitespace-nowrap",
+    },
+    {
+      id: "views",
+      header: "Views",
+      hideOnMobile: true,
+      type: "iconText",
+      icon: Eye,
+      iconText: (row) => formatViews(row.views),
+      className: "whitespace-nowrap",
+    },
+    {
+      id: "lastSaved",
+      header: "Last saved",
+      hideOnMobile: true,
+      type: "text",
+      accessor: (row) => formatArticleLastSaved(row.lastSavedAt, tz),
+      className: "whitespace-nowrap text-admin-trend-muted text-xs",
+    },
+    {
+      id: "date",
+      header: "Published",
+      hideOnMobile: true,
+      type: "text",
+      accessor: (row) =>
+        formatArticleTimestamp(row.publishedAtIso ?? row.date, tz).label || row.date || "—",
+      className: "whitespace-nowrap text-admin-trend-muted",
+    },
+    {
+      id: "updatedAt",
+      header: "Updated",
+      hideOnMobile: true,
+      type: "text",
+      accessor: (row) => {
+        if (
+          !articleShowsUpdatedTimestamp(
+            row.updatedAtIso,
+            row.publishedAtIso,
+            row.createdAtIso,
+          )
+        ) {
+          return "—";
+        }
+        return formatArticleTimestamp(row.updatedAtIso, tz).label || "—";
+      },
+      className: "whitespace-nowrap text-admin-trend-muted text-xs",
+    },
+  ];
+}
 
 export type UseArticlesDataTableOptions = {
   data: AdminArticle[];
@@ -98,10 +119,24 @@ export type UseArticlesDataTableOptions = {
   actions?: DataTableAction<AdminArticle>[];
   columns?: DataTableColumn<AdminArticle>[];
   emptyMessage?: string;
+  timeZone?: string;
 };
 
 export function useArticlesDataTable(options: UseArticlesDataTableOptions) {
-  const { onEdit, onActivityLog, onDelete, actions, columns, ...rest } = options;
+  const {
+    onEdit,
+    onActivityLog,
+    onDelete,
+    actions,
+    columns,
+    timeZone = DEFAULT_SITE_TIMEZONE,
+    ...rest
+  } = options;
+
+  const resolvedColumns = React.useMemo(
+    () => columns ?? buildArticlesColumns(timeZone),
+    [columns, timeZone],
+  );
 
   const resolvedActions = React.useMemo<DataTableAction<AdminArticle>[]>(() => {
     if (actions) return actions;
@@ -143,7 +178,7 @@ export function useArticlesDataTable(options: UseArticlesDataTableOptions) {
 
   return useDataTable<AdminArticle>({
     getRowId: (row: AdminArticle) => row.id,
-    columns: columns ?? ARTICLES_COLUMNS,
+    columns: resolvedColumns,
     actions: resolvedActions,
     selectable: true,
     emptyMessage: "No articles match your filters.",
