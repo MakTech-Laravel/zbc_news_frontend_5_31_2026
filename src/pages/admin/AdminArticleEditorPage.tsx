@@ -24,6 +24,11 @@ import {
 import { ArticleEditorTopBar } from "@/components/admin/articles/editor/ArticleEditorTopBar";
 import { ArticlePreviewDialog } from "@/components/admin/articles/editor/ArticlePreviewDialog";
 import { UnsavedChangesDialog } from "@/components/admin/articles/editor/UnsavedChangesDialog";
+import {
+  CategorySearchSelect,
+  flattenCategoryOptions,
+  type CategorySearchOption,
+} from "@/components/admin/shared/CategorySearchSelect";
 import { MediaImageField } from "@/components/admin/media/MediaImageField";
 import {
   emptyFeaturedMediaValue,
@@ -622,6 +627,19 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const watchedIsBreaking = watch("is_breaking");
   const watchedValues = watch();
 
+  const categoryOptions = React.useMemo<CategorySearchOption[]>(
+    () =>
+      categories.map((category) => ({
+        id: String(category.id),
+        title: category.title,
+        label: category.parent_title
+          ? `${category.parent_title} / ${category.title}`
+          : category.title,
+        status: category.status,
+      })),
+    [categories],
+  );
+
   featuredMediaRef.current = featuredMedia;
   openGraphImageUrlRef.current = openGraphImageUrl;
   categoriesRef.current = categories;
@@ -641,10 +659,14 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const handleAutoSaveSuccess = React.useCallback(
     (result: { slug: string; updated_at: string }) => {
       setLastSavedAt(result.updated_at);
+      if (result.slug && result.slug !== getValues("slug")) {
+        setValue("slug", result.slug, { shouldDirty: false });
+        setSlugTouched(true);
+      }
       reset(getValues(), { keepDirty: false });
       setImagesDirty(false);
     },
-    [getValues, reset],
+    [getValues, reset, setValue],
   );
 
   const { autoSaveStatus, getPersistedSlug, setPersistedSlug, resetAutoSaveSnapshot } =
@@ -676,26 +698,19 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     try {
       const response = await request.get("/categories");
       const rows = Array.isArray(response.data.data) ? response.data.data : [];
-      const flat: CategoryRow[] = [];
-
-      for (const parent of rows) {
-        flat.push({
-          id: parent.id,
-          title: parent.title,
-          status: parent.status,
-          parent_id: null,
-        });
-        const children = Array.isArray(parent.children) ? parent.children : [];
-        for (const child of children) {
-          flat.push({
-            id: child.id,
-            title: child.title,
-            status: child.status,
-            parent_id: parent.id,
-            parent_title: parent.title,
-          });
-        }
-      }
+      const options = flattenCategoryOptions(rows);
+      const flat: CategoryRow[] = options.map((option) => {
+        const parentTitle = option.label.includes(" / ")
+          ? option.label.split(" / ")[0]
+          : undefined;
+        return {
+          id: option.id,
+          title: option.title,
+          status: typeof option.status === "string" ? option.status : undefined,
+          parent_id: parentTitle ? "nested" : null,
+          parent_title: parentTitle,
+        };
+      });
 
       setCategories(flat);
     } catch (error) {
@@ -957,8 +972,8 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     article_description: watchedValues.article_description ?? "",
     excerpt: watchedValues.excerpt ?? "",
     category:
-      categories.find((category) => String(category.id) === watchedValues.article_category_id)
-        ?.title ??
+      categoryOptions.find((category) => category.id === watchedValues.article_category_id)
+        ?.label ??
       "",
     tags: watchedValues.tags ?? [],
     authorName: "",
@@ -1249,22 +1264,15 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                   name="article_category_id"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories
-                          .filter((category) => category.status === "active")
-                          .map((category) => (
-                            <SelectItem key={category.id} value={String(category.id)}>
-                              {category.parent_title
-                                ? `${category.parent_title} / ${category.title}`
-                                : category.title}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <CategorySearchSelect
+                      options={categoryOptions}
+                      value={field.value}
+                      onChange={(next) => {
+                        field.onChange(next);
+                      }}
+                      placeholder="Select category"
+                      className="mt-0"
+                    />
                   )}
                 />
                 <InputError message={errors.article_category_id?.message} />

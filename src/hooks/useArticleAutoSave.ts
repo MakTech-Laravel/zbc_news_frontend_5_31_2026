@@ -16,6 +16,12 @@ export type UseArticleAutoSaveOptions = {
   changeSignature: string;
   getPayload: () => Record<string, unknown> | null;
   onSaved: (result: ArticleAutoSaveResult) => void;
+  /** Override default `/admin/articles/auto-save` (e.g. live-updates). */
+  saveFn?: (
+    payload: Record<string, unknown>,
+    slug: string | undefined,
+    signal: AbortSignal,
+  ) => Promise<ArticleAutoSaveResult>;
 };
 
 export function useArticleAutoSave({
@@ -26,6 +32,7 @@ export function useArticleAutoSave({
   changeSignature,
   getPayload,
   onSaved,
+  saveFn,
 }: UseArticleAutoSaveOptions) {
   const [autoSaveStatus, setAutoSaveStatus] = React.useState<AutoSaveStatus>("idle");
   const persistedSlugRef = React.useRef<string | undefined>(initialSlug);
@@ -36,9 +43,11 @@ export function useArticleAutoSave({
   const savedIndicatorTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const getPayloadRef = React.useRef(getPayload);
   const onSavedRef = React.useRef(onSaved);
+  const saveFnRef = React.useRef(saveFn);
 
   getPayloadRef.current = getPayload;
   onSavedRef.current = onSaved;
+  saveFnRef.current = saveFn;
 
   React.useEffect(() => {
     if (initialSlug) {
@@ -71,7 +80,8 @@ export function useArticleAutoSave({
     setAutoSaveStatus("saving");
 
     try {
-      const result = await autoSaveAdminArticle(
+      const persist = saveFnRef.current ?? autoSaveAdminArticle;
+      const result = await persist(
         payload,
         persistedSlugRef.current,
         controller.signal,
@@ -93,7 +103,12 @@ export function useArticleAutoSave({
         }
       }, SAVED_INDICATOR_MS);
     } catch (error) {
-      if (axios.isCancel(error)) return;
+      if (
+        axios.isCancel(error) ||
+        (axios.isAxiosError(error) && error.code === "ERR_CANCELED")
+      ) {
+        return;
+      }
       if (requestId !== requestIdRef.current) return;
       console.error("Article auto-save failed:", error);
       setAutoSaveStatus("error");
