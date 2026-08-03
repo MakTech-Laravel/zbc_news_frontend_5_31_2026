@@ -55,7 +55,7 @@ export default function ForgetPassword() {
 
   return (
     <div>
-      <div className="min-h-screen flex items-center justify-center bg-auth-bg p-4">
+      {/* <div className="min-h-screen flex items-center justify-center bg-auth-bg p-4"> */}
         <div className="max-w-md w-full bg-card p-8 rounded-lg shadow-lg">
           <div className="space-y-6">
             <div className="text-center mb-8">
@@ -140,7 +140,7 @@ export default function ForgetPassword() {
             </div>
           </div>
         </div>
-      </div>
+      {/* </div> */}
     </div>
   );
 }
