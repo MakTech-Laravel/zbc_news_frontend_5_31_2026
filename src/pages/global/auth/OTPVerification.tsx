@@ -6,7 +6,6 @@ import { useAuth } from "@/auth/useAuth";
 import { getAuthErrorMessage } from "@/features/auth/errorMessage";
 import { resolveAuthRole, saveAuthRole } from "@/features/auth/roleSelection";
 import {
-  requestPasswordResetOtp,
   resendRegistrationOtp,
   resolveDashboardPath,
   verifyRegistrationOtp,
@@ -275,11 +274,10 @@ export default function OTPVerification() {
 
     setResending(true);
     try {
-      if (purpose === "register") {
-        await resendRegistrationOtp({ email: normalizedEmail });
-      } else {
-        await requestPasswordResetOtp({ email: normalizedEmail });
-      }
+      // Always use /auth/otp/resend (no captcha). Backend picks register vs
+      // password_reset purpose from the account state. Do not call forgot-password
+      // here — that endpoint requires Turnstile which this page does not show.
+      await resendRegistrationOtp({ email: normalizedEmail });
       limiter.attempts += 1;
       writeLimiterState(limiterKey, limiter);
       setResendMessage("A new OTP has been sent.");
