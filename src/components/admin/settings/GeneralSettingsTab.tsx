@@ -1,13 +1,13 @@
+import * as React from "react";
+
 import { MediaImageField } from "@/components/admin/media/MediaImageField";
 import { AdminFormField } from "@/components/admin/forms/AdminFormField";
 import { AdminFormSelect } from "@/components/admin/forms/AdminFormSelect";
 import { settingsInputClassName } from "@/components/admin/settings/settingsFormStyles";
 import type { UseAdminSettingsReturn } from "@/components/admin/settings/useAdminSettings";
-import {
-  HEADER_LAYOUT_OPTIONS,
-  TIMEZONE_OPTIONS,
-} from "@/components/admin/settings/types";
+import { HEADER_LAYOUT_OPTIONS } from "@/components/admin/settings/types";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
+import { getTimezoneOptions } from "@/lib/timezones";
 
 type GeneralSettingsTabProps = {
   settings: UseAdminSettingsReturn;
@@ -15,6 +15,10 @@ type GeneralSettingsTabProps = {
 
 export function GeneralSettingsTab({ settings }: GeneralSettingsTabProps) {
   const { form, setField, logoUrl, setLogoUrl, faviconUrl, setFaviconUrl } = settings;
+  const timezoneOptions = React.useMemo(
+    () => getTimezoneOptions(form.timezone),
+    [form.timezone],
+  );
 
   return (
     <AdminPanel className="space-y-6">
@@ -83,8 +87,11 @@ export function GeneralSettingsTab({ settings }: GeneralSettingsTabProps) {
           id="site-timezone"
           value={form.timezone}
           onChange={(v) => setField("timezone", v)}
-          options={TIMEZONE_OPTIONS}
+          options={timezoneOptions}
         />
+        <p className="mt-2 text-xs text-admin-trend-muted">
+          Used for article timestamps, scheduling, and newsletter send times across the site.
+        </p>
       </AdminFormField>
     </AdminPanel>
   );
