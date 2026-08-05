@@ -99,12 +99,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItemConfig[] = [
     segment: 'newsletters',
     permission: PERMISSIONS.NEWSLETTER.LIST,
   },
-  {
-    label: 'Scheduled tasks',
-    path: '/admin/scheduled-tasks',
-    segment: 'scheduled-tasks',
-    permission: PERMISSIONS.SCHEDULED_TASKS.LIST,
-  },
+  // {
+  //   label: 'Scheduled tasks',
+  //   path: '/admin/scheduled-tasks',
+  //   segment: 'scheduled-tasks',
+  //   permission: PERMISSIONS.SCHEDULED_TASKS.LIST,
+  // },
   {
     label: 'Announcements',
     path: '/admin/announcements',
