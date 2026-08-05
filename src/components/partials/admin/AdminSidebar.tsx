@@ -20,6 +20,7 @@ import {
   UserX,
   Users,
   Zap,
+  TimerReset,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
@@ -46,6 +47,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/account-deletions": UserX,
   "/admin/monetization": CreditCard,
   "/admin/newsletters": Megaphone,
+  "/admin/scheduled-tasks": TimerReset,
   "/admin/announcements": Bell,
   "/admin/comments": MessageSquare,
   "/admin/contact-messages": MessageSquare,

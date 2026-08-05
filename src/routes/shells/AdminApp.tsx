@@ -31,6 +31,7 @@ const AdminMenus = lazyWithRetry(() => import("@/pages/admin/AdminMenus"));
 const AdminMedia = lazyWithRetry(() => import("@/pages/admin/AdminMedia"));
 const AdminMonetization = lazyWithRetry(() => import("@/pages/admin/AdminMonetization"));
 const AdminNewsletters = lazyWithRetry(() => import("@/pages/admin/AdminNewsletters"));
+const AdminScheduledTasks = lazyWithRetry(() => import("@/pages/admin/AdminScheduledTasks"));
 const AdminAnnouncements = lazyWithRetry(() => import("@/pages/admin/AdminAnnouncements"));
 const AdminNotifications = lazyWithRetry(() => import("@/pages/admin/AdminNotifications"));
 const AdminComments = lazyWithRetry(() => import("@/pages/admin/AdminComments"));
@@ -92,6 +93,7 @@ function AdminRoutes() {
           <Route path="account-deletions" element={suspensePage(AdminAccountDeletions)} />
           <Route path="monetization" element={suspensePage(AdminMonetization)} />
           <Route path="newsletters" element={suspensePage(AdminNewsletters)} />
+          <Route path="scheduled-tasks" element={suspensePage(AdminScheduledTasks)} />
           <Route path="announcements" element={suspensePage(AdminAnnouncements)} />
           <Route path="notifications" element={suspensePage(AdminNotifications)} />
           <Route path="comments" element={suspensePage(AdminComments)} />
