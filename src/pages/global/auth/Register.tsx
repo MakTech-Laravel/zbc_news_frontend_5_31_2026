@@ -103,7 +103,7 @@ export default function Register() {
         <div className="space-y-6">
           <div className="text-left mb-8">
             <h2 className="text-2xl font-inter font-semibold text-foreground mb-2">
-              Welcome to Gidira Marketplace
+              Welcome to ZBC News
             </h2>
             <p className="text-sm font-inter text-muted-foreground">
               Already have an account?{" "}
