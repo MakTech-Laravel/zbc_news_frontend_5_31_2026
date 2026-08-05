@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
 import { GeneralSettingsTab } from "@/components/admin/settings/GeneralSettingsTab";
 import { IntegrationsSettingsTab } from "@/components/admin/settings/IntegrationsSettingsTab";
+import { NotificationsSettingsTab } from "@/components/admin/settings/NotificationsSettingsTab";
 import { ReadingSettingsTab } from "@/components/admin/settings/ReadingSettingsTab";
 import { SeoSettingsTab } from "@/components/admin/settings/SeoSettingsTab";
 import { SettingsPageShell } from "@/components/admin/settings/SettingsPageShell";
@@ -10,6 +11,7 @@ import { SettingsSaveBar } from "@/components/admin/settings/SettingsSaveBar";
 import { WritingSettingsTab } from "@/components/admin/settings/WritingSettingsTab";
 import { useAdminSettings } from "@/components/admin/settings/useAdminSettings";
 import type { SettingsTabId } from "@/components/admin/settings/types";
+import { usePermission } from "@/hooks/usePermission";
 
 const TAB_IDS: SettingsTabId[] = [
   "general",
@@ -17,6 +19,7 @@ const TAB_IDS: SettingsTabId[] = [
   "writing",
   "reading",
   "integrations",
+  "notifications",
 ];
 
 function isSettingsTab(value: string | null): value is SettingsTabId {
@@ -27,6 +30,9 @@ export default function AdminSettings() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const settings = useAdminSettings();
+  const { hasAnyRole, isSuperAdmin } = usePermission();
+  const canManageNotifications =
+    isSuperAdmin || hasAnyRole(["admin", "super_admin"]);
   const tabParam = searchParams.get("tab");
 
   const { setActiveTab } = settings;
@@ -53,6 +59,10 @@ export default function AdminSettings() {
     );
   }
 
+  if (settings.activeTab === "notifications" && !canManageNotifications) {
+    return <Navigate to="/admin/settings" replace />;
+  }
+
   return (
     <SettingsPageShell activeTab={settings.activeTab} onTabChange={handleTabChange}>
       {settings.activeTab === "general" ? (
@@ -68,8 +78,9 @@ export default function AdminSettings() {
       {settings.activeTab === "integrations" ? (
         <IntegrationsSettingsTab settings={settings} />
       ) : null}
+      {settings.activeTab === "notifications" ? <NotificationsSettingsTab /> : null}
 
-      {settings.activeTab !== "seo" ? (
+      {settings.activeTab !== "seo" && settings.activeTab !== "notifications" ? (
         <SettingsSaveBar
           onSave={settings.save}
           saving={settings.saving}

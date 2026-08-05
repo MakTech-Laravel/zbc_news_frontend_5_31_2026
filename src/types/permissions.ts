@@ -184,6 +184,10 @@ export const PERMISSIONS = {
     DELETE: 'newsletter.delete',
     SEND: 'newsletter.send',
   },
+  SCHEDULED_TASKS: {
+    LIST: 'scheduled-tasks.list',
+    RERUN: 'scheduled-tasks.rerun',
+  },
   PERMISSIONS: {
     LIST: 'permissions.list',
   },
@@ -343,6 +347,8 @@ export const PERMISSION_GROUP_BY_KEY: Record<PermissionKey, string> = {
   [PERMISSIONS.NEWSLETTER.UPDATE]: 'Newsletter',
   [PERMISSIONS.NEWSLETTER.DELETE]: 'Newsletter',
   [PERMISSIONS.NEWSLETTER.SEND]: 'Newsletter',
+  [PERMISSIONS.SCHEDULED_TASKS.LIST]: 'Scheduled Tasks',
+  [PERMISSIONS.SCHEDULED_TASKS.RERUN]: 'Scheduled Tasks',
   [PERMISSIONS.PERMISSIONS.LIST]: 'Permissions',
   [PERMISSIONS.MEDIA.LIST]: 'Media',
   [PERMISSIONS.MEDIA.CREATE]: 'Media',

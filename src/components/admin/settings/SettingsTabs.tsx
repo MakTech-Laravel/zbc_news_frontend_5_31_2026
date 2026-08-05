@@ -1,4 +1,5 @@
 import { SETTINGS_TABS, type SettingsTabId } from "@/components/admin/settings/types";
+import { usePermission } from "@/hooks/usePermission";
 import { cn } from "@/lib/utils";
 
 type SettingsTabsProps = {
@@ -7,13 +8,20 @@ type SettingsTabsProps = {
 };
 
 export function SettingsTabs({ activeTab, onTabChange }: SettingsTabsProps) {
+  const { hasAnyRole, isSuperAdmin } = usePermission();
+  const canManageNotifications =
+    isSuperAdmin || hasAnyRole(["admin", "super_admin"]);
+  const tabs = SETTINGS_TABS.filter(
+    (tab) => tab.id !== "notifications" || canManageNotifications,
+  );
+
   return (
     <div className="-mx-1 overflow-x-auto border-b border-border pb-px">
       <nav
         className="flex min-w-max gap-4 px-1 sm:gap-8"
         aria-label="Settings sections"
       >
-        {SETTINGS_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
