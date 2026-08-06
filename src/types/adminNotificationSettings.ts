@@ -56,6 +56,13 @@ export type AdminNotificationChannels = Record<
   }
 >;
 
+export type AdminNotificationSettingsPayload = {
+  settings: AdminNotificationChannels;
+  admin_notification_email: string;
+};
+
+export const DEFAULT_ADMIN_NOTIFICATION_EMAIL = "newsroom@zbc.news";
+
 export const DEFAULT_ADMIN_NOTIFICATION_CHANNELS =
   Object.fromEntries(
     ADMIN_NOTIFICATION_EVENTS.map((event) => [

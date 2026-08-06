@@ -2,6 +2,8 @@ import * as React from "react";
 import { BellRing, LayoutDashboard, Mail, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { AdminFormField } from "@/components/admin/forms/AdminFormField";
+import { settingsInputClassName } from "@/components/admin/settings/settingsFormStyles";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -11,6 +13,7 @@ import {
 import {
   ADMIN_NOTIFICATION_EVENTS,
   DEFAULT_ADMIN_NOTIFICATION_CHANNELS,
+  DEFAULT_ADMIN_NOTIFICATION_EMAIL,
   type AdminNotificationChannels,
   type AdminNotificationEvent,
 } from "@/types/adminNotificationSettings";
@@ -71,6 +74,12 @@ export function NotificationsSettingsTab() {
   const [savedSettings, setSavedSettings] = React.useState<AdminNotificationChannels>(
     DEFAULT_ADMIN_NOTIFICATION_CHANNELS,
   );
+  const [notificationEmail, setNotificationEmail] = React.useState(
+    DEFAULT_ADMIN_NOTIFICATION_EMAIL,
+  );
+  const [savedNotificationEmail, setSavedNotificationEmail] = React.useState(
+    DEFAULT_ADMIN_NOTIFICATION_EMAIL,
+  );
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
 
@@ -80,8 +89,10 @@ export function NotificationsSettingsTab() {
     fetchAdminNotificationSettings()
       .then((data) => {
         if (cancelled) return;
-        setSettings(data);
-        setSavedSettings(data);
+        setSettings(data.settings);
+        setSavedSettings(data.settings);
+        setNotificationEmail(data.admin_notification_email);
+        setSavedNotificationEmail(data.admin_notification_email);
       })
       .catch(() => {
         if (!cancelled) toast.error("Failed to load notification settings");
@@ -95,7 +106,9 @@ export function NotificationsSettingsTab() {
     };
   }, []);
 
-  const dirty = JSON.stringify(settings) !== JSON.stringify(savedSettings);
+  const dirty =
+    JSON.stringify(settings) !== JSON.stringify(savedSettings) ||
+    notificationEmail.trim().toLowerCase() !== savedNotificationEmail.trim().toLowerCase();
   const dashboardCount = ADMIN_NOTIFICATION_EVENTS.filter(
     (event) => settings[event.id].dashboard,
   ).length;
@@ -123,12 +136,28 @@ export function NotificationsSettingsTab() {
     });
   }
 
+  function reset() {
+    setSettings(savedSettings);
+    setNotificationEmail(savedNotificationEmail);
+  }
+
   async function save() {
+    const email = notificationEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Enter a valid primary admin notification email");
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await updateAdminNotificationSettings(settings);
-      setSettings(updated);
-      setSavedSettings(updated);
+      const updated = await updateAdminNotificationSettings({
+        settings,
+        admin_notification_email: email,
+      });
+      setSettings(updated.settings);
+      setSavedSettings(updated.settings);
+      setNotificationEmail(updated.admin_notification_email);
+      setSavedNotificationEmail(updated.admin_notification_email);
       toast.success("Notification settings saved");
     } catch {
       toast.error("Failed to save notification settings");
@@ -158,11 +187,29 @@ export function NotificationsSettingsTab() {
           <div>
             <h2 className="font-semibold text-admin-heading">Staff notification channels</h2>
             <p className="mt-1 text-sm leading-6 text-admin-label">
-              These global rules apply to every staff account with a role other than User.
-              Notification and email delivery can be controlled independently.
+              Administrative emails go to the primary inbox below and to Admin / Super Admin
+              accounts. Dashboard notifications still apply to every staff role other than User.
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <AdminFormField
+          label="Primary admin notification email"
+          htmlFor="admin-notification-email"
+          hint="All administrative emails are sent to this address and to Admin / Super Admin accounts when Email is enabled for an event."
+        >
+          <input
+            id="admin-notification-email"
+            type="email"
+            value={notificationEmail}
+            onChange={(e) => setNotificationEmail(e.target.value)}
+            placeholder={DEFAULT_ADMIN_NOTIFICATION_EMAIL}
+            className={settingsInputClassName}
+            autoComplete="email"
+          />
+        </AdminFormField>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -265,7 +312,7 @@ export function NotificationsSettingsTab() {
             type="button"
             variant="outline"
             disabled={!dirty || saving}
-            onClick={() => setSettings(savedSettings)}
+            onClick={reset}
             className="gap-2"
           >
             <RotateCcw className="size-4" aria-hidden />
