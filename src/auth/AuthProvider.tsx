@@ -55,6 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = React.useCallback((nextUser: AuthUser | null) => {
     userRef.current = nextUser
     setStoredAuthUser(nextUser)
+    if (typeof window !== 'undefined') {
+      try {
+        if (nextUser?.permissions) {
+          localStorage.setItem('permissions', JSON.stringify(nextUser.permissions))
+        } else {
+          localStorage.removeItem('permissions')
+        }
+      } catch {
+        // ignore storage failures
+      }
+    }
     setUserState(nextUser)
   }, [])
 
@@ -85,6 +96,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAdminPanelUser(prev) &&
           !isAdminPanelUser(u)
         ) {
+          // Still apply fresh permission names so RBAC edits hide/show UI without re-login.
+          if (Array.isArray(u.permissions)) {
+            const merged: AuthUser = { ...prev, permissions: u.permissions }
+            setUser(merged)
+            return merged
+          }
           return prev
         }
         setUser(u)
@@ -155,6 +172,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     void refreshSession()
+  }, [refreshSession])
+
+  // Re-fetch permissions when the tab becomes visible so RBAC changes apply without re-login.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const refreshIfAuthenticated = () => {
+      if (document.visibilityState === 'hidden') return
+      const hasSession =
+        env.authStrategy === 'http_only_cookie'
+          ? Boolean(userRef.current)
+          : Boolean(getAccessToken())
+      if (!hasSession) return
+      void refreshSession()
+    }
+
+    window.addEventListener('focus', refreshIfAuthenticated)
+    document.addEventListener('visibilitychange', refreshIfAuthenticated)
+    return () => {
+      window.removeEventListener('focus', refreshIfAuthenticated)
+      document.removeEventListener('visibilitychange', refreshIfAuthenticated)
+    }
   }, [refreshSession])
 
   const applyRemoteLogin = React.useCallback(

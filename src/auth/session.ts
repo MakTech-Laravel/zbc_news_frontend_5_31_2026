@@ -7,14 +7,17 @@ import { type AuthUser } from '@/auth/types'
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
   if (env.authMePath === 'none' || env.authMePath === 'false') return null
 
-  const primary = ['/auth/profile', '/admin/me'] as const
+  // Prefer auth-only me endpoints (no users.profile gate) so RBAC changes refresh UI `can()`.
+  const primary = ['/auth/me', '/auth/profile', '/admin/users/profile', '/admin/me'] as const
   const custom =
     env.authMePath &&
       env.authMePath !== '/me' &&
       !primary.includes(env.authMePath as (typeof primary)[number])
       ? [env.authMePath]
       : []
-  const pathCandidates = Array.from(new Set([...primary, ...custom, env.authMePath].filter(Boolean)))
+  const pathCandidates = Array.from(
+    new Set([...primary, ...custom, env.authMePath].filter(Boolean)),
+  )
 
   for (const path of pathCandidates) {
     try {
