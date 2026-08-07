@@ -38,6 +38,7 @@ import { useSiteSettings } from "@/context/SiteSettingsProvider";
 import { GlobalSearchField } from "@/components/search/GlobalSearchField";
 import { UserNotificationsDropdown } from "@/components/user/shared/UserNotificationsDropdown";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { ClientOnly } from "@/routes/ClientOnly";
 import { cn } from "@/lib/utils";
 import { request } from "@/api/request";
 import { fetchPublicBreakingNews, type LiveBreakingNewsItem } from "@/services/frontend/breakingNews";
@@ -311,28 +312,32 @@ function BreakingNewsTicker() {
 
 
 
-function AccountActions({ showLabel = true }: { showLabel?: boolean }) {
+function AccountLoginButton({ showLabel = true }: { showLabel?: boolean }) {
+  return (
+    <Button
+      asChild
+      type="button"
+      variant="outline"
+      className="h-9 gap-2 rounded-lg border-border bg-muted px-3 font-sans text-sm font-medium text-zbc-gray-700 shadow-none hover:bg-zbc-gray-200"
+    >
+      <Link to="/login">
+        <User className="size-4 shrink-0" aria-hidden />
+        {showLabel ? (
+          <span className="hidden sm:inline">My Account</span>
+        ) : (
+          <span className="sr-only">My Account</span>
+        )}
+      </Link>
+    </Button>
+  );
+}
+
+function AccountActionsAuthed({ showLabel = true }: { showLabel?: boolean }) {
   const { isAuthenticated, isUserLoading, logout, user } = useAuth();
   const showAuthenticated = isAuthenticated && !isUserLoading;
 
   if (!showAuthenticated) {
-    return (
-      <Button
-        asChild
-        type="button"
-        variant="outline"
-        className="h-9 gap-2 rounded-lg border-border bg-muted px-3 font-sans text-sm font-medium text-zbc-gray-700 shadow-none hover:bg-zbc-gray-200"
-      >
-        <Link to="/login">
-          <User className="size-4 shrink-0" aria-hidden />
-          {showLabel ? (
-            <span className="hidden sm:inline">My Account</span>
-          ) : (
-            <span className="sr-only">My Account</span>
-          )}
-        </Link>
-      </Button>
-    );
+    return <AccountLoginButton showLabel={showLabel} />;
   }
 
   const initials =
@@ -386,6 +391,15 @@ function AccountActions({ showLabel = true }: { showLabel?: boolean }) {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  );
+}
+
+/** Auth UI must wait until mount — SSR has no localStorage session. */
+function AccountActions({ showLabel = true }: { showLabel?: boolean }) {
+  return (
+    <ClientOnly fallback={<AccountLoginButton showLabel={showLabel} />}>
+      <AccountActionsAuthed showLabel={showLabel} />
+    </ClientOnly>
   );
 }
 

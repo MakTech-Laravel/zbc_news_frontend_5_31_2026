@@ -163,10 +163,12 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
           }
         />
         {hasMediaCredits ? (
-          <figcaption className="space-y-1 border-t border-border bg-background px-4 py-3 text-sm leading-6 text-zbc-gray-500">
+          <figcaption className="space-y-1 border-t border-border bg-background px-4 py-3 text-sm leading-6 text-zbc-gray-500 flex gap-2">
             {caption ? <p className="italic text-zbc-gray-700">Image: {caption}</p> : null}
+            /
             {credit ? <p>Credit: {credit}</p> : null}
-            {/* {copyright ? <p>{copyright}</p> : null} */}
+            /
+            {copyright ? <p>Copyright: {copyright}</p> : null}
           </figcaption>
         ) : null}
       </figure>
