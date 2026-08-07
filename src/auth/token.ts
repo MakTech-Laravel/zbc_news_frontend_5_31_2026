@@ -122,6 +122,7 @@ function clearAllAuthStorage() {
     localStorage.removeItem(STORAGE_KEY_REFRESH)
     sessionStorage.removeItem(STORAGE_KEY_USER)
     localStorage.removeItem(STORAGE_KEY_USER)
+    localStorage.removeItem('permissions')
   } catch {
     // ignore
   }

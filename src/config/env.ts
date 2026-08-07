@@ -142,7 +142,7 @@ export const env = {
    */
   bearerTokenPersistence: bearerTokenPersistenceFromEnv(),
   /** Profile endpoint path (Laravel12 auth routes commonly use `/auth/profile`). */
-  authMePath: import.meta.env.VITE_AUTH_ME_PATH ?? '/auth/profile',
+  authMePath: import.meta.env.VITE_AUTH_ME_PATH ?? '/auth/me',
   /** Logout endpoint path (Laravel12 auth routes commonly use `/auth/logout`). */
   authLogoutPath: import.meta.env.VITE_AUTH_LOGOUT_PATH ?? '/auth/logout',
   /** Logout-all-devices endpoint (revokes every Passport token for the user). */
