@@ -35,6 +35,15 @@ export function isPrivateHostname(hostname: string): boolean {
   );
 }
 
+/** Hosts browsers cannot resolve (loopback + Docker/K8s single-label service names). */
+export function isInternalServiceHostname(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase();
+  if (!host) return false;
+  if (isPrivateHostname(host)) return true;
+  // Compose service names: backend, api, web, frontend, …
+  return !host.includes(".");
+}
+
 function browserOrigin(): string {
   return typeof window !== "undefined" ? window.location.origin : "";
 }
@@ -54,7 +63,12 @@ function originFromEnvUrl(value: string): string {
 function isPublicOrigin(origin: string): boolean {
   if (!origin) return false;
   try {
-    return !isPrivateHostname(new URL(origin).hostname);
+    const host = new URL(origin).hostname.toLowerCase();
+    // Allow localhost for local dev; reject Docker single-label hosts (backend, api, …).
+    if (!host.includes(".") && !isPrivateHostname(host)) {
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
@@ -79,17 +93,26 @@ export function getPublicSiteOrigin(): string {
   if (fromEnv) return fromEnv;
 
   const browser = browserOrigin();
-  if (browser && !isPrivateHostname(browserHostname())) {
+  if (browser && !isInternalServiceHostname(browserHostname())) {
     return browser;
   }
 
   return browser;
 }
 
-/** Laravel web origin (APP_URL) for OG preview routes and media on the API host. */
+/**
+ * Public Laravel/API origin for browser-facing media & attachment links.
+ * Never returns Docker INTERNAL_API_BASE_URL hosts like `http://backend`.
+ */
 export function getApiWebOrigin(): string {
   const fromRuntime = pickFirstPublicOrigin(runtimeApiUrl);
   if (fromRuntime) return fromRuntime;
+
+  // Build-time public API (VITE_API_BASE_URL) — not INTERNAL_API_BASE_URL
+  const fromPublicEnv = originFromEnvUrl(env.publicApiBaseUrl);
+  if (fromPublicEnv && isPublicOrigin(fromPublicEnv)) {
+    return fromPublicEnv;
+  }
 
   const fromEnv = originFromEnvUrl(env.apiBaseUrl);
   if (fromEnv && isPublicOrigin(fromEnv)) {
@@ -97,11 +120,12 @@ export function getApiWebOrigin(): string {
   }
 
   const browser = browserOrigin();
-  if (browser && !isPrivateHostname(browserHostname())) {
+  if (browser && !isInternalServiceHostname(browserHostname())) {
     return browser;
   }
 
-  return fromEnv || browser;
+  // Never fall back to an internal hostname (that caused live attachment links to be `backend/...`).
+  return fromPublicEnv && isPublicOrigin(fromPublicEnv) ? fromPublicEnv : "";
 }
 
 export function isLocalEnvironment(): boolean {

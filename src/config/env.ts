@@ -119,12 +119,22 @@ function resolveApiBaseUrl(): string {
   return normalizeApiBaseUrl(required('VITE_API_BASE_URL'))
 }
 
+/** Always the build-time public API base — never Docker INTERNAL_API_BASE_URL. */
+function resolvePublicApiBaseUrl(): string {
+  return normalizeApiBaseUrl(required('VITE_API_BASE_URL'))
+}
+
 export const env = {
   mode: import.meta.env.MODE,
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
   // Vite only exposes env vars to the client when prefixed with VITE_
   apiBaseUrl: resolveApiBaseUrl(),
+  /**
+   * Public API origin for browser-facing links (attachments, media, share).
+   * Must NOT use INTERNAL_API_BASE_URL — that hostname (e.g. `backend`) is unreachable in browsers.
+   */
+  publicApiBaseUrl: resolvePublicApiBaseUrl(),
   /** Public site URL for canonical links and OG tags (optional; defaults to window.location.origin). */
   siteUrl: optionalViteString('VITE_SITE_URL'),
   /** Optional Meta app id for Facebook Share Dialog (recommended for reliable sharing). */
