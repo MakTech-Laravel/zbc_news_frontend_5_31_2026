@@ -32,6 +32,7 @@ export default function AdminMedia() {
   const { can } = usePermission()
   const canCreate = can(PERMISSIONS.MEDIA.CREATE)
   const canShow = can(PERMISSIONS.MEDIA.SHOW)
+  const canUpdate = can(PERMISSIONS.MEDIA.UPDATE)
   const canDelete = can(PERMISSIONS.MEDIA.DELETE)
   const canBulkDelete = can(PERMISSIONS.MEDIA.BULK_DELETE)
   const canTransform = can(PERMISSIONS.MEDIA.TRANSFORM)
@@ -250,9 +251,11 @@ export default function AdminMedia() {
             if (!open) setDetailUuid(null)
           }}
           onDeleted={() => void loadMedia()}
+          onUpdated={() => void loadMedia()}
           onEdit={canTransform ? openEdit : undefined}
           canDelete={canDelete}
           canEdit={canTransform}
+          canUpdate={canUpdate}
         />
       ) : null}
 

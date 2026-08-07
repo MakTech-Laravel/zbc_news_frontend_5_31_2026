@@ -22,6 +22,7 @@ type ArticleEditorMediaStylePanelProps = {
   onApply: (style: ArticleEditorMediaStyle) => void;
   onDelete: () => void;
   onClose: () => void;
+  onAltChange?: (alt: string) => void;
 };
 
 function useMediaPanelPosition(media: EditorMediaElement | null) {
@@ -58,13 +59,19 @@ export function ArticleEditorMediaStylePanel({
   onApply,
   onDelete,
   onClose,
+  onAltChange,
 }: ArticleEditorMediaStylePanelProps) {
   const [draft, setDraft] = React.useState<ArticleEditorMediaStyle>(() => readMediaStyle(media));
+  const [altText, setAltText] = React.useState(() =>
+    media instanceof HTMLImageElement ? media.alt : "",
+  );
   const position = useMediaPanelPosition(media);
   const showObjectFit = supportsObjectFit(media);
+  const isImage = media instanceof HTMLImageElement;
 
   React.useEffect(() => {
     setDraft(readMediaStyle(media));
+    setAltText(media instanceof HTMLImageElement ? media.alt : "");
   }, [media]);
 
   const updateDraft = (patch: Partial<ArticleEditorMediaStyle>) => {
@@ -115,6 +122,22 @@ export function ArticleEditorMediaStylePanel({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
+        {isImage && onAltChange ? (
+          <label className="col-span-2 space-y-1">
+            <span className="text-xs font-medium text-admin-heading">Alt text</span>
+            <input
+              type="text"
+              value={altText}
+              onChange={(e) => {
+                const next = e.target.value;
+                setAltText(next);
+                onAltChange(next);
+              }}
+              placeholder="Describe the image"
+              className={cn(settingsInputClassName, "h-9 text-sm")}
+            />
+          </label>
+        ) : null}
         <label className="space-y-1">
           <span className="text-xs font-medium text-admin-heading">Width</span>
           <input

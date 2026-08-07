@@ -6,6 +6,9 @@ import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import InputError from "@/components/input-error";
 import { cn } from "@/lib/utils";
 
+const HISTORY_MAX = 50;
+const HISTORY_DEBOUNCE_MS = 300;
+
 type ArticleRichTextEditorProps = {
   title?: string;
   onTitleChange?: (value: string) => void;
@@ -29,6 +32,115 @@ export function ArticleRichTextEditor({
   className,
 }: ArticleRichTextEditorProps) {
   const editorRef = React.useRef<HTMLDivElement>(null);
+  const historyRef = React.useRef<string[]>([content]);
+  const indexRef = React.useRef(0);
+  const applyingHistoryRef = React.useRef(false);
+  const fromEditorRef = React.useRef(false);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [canUndo, setCanUndo] = React.useState(false);
+  const [canRedo, setCanRedo] = React.useState(false);
+
+  const refreshFlags = React.useCallback(() => {
+    setCanUndo(indexRef.current > 0);
+    setCanRedo(indexRef.current < historyRef.current.length - 1);
+  }, []);
+
+  const pushSnapshot = React.useCallback(
+    (html: string) => {
+      if (applyingHistoryRef.current) return;
+      const stack = historyRef.current;
+      const idx = indexRef.current;
+      if (idx >= 0 && stack[idx] === html) return;
+
+      const next = stack.slice(0, idx + 1);
+      next.push(html);
+      while (next.length > HISTORY_MAX) {
+        next.shift();
+      }
+      historyRef.current = next;
+      indexRef.current = next.length - 1;
+      refreshFlags();
+    },
+    [refreshFlags],
+  );
+
+  const schedulePush = React.useCallback(
+    (html: string) => {
+      if (applyingHistoryRef.current) return;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        pushSnapshot(html);
+      }, HISTORY_DEBOUNCE_MS);
+    },
+    [pushSnapshot],
+  );
+
+  React.useEffect(() => {
+    if (applyingHistoryRef.current) {
+      applyingHistoryRef.current = false;
+      fromEditorRef.current = false;
+      return;
+    }
+    if (fromEditorRef.current) {
+      fromEditorRef.current = false;
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    historyRef.current = [content];
+    indexRef.current = 0;
+    refreshFlags();
+  }, [content, refreshFlags]);
+
+  React.useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const handleContentChange = React.useCallback(
+    (value: string) => {
+      fromEditorRef.current = true;
+      onContentChange(value);
+      schedulePush(value);
+    },
+    [onContentChange, schedulePush],
+  );
+
+  const restoreSnapshot = React.useCallback(
+    (html: string) => {
+      applyingHistoryRef.current = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = html;
+      }
+      onContentChange(html);
+      refreshFlags();
+    },
+    [onContentChange, refreshFlags],
+  );
+
+  const undo = React.useCallback(() => {
+    if (indexRef.current <= 0) return;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+      // Flush latest editor HTML before stepping back.
+      const current = editorRef.current?.innerHTML;
+      if (current != null) pushSnapshot(current);
+    }
+    indexRef.current -= 1;
+    restoreSnapshot(historyRef.current[indexRef.current] ?? "");
+  }, [pushSnapshot, restoreSnapshot]);
+
+  const redo = React.useCallback(() => {
+    if (indexRef.current >= historyRef.current.length - 1) return;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    indexRef.current += 1;
+    restoreSnapshot(historyRef.current[indexRef.current] ?? "");
+  }, [restoreSnapshot]);
 
   return (
     <AdminPanel padding="none" className={cn("overflow-hidden shadow-sm", className)}>
@@ -45,13 +157,21 @@ export function ArticleRichTextEditor({
         </div>
       ) : null}
 
-      <ArticleRichTextToolbar editorRef={editorRef} />
+      <ArticleRichTextToolbar
+        editorRef={editorRef}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+      />
 
       <div>
         <ArticleRichTextEditorBody
           editorRef={editorRef}
           content={content}
-          onContentChange={onContentChange}
+          onContentChange={handleContentChange}
+          onUndo={undo}
+          onRedo={redo}
         />
         <InputError message={contentError} className="px-4 pb-4 sm:px-6" />
       </div>

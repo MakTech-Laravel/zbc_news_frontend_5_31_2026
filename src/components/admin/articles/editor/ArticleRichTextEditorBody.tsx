@@ -6,7 +6,6 @@ import { ArticleEditorMediaStylePanel } from "./ArticleEditorMediaStylePanel";
 import {
   applyMediaStyle,
   clearMediaSelection,
-  isEditorMediaElement,
   notifyEditorInput,
   resolveEditorMediaFromTarget,
   selectMediaElement,
@@ -17,6 +16,8 @@ type ArticleRichTextEditorBodyProps = {
   editorRef: React.RefObject<HTMLDivElement | null>;
   content: string;
   onContentChange: (value: string) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
   className?: string;
 };
 
@@ -24,6 +25,8 @@ export function ArticleRichTextEditorBody({
   editorRef,
   content,
   onContentChange,
+  onUndo,
+  onRedo,
   className,
 }: ArticleRichTextEditorBodyProps) {
   const [selectedMedia, setSelectedMedia] = React.useState<EditorMediaElement | null>(null);
@@ -78,9 +81,20 @@ export function ArticleRichTextEditorBody({
     [editorRef, selectedMedia, syncContent],
   );
 
+  const handleAltChange = React.useCallback(
+    (alt: string) => {
+      if (!(selectedMedia instanceof HTMLImageElement)) return;
+      if (!editorRef.current?.contains(selectedMedia)) return;
+      selectedMedia.alt = alt;
+      syncContent();
+    },
+    [editorRef, selectedMedia, syncContent],
+  );
+
   const handleDeleteMedia = React.useCallback(() => {
     if (!selectedMedia || !editorRef.current) return;
-    selectedMedia.remove();
+    const target = selectedMedia.closest("figure.article-figure") ?? selectedMedia;
+    target.remove();
     setSelectedMedia(null);
     syncContent();
   }, [editorRef, selectedMedia, syncContent]);
@@ -93,6 +107,27 @@ export function ArticleRichTextEditorBody({
     setSelectedMedia(null);
   }, [editorRef, onContentChange]);
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const isMod = event.metaKey || event.ctrlKey;
+    if (!isMod) return;
+
+    const key = event.key.toLowerCase();
+    if (key === "z" && event.shiftKey) {
+      event.preventDefault();
+      onRedo?.();
+      return;
+    }
+    if (key === "z") {
+      event.preventDefault();
+      onUndo?.();
+      return;
+    }
+    if (key === "y") {
+      event.preventDefault();
+      onRedo?.();
+    }
+  };
+
   return (
     <>
       <div
@@ -104,12 +139,15 @@ export function ArticleRichTextEditorBody({
         data-placeholder="Write your story…"
         onInput={(e) => onContentChange(e.currentTarget.innerHTML)}
         onClick={handleEditorClick}
+        onKeyDown={handleKeyDown}
         className={cn(
           "article-editor-body min-h-[280px] px-4 py-4 text-base leading-relaxed text-admin-heading outline-none empty:before:pointer-events-none empty:before:text-admin-trend-muted empty:before:content-[attr(data-placeholder)] sm:min-h-[360px] sm:px-6 sm:py-6",
           "[&_img]:cursor-pointer [&_video]:cursor-pointer [&_audio]:cursor-pointer",
           "[&_.article-embed--youtube]:cursor-pointer [&_.article-embed--youtube]:my-4",
           "[&_.article-embed--youtube_iframe]:pointer-events-none",
           "[&_.article-editor-media-selected]:outline [&_.article-editor-media-selected]:outline-2 [&_.article-editor-media-selected]:outline-zbc-blue [&_.article-editor-media-selected]:outline-offset-2",
+          "[&_figure.article-figure]:my-4",
+          "[&_figure.article-figure_figcaption]:mt-2 [&_figure.article-figure_figcaption]:text-sm [&_figure.article-figure_figcaption]:text-admin-trend-muted",
           "[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-admin-input-border [&_td]:px-2 [&_td]:py-1.5 [&_th]:border [&_th]:border-admin-input-border [&_th]:bg-muted/50 [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold",
           className,
         )}
@@ -121,6 +159,9 @@ export function ArticleRichTextEditorBody({
           onApply={handleApplyStyle}
           onDelete={handleDeleteMedia}
           onClose={handleClosePanel}
+          onAltChange={
+            selectedMedia instanceof HTMLImageElement ? handleAltChange : undefined
+          }
         />
       ) : null}
     </>

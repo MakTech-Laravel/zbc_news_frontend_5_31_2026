@@ -15,6 +15,7 @@ import { AdminPagination } from '@/components/admin/shared/AdminPagination'
 import {
   fetchAdminMedia,
   isAudioMedia,
+  isDocumentMedia,
   isImageMedia,
   isVideoMedia,
   uploadAdminMedia,
@@ -28,7 +29,7 @@ export type MediaPickerDialogProps = {
   onOpenChange: (open: boolean) => void
   onSelect: (item: AdminMediaRow) => void
   /** When set, only items matching this type are shown. */
-  filter?: 'image' | 'video' | 'audio' | 'all'
+  filter?: 'image' | 'video' | 'audio' | 'document' | 'all'
   title?: string
 }
 
@@ -85,6 +86,7 @@ export function MediaPickerDialog({
     if (filter === 'image') return items.filter((item) => isImageMedia(item))
     if (filter === 'video') return items.filter((item) => isVideoMedia(item))
     if (filter === 'audio') return items.filter((item) => isAudioMedia(item))
+    if (filter === 'document') return items.filter((item) => isDocumentMedia(item))
     return items
   }, [filter, items])
 
@@ -97,6 +99,9 @@ export function MediaPickerDialog({
     if (filter === 'image') return 'image/*'
     if (filter === 'video') return 'video/*'
     if (filter === 'audio') return 'audio/*'
+    if (filter === 'document') {
+      return '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    }
     return 'image/*,video/*,audio/*'
   }, [filter])
 

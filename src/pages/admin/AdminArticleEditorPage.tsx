@@ -10,6 +10,12 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { request } from "@/api/request";
 import { ArticleRichTextEditor } from "@/components/admin/articles/ArticleRichTextEditor";
+import {
+  ArticleAttachmentsField,
+  attachmentsToPayload,
+  parseAttachmentsFromApi,
+  type ArticleAttachmentItem,
+} from "@/components/admin/articles/ArticleAttachmentsField";
 import { ArticleTagInput } from "@/components/admin/articles/ArticleTagInput";
 import {
   buildArticleSeoDefaults,
@@ -339,6 +345,12 @@ function resolveFeaturedMediaValue(raw: unknown): FeaturedMediaValue {
       thumbnailUrl,
       posterUuid: typeof media.poster_uuid === "string" ? media.poster_uuid : null,
       posterUrl,
+      altText:
+        typeof media.alt_text === "string"
+          ? media.alt_text
+          : typeof media.altText === "string"
+            ? media.altText
+            : null,
     };
   }
 
@@ -352,6 +364,7 @@ function resolveFeaturedMediaValue(raw: unknown): FeaturedMediaValue {
     thumbnailUrl: legacyUrl,
     posterUuid: null,
     posterUrl: null,
+    altText: null,
   };
 }
 
@@ -375,10 +388,12 @@ function appendMediaToPayload(
   payload: Record<string, unknown>,
   featuredMedia: FeaturedMediaValue,
   openGraphImageUrl: string | null,
+  attachments: ArticleAttachmentItem[] = [],
 ) {
   const featuredImageUrl = featuredImageUrlFromMedia(featuredMedia);
   payload.featured_image = featuredImageUrl ?? "";
   payload.open_graph_image = openGraphImageUrl ?? "";
+  payload.attachments = attachmentsToPayload(attachments);
 
   if (featuredMedia.mediaUuid) {
     payload.featured_media_uuid = featuredMedia.mediaUuid;
@@ -396,12 +411,20 @@ function buildAutoSavePayload(
   featuredMedia: FeaturedMediaValue,
   openGraphImageUrl: string | null,
   categories: CategoryRow[],
+  attachments: ArticleAttachmentItem[] = [],
 ): Record<string, unknown> | null {
   const title = data.title.trim();
   const content = stripHtml(data.article_description ?? "").trim();
   const featuredImageUrl = featuredImageUrlFromMedia(featuredMedia);
 
-  if (!title && !content && !featuredImageUrl && !openGraphImageUrl && !featuredMedia.url) {
+  if (
+    !title &&
+    !content &&
+    !featuredImageUrl &&
+    !openGraphImageUrl &&
+    !featuredMedia.url &&
+    attachments.length === 0
+  ) {
     return null;
   }
 
@@ -439,7 +462,7 @@ function buildAutoSavePayload(
     tags: data.tags,
   };
 
-  appendMediaToPayload(payload, featuredMedia, openGraphImageUrl);
+  appendMediaToPayload(payload, featuredMedia, openGraphImageUrl, attachments);
 
   if (data.article_category_id) {
     payload.article_category_id = data.article_category_id;
@@ -570,6 +593,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const [featuredMedia, setFeaturedMedia] = React.useState<FeaturedMediaValue>(
     emptyFeaturedMediaValue(),
   );
+  const [attachments, setAttachments] = React.useState<ArticleAttachmentItem[]>([]);
   const [openGraphImageUrl, setOpenGraphImageUrl] = React.useState<string | null>(null);
   const [imagesDirty, setImagesDirty] = React.useState(false);
   const [slugTouched, setSlugTouched] = React.useState(false);
@@ -580,6 +604,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   const submitActionRef = React.useRef<"draft" | "publish" | "selected">("selected");
   const skipUnsavedPromptRef = React.useRef(false);
   const featuredMediaRef = React.useRef<FeaturedMediaValue>(emptyFeaturedMediaValue());
+  const attachmentsRef = React.useRef<ArticleAttachmentItem[]>([]);
   const openGraphImageUrlRef = React.useRef<string | null>(null);
   const categoriesRef = React.useRef<CategoryRow[]>([]);
 
@@ -641,6 +666,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
   );
 
   featuredMediaRef.current = featuredMedia;
+  attachmentsRef.current = attachments;
   openGraphImageUrlRef.current = openGraphImageUrl;
   categoriesRef.current = categories;
 
@@ -652,8 +678,9 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
         values: watchedValues,
         featuredMedia,
         openGraphImageUrl,
+        attachments,
       }),
-    [watchedValues, featuredMedia, openGraphImageUrl],
+    [watchedValues, featuredMedia, openGraphImageUrl, attachments],
   );
 
   const handleAutoSaveSuccess = React.useCallback(
@@ -682,6 +709,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
           featuredMediaRef.current,
           openGraphImageUrlRef.current,
           categoriesRef.current,
+          attachmentsRef.current,
         ),
       onSaved: handleAutoSaveSuccess,
     });
@@ -741,6 +769,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       reset(mapArticleToFormValues(article));
       setSlugTouched(true);
       setFeaturedMedia(resolveFeaturedMediaValue(article));
+      setAttachments(parseAttachmentsFromApi(article.attachments));
       setOpenGraphImageUrl(resolveOpenGraphImageUrl(article));
       setImagesDirty(false);
       skipUnsavedPromptRef.current = false;
@@ -754,6 +783,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
           resolveFeaturedMediaValue(article),
           resolveOpenGraphImageUrl(article),
           categoriesRef.current,
+          parseAttachmentsFromApi(article.attachments),
         ) ?? undefined,
       );
     } catch (error) {
@@ -828,7 +858,7 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
     };
 
     const payload = buildArticlePayload(enriched, nextStatus);
-    appendMediaToPayload(payload, featuredMedia, openGraphImageUrl);
+    appendMediaToPayload(payload, featuredMedia, openGraphImageUrl, attachments);
 
     const persistedSlug = getPersistedSlug();
     const updateSlug = isEdit ? articleSlugParam : persistedSlug;
@@ -846,8 +876,13 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
       reset({ ...enriched, status: nextStatus }, { keepDirty: false });
       setImagesDirty(false);
       resetAutoSaveSnapshot(
-        buildAutoSavePayload(enriched, featuredMedia, openGraphImageUrl, categories) ??
-          undefined,
+        buildAutoSavePayload(
+          enriched,
+          featuredMedia,
+          openGraphImageUrl,
+          categories,
+          attachments,
+        ) ?? undefined,
       );
       await queryClient.invalidateQueries({ queryKey: ["articles"] });
       skipUnsavedPromptRef.current = true;
@@ -884,6 +919,11 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
 
   const handleFeaturedMediaChange = (next: FeaturedMediaValue) => {
     setFeaturedMedia(next);
+    setImagesDirty(true);
+  };
+
+  const handleAttachmentsChange = (next: ArticleAttachmentItem[]) => {
+    setAttachments(next);
     setImagesDirty(true);
   };
 
@@ -1255,6 +1295,14 @@ export default function AdminArticleEditorPage({ mode }: AdminArticleEditorPageP
                 <FeaturedMediaField
                   value={featuredMedia}
                   onChange={handleFeaturedMediaChange}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className={fieldLabelClassName}>Attachments</label>
+                <ArticleAttachmentsField
+                  value={attachments}
+                  onChange={handleAttachmentsChange}
                 />
               </div>
 
