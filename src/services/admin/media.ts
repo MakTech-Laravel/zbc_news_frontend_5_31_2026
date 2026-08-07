@@ -13,6 +13,10 @@ export type AdminMediaRow = {
   thumbnailUrl: string
   createdAt: string
   collectionName: string | null
+  altText: string | null
+  caption: string | null
+  credit: string | null
+  copyright: string | null
 }
 
 export type AdminMediaListResult = {
@@ -118,6 +122,9 @@ export function normalizeAdminMedia(raw: Record<string, unknown>): AdminMediaRow
       ? resolveMediaUrl(raw.thumbnail_url)
       : url
 
+  const nullableString = (value: unknown): string | null =>
+    typeof value === 'string' && value.trim() ? value : null
+
   return {
     uuid,
     name,
@@ -134,6 +141,10 @@ export function normalizeAdminMedia(raw: Record<string, unknown>): AdminMediaRow
         : typeof raw.collection === 'string'
           ? raw.collection
           : null,
+    altText: nullableString(raw.alt_text ?? raw.altText),
+    caption: nullableString(raw.caption),
+    credit: nullableString(raw.credit),
+    copyright: nullableString(raw.copyright),
   }
 }
 
@@ -267,6 +278,29 @@ export async function transformAdminMedia(
   return normalizeAdminMedia(data as Record<string, unknown>)
 }
 
+export type AdminMediaUpdatePayload = {
+  altText?: string | null
+  caption?: string | null
+  credit?: string | null
+  copyright?: string | null
+}
+
+export async function updateAdminMedia(
+  uuid: string,
+  payload: AdminMediaUpdatePayload,
+): Promise<AdminMediaRow | null> {
+  const body: Record<string, string | null> = {}
+  if (payload.altText !== undefined) body.alt_text = payload.altText
+  if (payload.caption !== undefined) body.caption = payload.caption
+  if (payload.credit !== undefined) body.credit = payload.credit
+  if (payload.copyright !== undefined) body.copyright = payload.copyright
+
+  const response = await request.put(`/admin/media/update/${uuid}`, body)
+  const data = unwrapLaravelData(response.data) ?? response.data
+  if (!data || typeof data !== 'object') return null
+  return normalizeAdminMedia(data as Record<string, unknown>)
+}
+
 export function isImageMedia(row: AdminMediaRow): boolean {
   return row.mediaType === 'image' || row.mimeType.startsWith('image/')
 }
@@ -277,4 +311,18 @@ export function isVideoMedia(row: AdminMediaRow): boolean {
 
 export function isAudioMedia(row: AdminMediaRow): boolean {
   return row.mediaType === 'audio' || row.mimeType.startsWith('audio/')
+}
+
+export function isDocumentMedia(row: AdminMediaRow): boolean {
+  if (row.mediaType === 'document') return true
+  const mime = row.mimeType.toLowerCase()
+  return (
+    mime === 'application/pdf' ||
+    mime.startsWith('text/') ||
+    mime.includes('msword') ||
+    mime.includes('officedocument') ||
+    mime.includes('ms-excel') ||
+    mime.includes('ms-powerpoint') ||
+    mime.includes('opendocument')
+  )
 }

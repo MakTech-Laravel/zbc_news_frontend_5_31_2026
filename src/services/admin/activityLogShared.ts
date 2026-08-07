@@ -45,18 +45,47 @@ function formatActionLabel(value: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+const KNOWN_ACTIVITY_ACTIONS: Record<string, string> = {
+  created: "Created",
+  edited: "Edited",
+  submitted_for_review: "Submitted For Review",
+  approved: "Approved",
+  rejected: "Rejected",
+  published: "Published",
+  scheduled: "Scheduled",
+  archived: "Archived",
+  restored: "Restored",
+  deleted: "Deleted",
+  permanently_deleted: "Permanently Deleted",
+  auto_saved: "Auto Saved",
+};
+
 function deriveAction(description: string, event: unknown): string {
   if (typeof event === "string" && event.trim()) {
+    const key = event.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    if (KNOWN_ACTIVITY_ACTIONS[key]) return KNOWN_ACTIVITY_ACTIONS[key];
     return formatActionLabel(event);
   }
 
   const lower = description.toLowerCase();
+  if (lower.includes("permanently deleted") || lower.includes("permanently_deleted")) {
+    return "Permanently Deleted";
+  }
+  if (lower.includes("submitted for review") || lower.includes("submitted_for_review")) {
+    return "Submitted For Review";
+  }
+  if (lower.includes("auto saved") || lower.includes("auto_saved") || lower.includes("autosaved")) {
+    return "Auto Saved";
+  }
   if (lower.includes("created")) return "Created";
-  if (lower.includes("updated")) return "Updated";
-  if (lower.includes("deleted")) return "Deleted";
+  if (lower.includes("edited") || lower.includes("updated")) return "Edited";
+  if (lower.includes("approved")) return "Approved";
+  if (lower.includes("rejected")) return "Rejected";
   if (lower.includes("published")) return "Published";
   if (lower.includes("scheduled")) return "Scheduled";
   if (lower.includes("archived")) return "Archived";
+  if (lower.includes("restored")) return "Restored";
+  if (lower.includes("deleted")) return "Deleted";
 
   return description ? formatActionLabel(description) : "Activity";
 }

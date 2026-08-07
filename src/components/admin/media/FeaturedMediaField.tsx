@@ -1,5 +1,6 @@
 import * as React from "react";
-import { FolderOpen, Link2, Music2, Radio, Video, X } from "lucide-react";
+import { AlertTriangle, FolderOpen, Link2, Music2, Radio, Video, X } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { YouTubeEmbedDialog } from "@/components/admin/articles/editor/YouTubeEmbedDialog";
 import { MediaPickerDialog } from "@/components/admin/media/MediaPickerDialog";
@@ -23,6 +24,7 @@ export type FeaturedMediaValue = {
   thumbnailUrl: string | null;
   posterUuid: string | null;
   posterUrl: string | null;
+  altText?: string | null;
 };
 
 type FeaturedMediaFieldProps = {
@@ -52,6 +54,7 @@ const emptyValue = (type: FeaturedMediaType = "image"): FeaturedMediaValue => ({
   thumbnailUrl: null,
   posterUuid: null,
   posterUrl: null,
+  altText: null,
 });
 
 function typeFromRow(item: AdminMediaRow): FeaturedMediaType {
@@ -102,11 +105,15 @@ export function FeaturedMediaField({
       thumbnailUrl: null,
       posterUuid: value.posterUuid,
       posterUrl: value.posterUrl,
+      altText: null,
     });
   };
 
   const handlePick = (item: AdminMediaRow) => {
     const type = typeFromRow(item);
+    if (type === "image" && !item.altText?.trim()) {
+      toast.error("This image is missing alt text. Add it in Media details for accessibility.");
+    }
     onChange({
       type,
       mediaUuid: item.uuid,
@@ -114,6 +121,7 @@ export function FeaturedMediaField({
       thumbnailUrl: item.thumbnailUrl || item.url || null,
       posterUuid: type === "image" ? null : value.posterUuid,
       posterUrl: type === "image" ? null : value.posterUrl,
+      altText: item.altText ?? null,
     });
   };
 
@@ -173,6 +181,13 @@ export function FeaturedMediaField({
           </button>
         ))}
       </div>
+
+      {value.type === "image" && value.url && !value.altText?.trim() ? (
+        <p className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          Missing alt text. Open this image in the Media library and add descriptive alt text before publishing.
+        </p>
+      ) : null}
 
       {previewSrc || (value.type === "video" && value.url) || value.type === "audio" ? (
         <div className="relative max-h-48 overflow-hidden rounded-[10px] border border-admin-input-border bg-muted/20">

@@ -8,16 +8,24 @@ import {
   Link2,
   List,
   Quote,
+  Redo2,
   Table,
   TableCellsMerge,
   Trash2,
   MonitorPlay,
+  Undo2,
 } from "lucide-react";
 import * as React from "react";
+import toast from "react-hot-toast";
 
 import { MediaPickerDialog } from "@/components/admin/media/MediaPickerDialog";
 import { cn } from "@/lib/utils";
-import { isAudioMedia, isVideoMedia, type AdminMediaRow } from "@/services/admin/media";
+import {
+  isAudioMedia,
+  isImageMedia,
+  isVideoMedia,
+  type AdminMediaRow,
+} from "@/services/admin/media";
 
 import { buildMediaInsertHtml, buildYouTubeEmbedHtml } from "./articleEditorMediaUtils";
 import { YouTubeEmbedDialog } from "./YouTubeEmbedDialog";
@@ -25,6 +33,10 @@ import { YouTubeEmbedDialog } from "./YouTubeEmbedDialog";
 type ArticleRichTextToolbarProps = {
   editorRef: React.RefObject<HTMLDivElement | null>;
   className?: string;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 };
 
 type ToolbarAction = {
@@ -264,7 +276,14 @@ const TABLE_ACTIONS: TableAction[] = [
   },
 ];
 
-export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichTextToolbarProps) {
+export function ArticleRichTextToolbar({
+  editorRef,
+  className,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
+}: ArticleRichTextToolbarProps) {
   const [mediaPickerOpen, setMediaPickerOpen] = React.useState(false);
   const [youtubeDialogOpen, setYoutubeDialogOpen] = React.useState(false);
   const savedRangeRef = React.useRef<Range | null>(null);
@@ -285,30 +304,42 @@ export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichText
     selection.addRange(savedRangeRef.current);
   }, [editorRef]);
 
-  const escapeAttr = (value: string) =>
-    value
-      .replaceAll("&", "&amp;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
-
-  const buildMediaHtml = (item: AdminMediaRow): string => {
-    const src = escapeAttr(item.url || "");
-    const alt = escapeAttr(item.name || item.fileName || "Media");
+  const buildMediaHtml = (item: AdminMediaRow): string | null => {
+    const src = item.url || "";
     if (isVideoMedia(item)) {
       return buildMediaInsertHtml("video", { src });
     }
     if (isAudioMedia(item)) {
       return buildMediaInsertHtml("audio", { src });
     }
-    return buildMediaInsertHtml("img", { src, alt });
+
+    const alt = item.altText?.trim() || item.name || item.fileName || "Media";
+    if (isImageMedia(item) && !item.altText?.trim()) {
+      const proceed = window.confirm(
+        "This image has no alt text. Inserting without alt text hurts accessibility. Insert anyway?",
+      );
+      if (!proceed) {
+        toast("Insert cancelled — add alt text in Media details first.");
+        return null;
+      }
+    }
+
+    return buildMediaInsertHtml("img", {
+      src,
+      alt,
+      ...(item.caption ? { caption: item.caption } : {}),
+      ...(item.credit ? { credit: item.credit } : {}),
+      ...(item.copyright ? { copyright: item.copyright } : {}),
+    });
   };
 
   const handleMediaSelect = (item: AdminMediaRow) => {
     const editor = editorRef.current;
     if (!editor) return;
+    const html = buildMediaHtml(item);
+    if (!html) return;
     restoreSelection();
-    document.execCommand("insertHTML", false, buildMediaHtml(item));
+    document.execCommand("insertHTML", false, html);
     notifyEditorChange(editor);
   };
 
@@ -356,6 +387,31 @@ export function ArticleRichTextToolbar({ editorRef, className }: ArticleRichText
       role="toolbar"
       aria-label="Formatting"
     >
+      <button
+        type="button"
+        title="Undo"
+        aria-label="Undo"
+        disabled={!canUndo || !onUndo}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => onUndo?.()}
+        className="inline-flex size-8 items-center justify-center rounded-md text-admin-heading transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+      >
+        <Undo2 className="size-4" />
+      </button>
+      <button
+        type="button"
+        title="Redo"
+        aria-label="Redo"
+        disabled={!canRedo || !onRedo}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => onRedo?.()}
+        className="inline-flex size-8 items-center justify-center rounded-md text-admin-heading transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+      >
+        <Redo2 className="size-4" />
+      </button>
+
+      <span className="mx-1 hidden h-5 w-px bg-admin-input-border sm:block" aria-hidden />
+
       {TOOLBAR_ACTIONS.map((action) => (
         <button
           key={action.label}

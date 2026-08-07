@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { Timer } from "lucide-react";
+import { Download, ExternalLink, FileText, Timer } from "lucide-react";
 
 import { ArticleTimestamps } from "@/components/articles/ArticleTimestamps";
 import { ArticleComments } from "@/components/main-layout/NewsDetails/ArticleComments";
@@ -35,6 +35,9 @@ const articleBodyClassName = cn(
   "[&_a]:text-primary [&_a]:underline",
   "[&_img]:my-4 [&_img]:max-h-[420px] [&_img]:w-full [&_img]:rounded-lg [&_img]:object-cover",
   "[&_video]:my-4 [&_video]:w-full [&_video]:rounded-lg",
+  "[&_figure.article-figure]:my-4",
+  "[&_figure.article-figure>img]:my-0",
+  "[&_figure.article-figure_figcaption]:mt-2 [&_figure.article-figure_figcaption]:text-sm [&_figure.article-figure_figcaption]:leading-6 [&_figure.article-figure_figcaption]:text-zbc-gray-500",
   "[&_table]:my-4 [&_table]:w-full [&_table]:border-collapse",
   "[&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2",
   "[&_.article-embed]:my-4 [&_.article-embed]:overflow-hidden [&_.article-embed]:rounded-lg",
@@ -118,18 +121,26 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
   const hasLiveFeaturedVideo =
     article.isLiveBlog && article.featuredMedia?.type === "video";
 
+  const featuredMedia = article.featuredMedia;
+  const mediaAlt = featuredMedia?.altText?.trim() || article.title;
+
+  const caption = featuredMedia?.caption?.trim() || "";
+  const credit = featuredMedia?.credit?.trim() || "";
+  const copyright = featuredMedia?.copyright?.trim() || "";
+  const hasMediaCredits = Boolean(caption || credit || copyright);
+
   const featuredMediaFigure =
-    article.featuredMedia || article.imageUrl ? (
+    featuredMedia || article.imageUrl ? (
       <figure className="overflow-hidden rounded-lg border border-border bg-muted shadow-sm">
         <ArticleMediaHero
           media={
-            article.featuredMedia ?? {
+            featuredMedia ?? {
               type: "image",
               url: article.imageUrl,
               posterUrl: article.imageUrl,
             }
           }
-          alt={article.title}
+          alt={mediaAlt}
           autoPlay={hasLiveFeaturedVideo}
           overlay={
             <>
@@ -151,6 +162,13 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
             </>
           }
         />
+        {hasMediaCredits ? (
+          <figcaption className="space-y-1 border-t border-border bg-background px-4 py-3 text-sm leading-6 text-zbc-gray-500">
+            {caption ? <p className="italic text-zbc-gray-700">Image: {caption}</p> : null}
+            {credit ? <p>Credit: {credit}</p> : null}
+            {/* {copyright ? <p>{copyright}</p> : null} */}
+          </figcaption>
+        ) : null}
       </figure>
     ) : null;
 
@@ -326,6 +344,70 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
             />
           )}
         </div>
+
+        {article.attachments.length > 0 ? (
+          <section
+            className="border-t border-border py-8 sm:py-10"
+            aria-labelledby="article-attachments-heading"
+          >
+            <h2
+              id="article-attachments-heading"
+              className="font-inter text-lg font-bold text-zbc-gray-1000"
+            >
+              Documents
+            </h2>
+            <ul className="mt-4 space-y-3">
+              {article.attachments.map((attachment) => {
+                const typeLabel =
+                  attachment.extension?.toUpperCase() ||
+                  attachment.mimeType ||
+                  "File";
+                return (
+                  <li
+                    key={attachment.uuid || attachment.id}
+                    className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <FileText
+                        className="mt-0.5 size-5 shrink-0 text-zbc-gray-500"
+                        aria-hidden
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-inter text-sm font-semibold text-zbc-gray-1000">
+                          {attachment.label}
+                        </p>
+                        <p className="mt-0.5 text-xs text-zbc-gray-500">
+                          {[typeLabel, attachment.humanSize].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={attachment.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-sm font-medium text-zbc-gray-1000 hover:bg-muted"
+                      >
+                        <ExternalLink className="size-3.5" aria-hidden />
+                        View Document
+                      </a>
+                      <a
+                        href={attachment.downloadUrl || attachment.url}
+                        download={attachment.filename}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:opacity-90"
+                      >
+                        <Download className="size-3.5" aria-hidden />
+                        {attachment.extension?.toLowerCase() === "pdf"
+                          ? "Download PDF"
+                          : "Download"}
+                      </a>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
 
         {article.tags.length > 0 ? (
           <div className="flex flex-wrap gap-2 border-t border-border pt-6">

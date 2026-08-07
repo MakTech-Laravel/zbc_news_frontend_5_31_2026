@@ -8,7 +8,15 @@ export type ArticleFeaturedMedia = {
   thumbnailUrl?: string;
   mimeType?: string | null;
   uuid?: string | null;
+  altText?: string | null;
+  caption?: string | null;
+  credit?: string | null;
+  copyright?: string | null;
 };
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
 
 export function resolveFeaturedMediaFromApi(
   raw: Record<string, unknown>,
@@ -50,6 +58,10 @@ export function resolveFeaturedMediaFromApi(
       thumbnailUrl: thumbnailUrl || undefined,
       mimeType: typeof media.mime_type === "string" ? media.mime_type : null,
       uuid: typeof media.uuid === "string" ? media.uuid : null,
+      altText: nullableString(media.alt_text ?? media.altText),
+      caption: nullableString(media.caption),
+      credit: nullableString(media.credit),
+      copyright: nullableString(media.copyright),
     };
   }
 

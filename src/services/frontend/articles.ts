@@ -16,6 +16,19 @@ export type ArticleLiveUpdateEntry = {
   postedAtIso: string;
 };
 
+export type ArticleAttachment = {
+  id: number;
+  label: string;
+  uuid: string;
+  url: string;
+  downloadUrl: string;
+  filename: string;
+  mimeType: string | null;
+  extension: string | null;
+  size: number | null;
+  humanSize: string | null;
+};
+
 export type ArticleDetail = {
   id: string;
   slug: string;
@@ -25,6 +38,7 @@ export type ArticleDetail = {
   category: string;
   imageUrl: string;
   featuredMedia: ArticleFeaturedMedia | null;
+  attachments: ArticleAttachment[];
   authorName: string;
   authorInitials: string;
   /** Populated when the API returns author slug; otherwise derived from name in UI. */
@@ -175,6 +189,50 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
       }
     : null;
 
+  const attachmentsRaw = Array.isArray(record.attachments) ? record.attachments : [];
+  const attachments: ArticleAttachment[] = attachmentsRaw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const row = entry as Record<string, unknown>;
+      const uuid = typeof row.uuid === "string" ? row.uuid : "";
+      const url = typeof row.url === "string" ? resolveMediaUrl(row.url) : "";
+      if (!uuid || !url) return null;
+
+      const extension =
+        typeof row.extension === "string" && row.extension.trim()
+          ? row.extension.replace(/^\./, "").toLowerCase()
+          : null;
+      const label =
+        (typeof row.label === "string" && row.label.trim()) || "Document";
+      const filenameFromApi =
+        typeof row.filename === "string" && row.filename.trim()
+          ? row.filename.trim()
+          : "";
+      const downloadUrlRaw =
+        typeof row.download_url === "string" && row.download_url.trim()
+          ? row.download_url
+          : url;
+      const filename =
+        filenameFromApi ||
+        (extension && !label.toLowerCase().endsWith(`.${extension}`)
+          ? `${label}.${extension}`
+          : label);
+
+      return {
+        id: typeof row.id === "number" ? row.id : 0,
+        label,
+        uuid,
+        url,
+        downloadUrl: resolveMediaUrl(downloadUrlRaw),
+        filename,
+        mimeType: typeof row.mime_type === "string" ? row.mime_type : null,
+        extension,
+        size: typeof row.size === "number" ? row.size : null,
+        humanSize: typeof row.human_size === "string" ? row.human_size : null,
+      } satisfies ArticleAttachment;
+    })
+    .filter((entry): entry is ArticleAttachment => entry !== null);
+
   const liveUpdatesRaw = Array.isArray(record.live_updates) ? record.live_updates : [];
   const liveUpdates: ArticleLiveUpdateEntry[] = liveUpdatesRaw
     .map((entry) => {
@@ -201,6 +259,7 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     category: resolveCategoryLabel(record),
     imageUrl: featuredMedia?.posterUrl || imageUrl,
     featuredMedia,
+    attachments,
     authorName,
     authorInitials: toInitials(authorName),
     authorSlug,

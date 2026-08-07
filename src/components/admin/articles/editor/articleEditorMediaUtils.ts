@@ -160,18 +160,58 @@ export function buildDefaultMediaStyle(): ArticleEditorMediaStyle {
   };
 }
 
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 export function buildMediaInsertHtml(
   tag: "img" | "video" | "audio",
   attrs: Record<string, string>,
 ): string {
+  const defaultStyle =
+    "max-width:100%;width:100%;height:auto;display:block;object-fit:contain;";
+
+  if (tag === "img") {
+    const caption = attrs.caption?.trim() ?? "";
+    const credit = attrs.credit?.trim() ?? "";
+    const copyright = attrs.copyright?.trim() ?? "";
+    const {
+      caption: _caption,
+      credit: _credit,
+      copyright: _copyright,
+      ...rest
+    } = attrs;
+
+    const imgAttrs: Record<string, string> = { ...rest };
+    if (caption) imgAttrs["data-caption"] = caption;
+    if (credit) imgAttrs["data-credit"] = credit;
+    if (copyright) imgAttrs["data-copyright"] = copyright;
+
+    const attrString = Object.entries(imgAttrs)
+      .map(([key, value]) => `${key}="${escapeHtmlAttr(value)}"`)
+      .join(" ");
+
+    const figParts = [caption, credit, copyright].filter(Boolean).map(escapeHtmlAttr);
+    const figcaption = figParts.length
+      ? `<figcaption>${figParts.join(" · ")}</figcaption>`
+      : "";
+
+    return (
+      `<figure class="article-figure">` +
+      `<img ${attrString} style="${defaultStyle}" contenteditable="false" />` +
+      figcaption +
+      `</figure><p><br></p>`
+    );
+  }
+
   const attrString = Object.entries(attrs)
-    .map(([key, value]) => `${key}="${value}"`)
+    .map(([key, value]) => `${key}="${escapeHtmlAttr(value)}"`)
     .join(" ");
 
-  const defaultStyle = "max-width:100%;width:100%;height:auto;display:block;object-fit:contain;";
-  if (tag === "img") {
-    return `<img ${attrString} style="${defaultStyle}" contenteditable="false" /><p><br></p>`;
-  }
   if (tag === "video") {
     return `<video ${attrString} controls preload="metadata" style="${defaultStyle}" contenteditable="false"></video><p><br></p>`;
   }
