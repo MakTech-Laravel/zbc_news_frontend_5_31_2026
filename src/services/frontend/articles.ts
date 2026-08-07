@@ -7,7 +7,7 @@ import {
   mapArticleTimestampFields,
   resolveArticleTimestamps,
 } from "@/lib/articleTimestamps";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveArticleAttachmentUrls, resolveMediaUrl } from "@/lib/mediaUrl";
 import { resolveEstimatedReadTime } from "@/lib/readTime";
 
 export type ArticleLiveUpdateEntry = {
@@ -195,8 +195,13 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
       if (!entry || typeof entry !== "object") return null;
       const row = entry as Record<string, unknown>;
       const uuid = typeof row.uuid === "string" ? row.uuid : "";
-      const url = typeof row.url === "string" ? resolveMediaUrl(row.url) : "";
-      if (!uuid || !url) return null;
+      if (!uuid) return null;
+
+      // Always rebuild from slug+uuid against the public API origin.
+      // Never trust API/SSR absolute URLs that may use Docker host "backend".
+      const proxy = resolveArticleAttachmentUrls(slug, uuid);
+      const url = proxy.url;
+      if (!url) return null;
 
       const extension =
         typeof row.extension === "string" && row.extension.trim()
@@ -208,10 +213,6 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
         typeof row.filename === "string" && row.filename.trim()
           ? row.filename.trim()
           : "";
-      const downloadUrlRaw =
-        typeof row.download_url === "string" && row.download_url.trim()
-          ? row.download_url
-          : url;
       const filename =
         filenameFromApi ||
         (extension && !label.toLowerCase().endsWith(`.${extension}`)
@@ -223,7 +224,7 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
         label,
         uuid,
         url,
-        downloadUrl: resolveMediaUrl(downloadUrlRaw),
+        downloadUrl: proxy.downloadUrl || url,
         filename,
         mimeType: typeof row.mime_type === "string" ? row.mime_type : null,
         extension,
