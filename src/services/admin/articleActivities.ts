@@ -24,6 +24,12 @@ function resolveArticleTitle(body: unknown, fallbackSlug: string): string {
   if (!body || typeof body !== "object") return fallbackSlug;
 
   const root = body as Record<string, unknown>;
+
+  // Paginated responses put the title beside `data`, not inside it.
+  if (typeof root.article_title === "string" && root.article_title.trim()) {
+    return root.article_title;
+  }
+
   const payload = root.data ?? root;
 
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {

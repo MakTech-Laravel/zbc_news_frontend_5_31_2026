@@ -1,6 +1,27 @@
 import type { ActivityLogRowBase } from "@/components/admin/shared/ActivityLogTable";
 
-export type ActivityFieldValue = string | number | boolean | null;
+/** An image/document referenced by an activity, previewable instead of a raw path. */
+export type ActivityFileValue = {
+  kind: "image" | "video" | "audio" | "file";
+  name: string;
+  url: string | null;
+  downloadUrl: string | null;
+};
+
+export type ActivityFieldValue =
+  | string
+  | number
+  | boolean
+  | null
+  | string[]
+  | ActivityFileValue
+  | ActivityFileValue[];
+
+export function isActivityFileValue(value: unknown): value is ActivityFileValue {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.kind === "string" && typeof record.name === "string";
+}
 
 export type BaseActivity = ActivityLogRowBase & {
   event: string | null;
@@ -8,6 +29,7 @@ export type BaseActivity = ActivityLogRowBase & {
   newValues: Record<string, ActivityFieldValue> | null;
   tags: string[];
   ipAddress: string;
+  userAgent: string | null;
 };
 
 export type ActivitiesPagination = {
@@ -115,6 +137,47 @@ function isCategoryFieldKey(key: string): boolean {
   );
 }
 
+function toActivityFileValue(value: unknown): ActivityFileValue | null {
+  if (!isActivityFileValue(value)) return null;
+
+  const record = value as unknown as Record<string, unknown>;
+  const kind = record.kind;
+  const readUrl = (raw: unknown) =>
+    typeof raw === "string" && raw.trim() ? raw : null;
+
+  return {
+    kind:
+      kind === "image" || kind === "video" || kind === "audio" || kind === "file"
+        ? kind
+        : "file",
+    name: String(record.name),
+    url: readUrl(record.url),
+    downloadUrl: readUrl(record.download_url) ?? readUrl(record.downloadUrl),
+  };
+}
+
+/** Lists are either plain labels (tags) or file references (attachments). */
+function normalizeListValue(entries: unknown[]): string[] | ActivityFileValue[] {
+  const files = entries
+    .map(toActivityFileValue)
+    .filter((entry): entry is ActivityFileValue => entry !== null);
+
+  if (files.length === entries.length) return files;
+
+  return entries
+    .map((entry) => {
+      if (typeof entry === "string") return entry;
+      if (typeof entry === "number" || typeof entry === "boolean") return String(entry);
+      if (entry && typeof entry === "object") {
+        const record = entry as Record<string, unknown>;
+        const candidate = record.label ?? record.name ?? record.title ?? record.filename;
+        if (typeof candidate === "string") return candidate;
+      }
+      return "";
+    })
+    .filter((entry): entry is string => entry.length > 0);
+}
+
 function normalizeActivityFieldValue(
   key: string,
   entryValue: unknown,
@@ -129,9 +192,17 @@ function normalizeActivityFieldValue(
     return entryValue;
   }
 
-  if (!entryValue || typeof entryValue !== "object" || Array.isArray(entryValue)) {
+  // Lists (tags, attachments) must survive so file/tag changes appear in the diff.
+  if (Array.isArray(entryValue)) {
+    return normalizeListValue(entryValue);
+  }
+
+  if (!entryValue || typeof entryValue !== "object") {
     return undefined;
   }
+
+  const fileValue = toActivityFileValue(entryValue);
+  if (fileValue) return fileValue;
 
   const record = entryValue as Record<string, unknown>;
 
@@ -234,6 +305,12 @@ export function mapApiActivity(raw: unknown): BaseActivity | null {
         : typeof record.ipAddress === "string"
           ? record.ipAddress
           : "—",
+    userAgent:
+      typeof record.user_agent === "string" && record.user_agent.trim()
+        ? record.user_agent
+        : typeof record.userAgent === "string" && record.userAgent.trim()
+          ? record.userAgent
+          : null,
     createdAt: created.label,
     createdAtIso: created.iso,
   };
