@@ -1,7 +1,13 @@
+import { Download, FileText, Image as ImageIcon, Music, Video } from "lucide-react";
 import type { ReactNode } from "react";
 
-import type { ActivityFieldValue } from "@/services/admin/activityLogShared";
-import type { BaseActivity } from "@/services/admin/activityLogShared";
+import type {
+  ActivityFieldValue,
+  ActivityFileValue,
+  BaseActivity,
+} from "@/services/admin/activityLogShared";
+import { isActivityFileValue } from "@/services/admin/activityLogShared";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 
 function formatFieldLabel(key: string): string {
@@ -34,10 +40,14 @@ function resolveCategoryLabel(
 
 function formatFieldValue(
   field: string,
-  value: ActivityFieldValue,
+  value: string | number | boolean | null,
   categoryLabels: Record<string, string> = {},
 ): string {
   if (value === null || value === undefined) return "—";
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
 
   if (isCategoryField(field)) {
     const categoryTitle = resolveCategoryLabel(value, categoryLabels);
@@ -61,6 +71,110 @@ function formatFieldValue(
   return String(value);
 }
 
+const FILE_ICONS = {
+  image: ImageIcon,
+  video: Video,
+  audio: Music,
+  file: FileText,
+} as const;
+
+/** Shows the actual image/document — thumbnail plus name — and downloads on click. */
+function FileChip({ file }: { file: ActivityFileValue }) {
+  const previewSrc = file.url ? resolveMediaUrl(file.url) : "";
+  const downloadHref = resolveMediaUrl(file.downloadUrl ?? file.url);
+  const Icon = FILE_ICONS[file.kind] ?? FileText;
+
+  const body = (
+    <>
+      {file.kind === "image" && previewSrc ? (
+        <img
+          src={previewSrc}
+          alt={file.name}
+          loading="lazy"
+          className="h-9 w-14 shrink-0 rounded-sm border border-border object-cover"
+        />
+      ) : (
+        <Icon className="size-4 shrink-0" aria-hidden />
+      )}
+      <span className="truncate">{file.name}</span>
+      {downloadHref ? <Download className="size-3.5 shrink-0 opacity-60" aria-hidden /> : null}
+    </>
+  );
+
+  const className =
+    "inline-flex max-w-full items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-admin-heading";
+
+  if (!downloadHref) {
+    return <span className={className}>{body}</span>;
+  }
+
+  return (
+    <a
+      href={downloadHref}
+      download={file.name}
+      className={cn(className, "transition-colors hover:border-primary hover:text-primary")}
+      title={`Download ${file.name}`}
+    >
+      {body}
+    </a>
+  );
+}
+
+function renderFieldValue(
+  field: string,
+  value: ActivityFieldValue,
+  categoryLabels: Record<string, string>,
+): ReactNode {
+  if (value === null || value === undefined) {
+    return <span className="text-admin-label">—</span>;
+  }
+
+  if (isActivityFileValue(value)) {
+    return <FileChip file={value} />;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-admin-label">None</span>;
+
+    if (isActivityFileValue(value[0])) {
+      return (
+        <div className="flex flex-col items-start gap-1.5">
+          {(value as ActivityFileValue[]).map((file, index) => (
+            <FileChip key={`${file.name}-${index}`} file={file} />
+          ))}
+        </div>
+      );
+    }
+
+    return <>{(value as string[]).join(", ")}</>;
+  }
+
+  return <>{formatFieldValue(field, value, categoryLabels)}</>;
+}
+
+/** Mirrors the backend identity rule: attachments by name, media by URL. */
+function fileIdentity(file: ActivityFileValue): string {
+  return file.kind === "file" ? file.name : (file.url ?? file.name);
+}
+
+function valuesEqual(a: ActivityFieldValue, b: ActivityFieldValue): boolean {
+  if (isActivityFileValue(a) || isActivityFileValue(b)) {
+    if (!isActivityFileValue(a) || !isActivityFileValue(b)) return false;
+    return a.kind === b.kind && fileIdentity(a) === fileIdentity(b);
+  }
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    const left = Array.isArray(a) ? a : [];
+    const right = Array.isArray(b) ? b : [];
+    return (
+      left.length === right.length &&
+      left.every((item, index) => valuesEqual(item, right[index]))
+    );
+  }
+
+  return a === b;
+}
+
 function getChangeRows(
   activity: BaseActivity,
   categoryLabels: Record<string, string>,
@@ -71,9 +185,9 @@ function getChangeRows(
 
   return [...keys].map((field) => ({
     field,
-    oldValue: formatFieldValue(field, oldValues[field] ?? null, categoryLabels),
-    newValue: formatFieldValue(field, newValues[field] ?? null, categoryLabels),
-    changed: oldValues[field] !== newValues[field],
+    oldValue: renderFieldValue(field, oldValues[field] ?? null, categoryLabels),
+    newValue: renderFieldValue(field, newValues[field] ?? null, categoryLabels),
+    changed: !valuesEqual(oldValues[field] ?? null, newValues[field] ?? null),
   }));
 }
 
@@ -139,6 +253,12 @@ export function renderArticleActivityExtra(
           <span className="text-admin-label">Activity ID</span>
           <p className="font-mono text-admin-heading">#{activity.id}</p>
         </div>
+        {activity.userAgent ? (
+          <div className="sm:col-span-2 lg:col-span-3">
+            <span className="text-admin-label">Device</span>
+            <p className="wrap-break-word text-admin-heading">{activity.userAgent}</p>
+          </div>
+        ) : null}
       </div>
 
       {activity.tags.length > 0 ? (
@@ -170,8 +290,12 @@ export function renderArticleActivityExtra(
                   <td className="px-4 py-3 font-medium whitespace-nowrap text-admin-heading">
                     {formatFieldLabel(row.field)}
                   </td>
-                  <td className="px-4 py-3 text-admin-label">{row.oldValue}</td>
-                  <td className="px-4 py-3 text-admin-heading">{row.newValue}</td>
+                  <td className="max-w-70 px-4 py-3 wrap-break-word text-admin-label">
+                    {row.oldValue}
+                  </td>
+                  <td className="max-w-70 px-4 py-3 wrap-break-word text-admin-heading">
+                    {row.newValue}
+                  </td>
                 </tr>
               ))}
             </tbody>
