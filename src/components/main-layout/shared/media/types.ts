@@ -39,11 +39,12 @@ export function resolveFeaturedMediaFromApi(
     const explicitPoster =
       typeof media.poster_url === "string" ? media.poster_url.trim() : "";
 
-    // Never fall back to a video/audio URL for <img> posters.
+    // Images: prefer the original delivery URL. Derived Cloudinary thumbs can 404
+    // on live; using them as poster blanks out home cards and the article editor.
     const posterUrl =
       explicitPoster ||
-      thumbnailUrl ||
       (type === "image" ? url : "") ||
+      thumbnailUrl ||
       fallbackImageUrl ||
       "";
 

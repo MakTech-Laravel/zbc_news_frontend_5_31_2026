@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ImageIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -11,6 +11,8 @@ type ArticleImageProps = {
   height?: number;
   loading?: "lazy" | "eager";
   fetchPriority?: "high" | "low" | "auto";
+  /** Tried when `src` fails (e.g. broken Cloudinary thumbnail → original URL). */
+  fallbackSrc?: string;
 };
 
 export function ArticleImage({
@@ -21,10 +23,17 @@ export function ArticleImage({
   height,
   loading = "lazy",
   fetchPriority,
+  fallbackSrc,
 }: ArticleImageProps) {
+  const [currentSrc, setCurrentSrc] = useState(src);
   const [failed, setFailed] = useState(false);
 
-  if (failed) {
+  useEffect(() => {
+    setCurrentSrc(src);
+    setFailed(false);
+  }, [src]);
+
+  if (failed || !currentSrc) {
     return (
       <div
         className={cn(
@@ -41,14 +50,21 @@ export function ArticleImage({
 
   return (
     <img
-      src={src}
+      src={currentSrc}
       alt={alt}
       width={width}
       height={height}
       loading={loading}
       fetchPriority={fetchPriority}
       className={className}
-      onError={() => setFailed(true)}
+      onError={() => {
+        const next = fallbackSrc?.trim();
+        if (next && next !== currentSrc) {
+          setCurrentSrc(next);
+          return;
+        }
+        setFailed(true);
+      }}
     />
   );
 }
