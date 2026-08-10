@@ -336,15 +336,17 @@ function resolveFeaturedMediaValue(raw: unknown): FeaturedMediaValue {
     const thumbnailUrl =
       typeof media.thumbnail_url === "string" && media.thumbnail_url.trim()
         ? resolveMediaUrl(media.thumbnail_url)
-        : posterUrl || url;
+        : null;
 
     return {
       type,
       mediaUuid: typeof media.uuid === "string" ? media.uuid : null,
       url,
-      thumbnailUrl,
+      // Images: keep thumbnail as original URL so the editor preview never depends
+      // on a derived Cloudinary transform that 404s on live.
+      thumbnailUrl: type === "image" ? url || thumbnailUrl || posterUrl : thumbnailUrl || posterUrl || url,
       posterUuid: typeof media.poster_uuid === "string" ? media.poster_uuid : null,
-      posterUrl,
+      posterUrl: type === "image" ? url || posterUrl : posterUrl,
       altText:
         typeof media.alt_text === "string"
           ? media.alt_text
