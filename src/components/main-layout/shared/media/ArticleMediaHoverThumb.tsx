@@ -40,10 +40,7 @@ export function ArticleMediaHoverThumb({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hovering, setHovering] = useState(false);
   const [canHoverPlay, setCanHoverPlay] = useState(false);
-  const poster =
-    media?.type === "image"
-      ? media.url || media.posterUrl || fallbackSrc
-      : media?.posterUrl || fallbackSrc;
+  const poster = media?.posterUrl || (media?.type === "image" ? media.url : "") || fallbackSrc;
   const isYouTube = media?.type === "video" && media.provider === "youtube";
   const isNativeVideo =
     media?.type === "video" && media.provider !== "youtube" && Boolean(media.url);
@@ -130,13 +127,6 @@ export function ArticleMediaHoverThumb({
               src={poster || fallbackSrc}
               alt={alt}
               className={cn("h-full w-full object-cover", imageClassName)}
-              fallbackSrc={
-                media?.type === "image" && media.url && media.url !== poster
-                  ? media.url
-                  : fallbackSrc && fallbackSrc !== poster
-                    ? fallbackSrc
-                    : undefined
-              }
             />
           )}
           {!hovering ? (
@@ -169,13 +159,6 @@ export function ArticleMediaHoverThumb({
             src={poster || fallbackSrc}
             alt={alt}
             className={cn("h-full w-full object-cover", imageClassName)}
-            fallbackSrc={
-              media?.type === "image" && media.url && media.url !== poster
-                ? media.url
-                : fallbackSrc && fallbackSrc !== poster
-                  ? fallbackSrc
-                  : undefined
-            }
           />
           {isAudio ? (
             <span className="pointer-events-none absolute bottom-2 left-2 inline-flex size-7 items-center justify-center rounded-full bg-black/65 text-white">

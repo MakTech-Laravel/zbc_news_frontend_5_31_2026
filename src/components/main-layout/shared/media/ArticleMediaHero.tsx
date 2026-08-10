@@ -63,11 +63,6 @@ export function ArticleMediaHero({
           className="absolute inset-0 h-full w-full object-cover"
           loading="eager"
           fetchPriority="high"
-          fallbackSrc={
-            media.posterUrl && media.url && media.posterUrl !== media.url
-              ? media.posterUrl
-              : undefined
-          }
         />
         {overlay}
       </div>

@@ -24,10 +24,7 @@ export function ArticleMediaThumb({
   width,
   height,
 }: ArticleMediaThumbProps) {
-  const src =
-    media?.type === "image"
-      ? media.url || media.posterUrl || fallbackSrc
-      : media?.posterUrl || fallbackSrc;
+  const src = media?.posterUrl || (media?.type === "image" ? media.url : "") || fallbackSrc;
   const showVideo = media?.type === "video";
   const showAudio = media?.type === "audio";
 
@@ -39,13 +36,6 @@ export function ArticleMediaThumb({
         width={width}
         height={height}
         className={cn("h-full w-full object-cover", imageClassName)}
-        fallbackSrc={
-          media?.type === "image" && media.url && media.url !== src
-            ? media.url
-            : fallbackSrc && fallbackSrc !== src
-              ? fallbackSrc
-              : undefined
-        }
       />
       {showVideo ? (
         <span className="pointer-events-none absolute bottom-1.5 left-1.5 inline-flex size-6 items-center justify-center rounded-full bg-black/65 text-white">

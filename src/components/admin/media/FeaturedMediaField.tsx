@@ -82,8 +82,8 @@ export function FeaturedMediaField({
 
   const needsPoster = value.type === "video" || value.type === "audio";
   const previewSrc = resolveMediaUrl(
-    (value.type === "image" ? value.url : null) ||
-      value.posterUrl ||
+    value.posterUrl ||
+      (value.type === "image" ? value.url : null) ||
       value.thumbnailUrl ||
       "",
   );

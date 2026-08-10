@@ -33,18 +33,17 @@ export function resolveFeaturedMediaFromApi(
       typeRaw === "video" || typeRaw === "audio" || typeRaw === "image"
         ? typeRaw
         : "image";
-    $url = typeof media.url === "string" ? media.url.trim() : "";
+    const url = typeof media.url === "string" ? media.url.trim() : "";
     const thumbnailUrl =
       typeof media.thumbnail_url === "string" ? media.thumbnail_url.trim() : "";
     const explicitPoster =
       typeof media.poster_url === "string" ? media.poster_url.trim() : "";
 
-    // Images: prefer the original delivery URL. Derived Cloudinary thumbs can 404
-    // on live; using them as poster blanks out home cards and the article editor.
+    // Never fall back to a video/audio URL for <img> posters.
     const posterUrl =
       explicitPoster ||
-      (type === "image" ? url : "") ||
       thumbnailUrl ||
+      (type === "image" ? url : "") ||
       fallbackImageUrl ||
       "";
 
