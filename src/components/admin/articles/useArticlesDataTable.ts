@@ -1,4 +1,4 @@
-import { Eye, History, Pencil, Trash2 } from "lucide-react";
+import { Eye, GitCompareArrows, History, Pencil, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import type { DataTableAction, DataTableColumn } from "@/components/ui/data-table";
@@ -115,6 +115,7 @@ export type UseArticlesDataTableOptions = {
   onSelectionChange?: (ids: Set<string>) => void;
   onEdit?: (article: AdminArticle) => void;
   onActivityLog?: (article: AdminArticle) => void;
+  onRevisions?: (article: AdminArticle) => void;
   onDelete?: (article: AdminArticle) => void;
   actions?: DataTableAction<AdminArticle>[];
   columns?: DataTableColumn<AdminArticle>[];
@@ -126,6 +127,7 @@ export function useArticlesDataTable(options: UseArticlesDataTableOptions) {
   const {
     onEdit,
     onActivityLog,
+    onRevisions,
     onDelete,
     actions,
     columns,
@@ -163,6 +165,16 @@ export function useArticlesDataTable(options: UseArticlesDataTableOptions) {
       });
     }
 
+    if (onRevisions) {
+      built.push({
+        id: "revisions",
+        label: "Revision history",
+        icon: GitCompareArrows,
+        variant: "muted",
+        onClick: onRevisions,
+      });
+    }
+
     if (onDelete) {
       built.push({
         id: "delete",
@@ -174,7 +186,7 @@ export function useArticlesDataTable(options: UseArticlesDataTableOptions) {
     }
 
     return built;
-  }, [actions, onEdit, onActivityLog, onDelete]);
+  }, [actions, onEdit, onActivityLog, onRevisions, onDelete]);
 
   return useDataTable<AdminArticle>({
     getRowId: (row: AdminArticle) => row.id,

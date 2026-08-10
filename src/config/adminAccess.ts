@@ -15,6 +15,7 @@ const ADMIN_PATH_PERMISSION_OVERRIDES: { test: RegExp; permission: PermissionKey
   { test: /^\/admin\/articles\/trash/, permission: PERMISSIONS.ARTICLES.TRASHED },
   { test: /^\/admin\/articles\/create/, permission: PERMISSIONS.ARTICLES.CREATE },
   { test: /^\/admin\/articles\/[^/]+\/activities/, permission: PERMISSIONS.ARTICLES.ACTIVITIES },
+  { test: /^\/admin\/articles\/[^/]+\/revisions/, permission: PERMISSIONS.ARTICLES.REVISIONS },
   { test: /^\/admin\/articles\/edit\//, permission: PERMISSIONS.ARTICLES.UPDATE },
   { test: /^\/admin\/live-updates\/create/, permission: PERMISSIONS.LIVE_UPDATES.CREATE },
   { test: /^\/admin\/live-updates\/edit\//, permission: PERMISSIONS.LIVE_UPDATES.UPDATE },

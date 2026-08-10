@@ -79,9 +79,32 @@ const SECONDARY_METRICS = [
 ];
 
 function formatMetricValue(label: string, value: string | number): string {
-  if (typeof value === "string") return value;
-  if (label === "Total Page Views") return formatCount(value);
-  return value.toLocaleString();
+  if (label === "Engagement Rate") {
+    const rate =
+      typeof value === "number"
+        ? value
+        : Number(String(value).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(rate) ? `${Math.round(rate)}%` : "0%";
+  }
+
+  if (label === "Revenue (MTD)") {
+    const amount =
+      typeof value === "number"
+        ? value
+        : Number(String(value).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(amount) ? `$${formatCount(amount)}` : "$0";
+  }
+
+  if (typeof value === "number") {
+    return formatCount(value);
+  }
+
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && value.trim() !== "") {
+    return formatCount(parsed);
+  }
+
+  return value;
 }
 
 function mergeMetrics<T extends { label: string; value: string; trend?: string }>(
