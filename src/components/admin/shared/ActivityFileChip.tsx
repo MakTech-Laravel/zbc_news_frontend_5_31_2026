@@ -11,7 +11,10 @@ const FILE_ICONS = {
   file: FileText,
 } as const;
 
-/** Thumbnail + filename chip; click always downloads (never opens a new tab). */
+/**
+ * Thumbnail + filename chip; click downloads via the API media proxy
+ * (`/api/v1/media/{uuid}/file`) which sets Content-Disposition.
+ */
 export function ActivityFileChip({ file }: { file: ActivityFileValue }) {
   const previewSrc = file.url ? resolveMediaUrl(file.url) : "";
   const downloadHref = resolveMediaUrl(file.downloadUrl ?? file.url);
