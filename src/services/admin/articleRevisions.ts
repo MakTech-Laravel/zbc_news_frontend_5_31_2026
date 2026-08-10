@@ -198,7 +198,19 @@ export async function compareArticleRevisions(
 export async function restoreArticleRevision(
   slug: string,
   revisionId: number,
-): Promise<void> {
+): Promise<{ title: string | null }> {
   const encodedSlug = encodeURIComponent(slug);
-  await request.post(`/admin/articles/${encodedSlug}/revisions/${revisionId}/restore`);
+  const response = await request.post(
+    `/admin/articles/${encodedSlug}/revisions/${revisionId}/restore`,
+  );
+  const body = response.data;
+  const payload =
+    body && typeof body === "object" && "data" in (body as object)
+      ? (body as Record<string, unknown>).data
+      : body;
+  const row = asRecord(payload);
+
+  return {
+    title: typeof row.title === "string" ? row.title : null,
+  };
 }
