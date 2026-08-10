@@ -37,6 +37,7 @@ export const PERMISSIONS = {
     RESTORE: 'articles.restore',
     FORCE_DELETE: 'articles.force-delete',
     ACTIVITIES: 'articles.activities',
+    REVISIONS: 'articles.revisions',
     STATS: 'articles.stats',
     /** User-panel read history (Spatie group: Articles). */
     USER_READ_HISTORY: 'user.read-history',
@@ -249,6 +250,7 @@ export const PERMISSION_GROUP_BY_KEY: Record<PermissionKey, string> = {
   [PERMISSIONS.ARTICLES.RESTORE]: 'Articles',
   [PERMISSIONS.ARTICLES.FORCE_DELETE]: 'Articles',
   [PERMISSIONS.ARTICLES.ACTIVITIES]: 'Articles',
+  [PERMISSIONS.ARTICLES.REVISIONS]: 'Articles',
   [PERMISSIONS.ARTICLES.STATS]: 'Articles',
   [PERMISSIONS.ARTICLES.USER_READ_HISTORY]: 'Articles',
   [PERMISSIONS.TAGS.LIST]: 'Tags',

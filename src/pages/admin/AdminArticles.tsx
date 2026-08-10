@@ -50,6 +50,7 @@ export default function AdminArticles() {
   const canTrashed = can(PERMISSIONS.ARTICLES.TRASHED);
   const canUpdate = can(PERMISSIONS.ARTICLES.UPDATE);
   const canActivities = can(PERMISSIONS.ARTICLES.ACTIVITIES);
+  const canRevisions = can(PERMISSIONS.ARTICLES.REVISIONS);
 
   const [articles, setArticles] = React.useState<AdminArticle[]>([]);
   const [categories, setCategories] = React.useState<AdminArticleApiCategory[]>([]);
@@ -198,6 +199,13 @@ export default function AdminArticles() {
     onActivityLog: canActivities
       ? (article) => {
           navigate(`/admin/articles/${encodeURIComponent(article.slug)}/activities`, {
+            state: { articleTitle: article.title },
+          });
+        }
+      : undefined,
+    onRevisions: canRevisions
+      ? (article) => {
+          navigate(`/admin/articles/${encodeURIComponent(article.slug)}/revisions`, {
             state: { articleTitle: article.title },
           });
         }
