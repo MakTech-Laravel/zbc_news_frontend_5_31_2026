@@ -1,14 +1,59 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ArticleMediaHoverThumb } from "@/components/main-layout/shared/media/ArticleMediaHoverThumb";
 import { LiveCoverageBadge } from "@/components/main-layout/shared/LiveCoverageBadge";
-import { useMostReadArticles } from "@/hooks/useMostReadArticles";
+import type { Article } from "@/data/dummy/types";
 import { cn } from "@/lib/utils";
+import {
+  fetchGridArticles,
+  fetchMostReadArticles,
+  type MostReadPeriod,
+} from "@/services/frontend/articles";
 
 import { ArticleMeta } from "../shared/ArticleMeta";
 
+async function resolveTopHeadline(): Promise<Article | null> {
+  // Prefer today's most-read; fall back so the section does not disappear on quiet days.
+  const periods: MostReadPeriod[] = ["today", "week", "month", "all"];
+  for (const period of periods) {
+    const result = await fetchMostReadArticles({ period, page: 1, perPage: 1 });
+    if (result.articles[0]) {
+      return result.articles[0];
+    }
+  }
+
+  const grid = await fetchGridArticles();
+  return grid[0] ?? null;
+}
+
 export function FeaturedSection() {
-  const { topArticle, loading } = useMostReadArticles();
+  const [topArticle, setTopArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoading(true);
+    resolveTopHeadline()
+      .then((article) => {
+        if (!cancelled) {
+          setTopArticle(article);
+          setLoading(false);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to load Top Headlines:", error);
+        if (!cancelled) {
+          setTopArticle(null);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const articleHref = topArticle?.slug
     ? `/${encodeURIComponent(topArticle.slug)}`
@@ -26,7 +71,14 @@ export function FeaturedSection() {
   }
 
   if (!topArticle) {
-    return null;
+    return (
+      <div>
+        <h2 className="mb-2 font-general-sans text-3xl font-bold text-zbc-gray-1000">
+          Top Headlines
+        </h2>
+        <p className="text-sm text-muted-foreground">No headlines available yet.</p>
+      </div>
+    );
   }
 
   return (
@@ -58,23 +110,6 @@ export function FeaturedSection() {
             className="pointer-events-none absolute left-4 top-4 z-10"
           />
           <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-4 sm:p-5 lg:p-6">
-            {/* <div className="mt-4 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                className="h-9 gap-2 rounded-lg bg-primary-foreground px-4 font-sans text-[13px] font-semibold text-foreground shadow-sm hover:bg-zbc-gray-100"
-              >
-                <Play className="size-4 fill-foreground" aria-hidden />
-                Play
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-9 gap-2 rounded-lg border-white/30 bg-black/25 px-4 font-sans text-[13px] font-semibold text-primary-foreground backdrop-blur-sm hover:bg-black/40"
-              >
-                <ListPlus className="size-4" aria-hidden />
-                My List
-              </Button>
-            </div> */}
             <nav
               aria-label="Featured categories"
               className="mt-5 flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

@@ -7,7 +7,7 @@ import {
   mapArticleTimestampFields,
   resolveArticleTimestamps,
 } from "@/lib/articleTimestamps";
-import { resolveArticleAttachmentUrls, resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveArticleAttachmentUrls, resolveMediaUrl, rewriteHtmlMediaUrls } from "@/lib/mediaUrl";
 import { resolveEstimatedReadTime } from "@/lib/readTime";
 
 export type ArticleLiveUpdateEntry = {
@@ -145,12 +145,13 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
     return null;
   }
 
-  const articleDescription =
+  const articleDescription = rewriteHtmlMediaUrls(
     typeof record.article_description === "string"
       ? record.article_description
       : typeof record.content === "string"
         ? record.content
-        : "";
+        : "",
+  );
 
   const subtitle =
     (typeof record.sub_title === "string" && record.sub_title) ||
@@ -245,7 +246,7 @@ function mapApiArticleDetail(raw: unknown): ArticleDetail | null {
       if (status === "draft") return null;
       return {
         id: entryId,
-        body: typeof row.body === "string" ? row.body : "",
+        body: rewriteHtmlMediaUrls(typeof row.body === "string" ? row.body : ""),
         postedAtIso: typeof row.posted_at === "string" ? row.posted_at : "",
       };
     })
