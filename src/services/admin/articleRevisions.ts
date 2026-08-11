@@ -13,12 +13,23 @@ export type ArticleRevisionListItem = {
   createdAt: string | null;
 };
 
+export type RevisionChangeKind = "added" | "removed" | "modified";
+
+export type RevisionDiffSegment = {
+  op: "equal" | "insert" | "delete";
+  text: string;
+};
+
+export type ArticleRevisionChanges = {
+  old: Record<string, unknown>;
+  new: Record<string, unknown>;
+  kinds: Record<string, RevisionChangeKind>;
+  diffs: Record<string, RevisionDiffSegment[]>;
+};
+
 export type ArticleRevisionDetail = ArticleRevisionListItem & {
   snapshot: Record<string, unknown>;
-  changes: {
-    old: Record<string, unknown>;
-    new: Record<string, unknown>;
-  } | null;
+  changes: ArticleRevisionChanges | null;
 };
 
 export type ArticleRevisionCompareSide = {
@@ -33,10 +44,7 @@ export type ArticleRevisionCompareSide = {
 export type ArticleRevisionComparison = {
   left: ArticleRevisionCompareSide;
   right: ArticleRevisionCompareSide;
-  changes: {
-    old: Record<string, unknown>;
-    new: Record<string, unknown>;
-  };
+  changes: ArticleRevisionChanges;
 };
 
 export type ArticleRevisionsResult = {
@@ -52,6 +60,55 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function mapChangeKind(value: unknown): RevisionChangeKind {
+  if (value === "added" || value === "removed" || value === "modified") {
+    return value;
+  }
+  return "modified";
+}
+
+function mapDiffSegments(value: unknown): RevisionDiffSegment[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const row = entry as Record<string, unknown>;
+      const op = row.op;
+      const text = row.text;
+      if (
+        (op === "equal" || op === "insert" || op === "delete") &&
+        typeof text === "string"
+      ) {
+        return { op, text };
+      }
+      return null;
+    })
+    .filter((entry): entry is RevisionDiffSegment => entry !== null);
+}
+
+function mapChanges(raw: unknown): ArticleRevisionChanges {
+  const changes = asRecord(raw);
+  const kindsRaw = asRecord(changes.kinds);
+  const diffsRaw = asRecord(changes.diffs);
+
+  const kinds: Record<string, RevisionChangeKind> = {};
+  for (const [key, value] of Object.entries(kindsRaw)) {
+    kinds[key] = mapChangeKind(value);
+  }
+
+  const diffs: Record<string, RevisionDiffSegment[]> = {};
+  for (const [key, value] of Object.entries(diffsRaw)) {
+    diffs[key] = mapDiffSegments(value);
+  }
+
+  return {
+    old: asRecord(changes.old),
+    new: asRecord(changes.new),
+    kinds,
+    diffs,
+  };
 }
 
 function mapListItem(raw: unknown): ArticleRevisionListItem | null {
@@ -152,15 +209,11 @@ export async function fetchArticleRevision(
   if (!base) throw new Error("Invalid revision payload");
 
   const row = asRecord(payload);
-  const changes = asRecord(row.changes);
 
   return {
     ...base,
     snapshot: asRecord(row.snapshot),
-    changes: {
-      old: asRecord(changes.old),
-      new: asRecord(changes.new),
-    },
+    changes: row.changes == null ? null : mapChanges(row.changes),
   };
 }
 
@@ -183,15 +236,11 @@ export async function compareArticleRevisions(
       ? (body as Record<string, unknown>).data
       : body;
   const row = asRecord(payload);
-  const changes = asRecord(row.changes);
 
   return {
     left: mapCompareSide(row.left),
     right: mapCompareSide(row.right),
-    changes: {
-      old: asRecord(changes.old),
-      new: asRecord(changes.new),
-    },
+    changes: mapChanges(row.changes),
   };
 }
 

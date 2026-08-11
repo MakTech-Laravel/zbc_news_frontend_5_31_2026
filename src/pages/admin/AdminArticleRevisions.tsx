@@ -24,6 +24,8 @@ import {
   restoreArticleRevision,
   type ArticleRevisionComparison,
   type ArticleRevisionListItem,
+  type RevisionChangeKind,
+  type RevisionDiffSegment,
 } from "@/services/admin/articleRevisions";
 
 type LocationState = {
@@ -124,6 +126,65 @@ function renderCompareValue(field: string, value: unknown): ReactNode {
   }
 
   return <>{formatScalar(value)}</>;
+}
+
+function changeKindBadge(kind: RevisionChangeKind): ReactNode {
+  const styles =
+    kind === "added"
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+      : kind === "removed"
+        ? "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300"
+        : "bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200";
+
+  return (
+    <span
+      className={cn(
+        "mt-1 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+        styles,
+      )}
+    >
+      {kind}
+    </span>
+  );
+}
+
+function renderInlineDiff(segments: RevisionDiffSegment[], side: "old" | "new"): ReactNode {
+  const filtered =
+    side === "old"
+      ? segments.filter((segment) => segment.op !== "insert")
+      : segments.filter((segment) => segment.op !== "delete");
+
+  if (filtered.length === 0) {
+    return <span className="text-admin-label">Empty</span>;
+  }
+
+  return (
+    <p className="leading-relaxed whitespace-pre-wrap">
+      {filtered.map((segment, index) => {
+        if (segment.op === "equal") {
+          return <span key={index}>{segment.text} </span>;
+        }
+        if (segment.op === "delete") {
+          return (
+            <span
+              key={index}
+              className="rounded-sm bg-red-200/80 px-0.5 text-red-950 line-through dark:bg-red-900/50 dark:text-red-100"
+            >
+              {segment.text}{" "}
+            </span>
+          );
+        }
+        return (
+          <span
+            key={index}
+            className="rounded-sm bg-emerald-200/80 px-0.5 text-emerald-950 dark:bg-emerald-900/50 dark:text-emerald-100"
+          >
+            {segment.text}{" "}
+          </span>
+        );
+      })}
+    </p>
+  );
 }
 
 function eventLabel(event: string): string {
@@ -270,11 +331,23 @@ export default function AdminArticleRevisions() {
           ...Object.keys(comparison.changes.old),
           ...Object.keys(comparison.changes.new),
         ]),
-      ].map((field) => ({
-        field,
-        oldValue: renderCompareValue(field, comparison.changes.old[field]),
-        newValue: renderCompareValue(field, comparison.changes.new[field]),
-      }))
+      ].map((field) => {
+        const kind = comparison.changes.kinds[field] ?? "modified";
+        const bodyDiff = comparison.changes.diffs[field];
+        const useBodyDiff =
+          field === "article_description" && Array.isArray(bodyDiff) && bodyDiff.length > 0;
+
+        return {
+          field,
+          kind,
+          oldValue: useBodyDiff
+            ? renderInlineDiff(bodyDiff, "old")
+            : renderCompareValue(field, comparison.changes.old[field]),
+          newValue: useBodyDiff
+            ? renderInlineDiff(bodyDiff, "new")
+            : renderCompareValue(field, comparison.changes.new[field]),
+        };
+      })
     : [];
 
   const compareAgainstLabel =
@@ -497,8 +570,11 @@ export default function AdminArticleRevisions() {
                               key={row.field}
                               className="border-b border-border bg-amber-50/70 last:border-b-0 dark:bg-amber-950/20"
                             >
-                              <td className="border-l-2 border-l-amber-400 px-4 py-3.5 align-top font-medium whitespace-nowrap text-admin-heading dark:border-l-amber-500">
-                                {formatFieldLabel(row.field)}
+                              <td className="border-l-2 border-l-amber-400 px-4 py-3.5 align-top font-medium text-admin-heading dark:border-l-amber-500">
+                                <div className="flex flex-col items-start gap-0.5 whitespace-nowrap">
+                                  {formatFieldLabel(row.field)}
+                                  {changeKindBadge(row.kind)}
+                                </div>
                               </td>
                               <td className="max-w-0 px-4 py-3.5 align-top wrap-break-word text-admin-label">
                                 <span className="block rounded-md bg-red-50/80 px-2 py-1 dark:bg-red-950/30">
