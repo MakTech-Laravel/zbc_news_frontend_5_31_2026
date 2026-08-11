@@ -56,17 +56,23 @@ export function ArticleMediaHero({
     return (
       <div className={cn("relative aspect-[16/9] min-h-[200px] w-full sm:min-h-[280px] lg:min-h-[360px]", className)}>
         <ArticleImage
-          src={media.url || media.posterUrl}
+          src={media.url || media.posterUrl || media.thumbnailUrl || ""}
           alt={alt}
           width={1200}
           height={675}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover object-top"
           loading="eager"
           fetchPriority="high"
           fallbackSrc={
-            media.posterUrl && media.url && media.posterUrl !== media.url
-              ? media.posterUrl
-              : undefined
+            [
+              media.posterUrl,
+              media.thumbnailUrl,
+              media.url,
+            ].find((candidate) => {
+              const value = candidate?.trim();
+              const primary = (media.url || media.posterUrl || "").trim();
+              return Boolean(value && value !== primary);
+            })
           }
         />
         {overlay}
@@ -156,7 +162,7 @@ export function ArticleMediaHero({
         alt={alt}
         width={1200}
         height={675}
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover object-top"
         loading="eager"
         fetchPriority="high"
       />

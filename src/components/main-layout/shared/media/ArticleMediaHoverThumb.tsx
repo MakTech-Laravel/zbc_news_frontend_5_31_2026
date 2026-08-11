@@ -42,8 +42,8 @@ export function ArticleMediaHoverThumb({
   const [canHoverPlay, setCanHoverPlay] = useState(false);
   const poster =
     media?.type === "image"
-      ? media.url || media.posterUrl || fallbackSrc
-      : media?.posterUrl || fallbackSrc;
+      ? media.url || media.posterUrl || media.thumbnailUrl || fallbackSrc
+      : media?.posterUrl || media?.thumbnailUrl || fallbackSrc;
   const isYouTube = media?.type === "video" && media.provider === "youtube";
   const isNativeVideo =
     media?.type === "video" && media.provider !== "youtube" && Boolean(media.url);
@@ -129,7 +129,7 @@ export function ArticleMediaHoverThumb({
             <ArticleImage
               src={poster || fallbackSrc}
               alt={alt}
-              className={cn("h-full w-full object-cover", imageClassName)}
+              className={cn("h-full w-full object-cover object-top", imageClassName)}
               fallbackSrc={
                 media?.type === "image" && media.url && media.url !== poster
                   ? media.url
@@ -151,7 +151,7 @@ export function ArticleMediaHoverThumb({
             ref={videoRef}
             src={media!.url}
             poster={poster || undefined}
-            className={cn("h-full w-full object-cover", imageClassName)}
+            className={cn("h-full w-full object-cover object-top", imageClassName)}
             muted
             playsInline
             loop
@@ -168,7 +168,7 @@ export function ArticleMediaHoverThumb({
           <ArticleImage
             src={poster || fallbackSrc}
             alt={alt}
-            className={cn("h-full w-full object-cover", imageClassName)}
+            className={cn("h-full w-full object-cover object-top", imageClassName)}
             fallbackSrc={
               media?.type === "image" && media.url && media.url !== poster
                 ? media.url

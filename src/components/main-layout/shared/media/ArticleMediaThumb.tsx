@@ -26,10 +26,19 @@ export function ArticleMediaThumb({
 }: ArticleMediaThumbProps) {
   const src =
     media?.type === "image"
-      ? media.url || media.posterUrl || fallbackSrc
-      : media?.posterUrl || fallbackSrc;
+      ? media.url || media.posterUrl || media.thumbnailUrl || fallbackSrc
+      : media?.posterUrl || media?.thumbnailUrl || fallbackSrc;
   const showVideo = media?.type === "video";
   const showAudio = media?.type === "audio";
+  const fallbackCandidate = [
+    media?.url,
+    media?.posterUrl,
+    media?.thumbnailUrl,
+    fallbackSrc,
+  ].find((candidate) => {
+    const value = candidate?.trim();
+    return Boolean(value && value !== src);
+  });
 
   return (
     <div className={cn("relative overflow-hidden bg-muted", className)}>
@@ -38,14 +47,8 @@ export function ArticleMediaThumb({
         alt={alt}
         width={width}
         height={height}
-        className={cn("h-full w-full object-cover", imageClassName)}
-        fallbackSrc={
-          media?.type === "image" && media.url && media.url !== src
-            ? media.url
-            : fallbackSrc && fallbackSrc !== src
-              ? fallbackSrc
-              : undefined
-        }
+        className={cn("h-full w-full object-cover object-top", imageClassName)}
+        fallbackSrc={fallbackCandidate}
       />
       {showVideo ? (
         <span className="pointer-events-none absolute bottom-1.5 left-1.5 inline-flex size-6 items-center justify-center rounded-full bg-black/65 text-white">
