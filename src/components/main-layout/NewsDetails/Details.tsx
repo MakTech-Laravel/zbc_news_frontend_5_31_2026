@@ -148,7 +148,7 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
                 className="absolute inset-0 bg-gradient-to-t from-zbc-gray-900/90 via-zbc-gray-900/35 to-transparent"
                 aria-hidden
               />
-              <figcaption className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-3 sm:p-6 lg:p-8">
+              {/* <figcaption className="absolute inset-x-0 bottom-0 space-y-2 p-4 sm:space-y-3 sm:p-6 lg:p-8">
                 <CategoryTag label={article.category} />
                 <p className="font-inter text-xl font-bold leading-tight text-primary-foreground sm:text-2xl lg:text-3xl">
                   {article.title}
@@ -158,21 +158,22 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
                     {article.subtitle}
                   </p>
                 ) : null}
-              </figcaption>
+              </figcaption> */}
             </>
           }
         />
-        {hasMediaCredits ? (
-          <figcaption className="space-y-1 border-t border-border bg-background px-4 py-3 text-sm leading-6 text-zbc-gray-500 flex gap-2">
-            {caption ? <p className="italic text-zbc-gray-700">Image: {caption}</p> : null}
-            /
-            {credit ? <p>Credit: {credit}</p> : null}
-            /
-            {copyright ? <p>Copyright: {copyright}</p> : null}
-          </figcaption>
-        ) : null}
       </figure>
     ) : null;
+
+  const mediaCreditsLine = hasMediaCredits ? (
+    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-inter text-sm leading-6 text-zbc-gray-500">
+      {caption ? <span className="italic text-zbc-gray-700">Image: {caption}</span> : null}
+      {caption && credit ? <span aria-hidden>·</span> : null}
+      {credit ? <span>Credit: {credit}</span> : null}
+      {(caption || credit) && copyright ? <span aria-hidden>·</span> : null}
+      {copyright ? <span>Copyright: {copyright}</span> : null}
+    </p>
+  ) : null;
 
   return (
     <article className="bg-background text-foreground">
@@ -185,7 +186,12 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
           articleImageUrl={article.shareImageUrl || article.imageUrl}
         />
 
-        {hasLiveFeaturedVideo ? featuredMediaFigure : null}
+        {hasLiveFeaturedVideo ? (
+          <>
+            {featuredMediaFigure}
+            {mediaCreditsLine}
+          </>
+        ) : null}
 
         <header className="space-y-4 pb-6 pt-6 sm:space-y-5 sm:pb-8">
           <CategoryTag
@@ -234,7 +240,12 @@ export function ArticleContent({ article }: { article: ArticleDetail }) {
           </div>
         </header>
 
-        {!hasLiveFeaturedVideo ? featuredMediaFigure : null}
+        {!hasLiveFeaturedVideo ? (
+          <>
+            {featuredMediaFigure}
+            {mediaCreditsLine}
+          </>
+        ) : null}
 
         <div className="py-8 sm:py-10">
           {article.isLiveBlog ? (
