@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { rewriteHtmlMediaUrls } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
 import type { ActivityFileValue } from "@/services/admin/activityLogShared";
 import {
@@ -25,7 +26,6 @@ import {
   type ArticleRevisionComparison,
   type ArticleRevisionListItem,
   type RevisionChangeKind,
-  type RevisionDiffSegment,
 } from "@/services/admin/articleRevisions";
 
 type LocationState = {
@@ -103,6 +103,105 @@ function formatScalar(value: unknown): string {
   return String(value);
 }
 
+function looksLikeHtml(value: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
+}
+
+const revisionArticleBodyClassName = cn(
+  "revision-article-body text-[15px] leading-[1.7] text-admin-heading",
+  "[&_h2]:mt-5 [&_h2]:mb-2.5 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:leading-snug",
+  "[&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:leading-snug",
+  "[&_p]:mb-3 [&_p]:leading-[1.75]",
+  "[&_p:last-child]:mb-0",
+  "[&_ul]:mb-3 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6",
+  "[&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6",
+  "[&_li]:leading-relaxed",
+  "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
+  "[&_strong]:font-semibold [&_em]:italic [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-admin-label",
+  "[&_img]:my-4 [&_img]:max-h-[360px] [&_img]:w-full [&_img]:rounded-lg [&_img]:object-cover [&_img]:object-top",
+  "[&_figure.article-figure]:my-4",
+  "[&_figure.article-figure>img]:my-0",
+  "[&_figure.article-figure_figcaption]:mt-2 [&_figure.article-figure_figcaption]:text-sm [&_figure.article-figure_figcaption]:leading-6 [&_figure.article-figure_figcaption]:text-admin-label",
+  "[&_video]:my-4 [&_video]:w-full [&_video]:rounded-lg",
+  "[&_table]:my-4 [&_table]:w-full [&_table]:border-collapse text-sm",
+  "[&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2",
+  "[&_iframe]:max-w-full [&_iframe]:rounded-lg",
+);
+
+function renderArticleHtml(value: unknown): ReactNode {
+  if (value === null || value === undefined || value === "" || value === "Empty") {
+    return (
+      <p className="py-8 text-center text-sm text-admin-label">No content in this version.</p>
+    );
+  }
+
+  const raw = String(value);
+  if (!looksLikeHtml(raw)) {
+    return <p className="whitespace-pre-wrap text-sm leading-relaxed">{raw}</p>;
+  }
+
+  return (
+    <div
+      className={revisionArticleBodyClassName}
+      dangerouslySetInnerHTML={{ __html: rewriteHtmlMediaUrls(raw) }}
+    />
+  );
+}
+
+function ArticleDescriptionCompare({
+  leftLabel,
+  rightLabel,
+  oldValue,
+  newValue,
+  kind,
+}: {
+  leftLabel: string;
+  rightLabel: string;
+  oldValue: unknown;
+  newValue: unknown;
+  kind: RevisionChangeKind;
+}) {
+  return (
+    <section className="overflow-hidden rounded-[10px] border border-border bg-background">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-3 sm:px-5">
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-sm font-semibold text-admin-heading">Article description</h3>
+          {changeKindBadge(kind)}
+        </div>
+        <p className="text-xs text-admin-trend-muted">
+          Full formatted body · scroll each pane to compare
+        </p>
+      </div>
+
+      <div className="grid lg:grid-cols-2">
+        <div className="min-w-0 border-b border-border lg:border-r lg:border-b-0">
+          <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-red-200/80 bg-red-50/90 px-4 py-2.5 dark:border-red-900/50 dark:bg-red-950/40">
+            <span className="size-1.5 rounded-full bg-red-500" aria-hidden />
+            <span className="text-xs font-semibold tracking-wide text-red-800 uppercase dark:text-red-200">
+              {leftLabel}
+            </span>
+          </div>
+          <div className="max-h-[min(70vh,640px)] overflow-y-auto bg-background px-4 py-4 sm:px-5 sm:py-5">
+            {renderArticleHtml(oldValue)}
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-emerald-200/80 bg-emerald-50/90 px-4 py-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/40">
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+            <span className="text-xs font-semibold tracking-wide text-emerald-800 uppercase dark:text-emerald-200">
+              {rightLabel}
+            </span>
+          </div>
+          <div className="max-h-[min(70vh,640px)] overflow-y-auto bg-background px-4 py-4 sm:px-5 sm:py-5">
+            {renderArticleHtml(newValue)}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function renderCompareValue(field: string, value: unknown): ReactNode {
   const file = coerceFileValue(field, value);
   if (file) return <ActivityFileChip file={file} />;
@@ -139,51 +238,12 @@ function changeKindBadge(kind: RevisionChangeKind): ReactNode {
   return (
     <span
       className={cn(
-        "mt-1 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+        "inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
         styles,
       )}
     >
       {kind}
     </span>
-  );
-}
-
-function renderInlineDiff(segments: RevisionDiffSegment[], side: "old" | "new"): ReactNode {
-  const filtered =
-    side === "old"
-      ? segments.filter((segment) => segment.op !== "insert")
-      : segments.filter((segment) => segment.op !== "delete");
-
-  if (filtered.length === 0) {
-    return <span className="text-admin-label">Empty</span>;
-  }
-
-  return (
-    <p className="leading-relaxed whitespace-pre-wrap">
-      {filtered.map((segment, index) => {
-        if (segment.op === "equal") {
-          return <span key={index}>{segment.text} </span>;
-        }
-        if (segment.op === "delete") {
-          return (
-            <span
-              key={index}
-              className="rounded-sm bg-red-200/80 px-0.5 text-red-950 line-through dark:bg-red-900/50 dark:text-red-100"
-            >
-              {segment.text}{" "}
-            </span>
-          );
-        }
-        return (
-          <span
-            key={index}
-            className="rounded-sm bg-emerald-200/80 px-0.5 text-emerald-950 dark:bg-emerald-900/50 dark:text-emerald-100"
-          >
-            {segment.text}{" "}
-          </span>
-        );
-      })}
-    </p>
   );
 }
 
@@ -333,22 +393,21 @@ export default function AdminArticleRevisions() {
         ]),
       ].map((field) => {
         const kind = comparison.changes.kinds[field] ?? "modified";
-        const bodyDiff = comparison.changes.diffs[field];
-        const useBodyDiff =
-          field === "article_description" && Array.isArray(bodyDiff) && bodyDiff.length > 0;
 
         return {
           field,
           kind,
-          oldValue: useBodyDiff
-            ? renderInlineDiff(bodyDiff, "old")
-            : renderCompareValue(field, comparison.changes.old[field]),
-          newValue: useBodyDiff
-            ? renderInlineDiff(bodyDiff, "new")
-            : renderCompareValue(field, comparison.changes.new[field]),
+          oldValue: comparison.changes.old[field],
+          newValue: comparison.changes.new[field],
         };
       })
     : [];
+
+  const descriptionChange =
+    changeRows.find((row) => row.field === "article_description") ?? null;
+  const fieldChangeRows = changeRows.filter(
+    (row) => row.field !== "article_description",
+  );
 
   const compareAgainstLabel =
     compareRightId == null
@@ -548,49 +607,63 @@ export default function AdminArticleRevisions() {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-[10px] border border-border">
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-160 border-collapse text-left text-sm">
-                        <thead>
-                          <tr className="border-b border-border bg-muted/50">
-                            <th className="w-[18%] px-4 py-3 text-xs font-semibold tracking-wide text-admin-label uppercase">
-                              Field
-                            </th>
-                            <th className="w-[41%] px-4 py-3 text-xs font-semibold tracking-wide text-admin-label uppercase">
-                              {comparison.left.label}
-                            </th>
-                            <th className="w-[41%] px-4 py-3 text-xs font-semibold tracking-wide text-admin-label uppercase">
-                              {comparison.right.label}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {changeRows.map((row) => (
-                            <tr
-                              key={row.field}
-                              className="border-b border-border bg-amber-50/70 last:border-b-0 dark:bg-amber-950/20"
-                            >
-                              <td className="border-l-2 border-l-amber-400 px-4 py-3.5 align-top font-medium text-admin-heading dark:border-l-amber-500">
-                                <div className="flex flex-col items-start gap-0.5 whitespace-nowrap">
-                                  {formatFieldLabel(row.field)}
-                                  {changeKindBadge(row.kind)}
-                                </div>
-                              </td>
-                              <td className="max-w-0 px-4 py-3.5 align-top wrap-break-word text-admin-label">
-                                <span className="block rounded-md bg-red-50/80 px-2 py-1 dark:bg-red-950/30">
-                                  {row.oldValue}
-                                </span>
-                              </td>
-                              <td className="max-w-0 px-4 py-3.5 align-top wrap-break-word text-admin-heading">
-                                <span className="block rounded-md bg-emerald-50/90 px-2 py-1 dark:bg-emerald-950/30">
-                                  {row.newValue}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="space-y-4">
+                    {fieldChangeRows.length > 0 ? (
+                      <div className="overflow-hidden rounded-[10px] border border-border">
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-160 border-collapse text-left text-sm">
+                            <thead>
+                              <tr className="border-b border-border bg-muted/50">
+                                <th className="w-[18%] px-4 py-3 text-xs font-semibold tracking-wide text-admin-label uppercase">
+                                  Field
+                                </th>
+                                <th className="w-[41%] px-4 py-3 text-xs font-semibold tracking-wide text-admin-label uppercase">
+                                  {comparison.left.label}
+                                </th>
+                                <th className="w-[41%] px-4 py-3 text-xs font-semibold tracking-wide text-admin-label uppercase">
+                                  {comparison.right.label}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {fieldChangeRows.map((row) => (
+                                <tr
+                                  key={row.field}
+                                  className="border-b border-border bg-amber-50/70 last:border-b-0 dark:bg-amber-950/20"
+                                >
+                                  <td className="border-l-2 border-l-amber-400 px-4 py-3.5 align-top font-medium text-admin-heading dark:border-l-amber-500">
+                                    <div className="flex flex-col items-start gap-1 whitespace-nowrap">
+                                      {formatFieldLabel(row.field)}
+                                      {changeKindBadge(row.kind)}
+                                    </div>
+                                  </td>
+                                  <td className="max-w-0 px-4 py-3.5 align-top wrap-break-word text-admin-label">
+                                    <span className="block rounded-md bg-red-50/80 px-2 py-1 dark:bg-red-950/30">
+                                      {renderCompareValue(row.field, row.oldValue)}
+                                    </span>
+                                  </td>
+                                  <td className="max-w-0 px-4 py-3.5 align-top wrap-break-word text-admin-heading">
+                                    <span className="block rounded-md bg-emerald-50/90 px-2 py-1 dark:bg-emerald-950/30">
+                                      {renderCompareValue(row.field, row.newValue)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {descriptionChange ? (
+                      <ArticleDescriptionCompare
+                        leftLabel={comparison.left.label}
+                        rightLabel={comparison.right.label}
+                        oldValue={descriptionChange.oldValue}
+                        newValue={descriptionChange.newValue}
+                        kind={descriptionChange.kind}
+                      />
+                    ) : null}
                   </div>
                 )
               ) : (
