@@ -8,4 +8,4 @@ export const PRIVACY_NAV = [
   { id: "contact-us", label: "Contact Us" },
 ] as const;
 
-export const PRIVACY_EMAIL = "privacy@zbcnews.com";
+export const PRIVACY_EMAIL = "info@zbc.news";
