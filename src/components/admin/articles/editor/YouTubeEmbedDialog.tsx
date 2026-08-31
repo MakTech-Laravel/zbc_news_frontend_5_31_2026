@@ -14,23 +14,29 @@ import { Input } from "@/components/ui/input";
 import {
   resolveYouTubeEmbedUrl,
   validateYouTubeUrl,
+  defaultYouTubeAspectRatio,
+  isPortraitAspectRatio,
+  type VideoEmbedPayload,
 } from "./articleEditorMediaUtils";
 
 type YouTubeEmbedDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onInsert: (embedUrl: string) => void;
+  onInsert: (payload: VideoEmbedPayload) => void;
+  mode?: "insert" | "replace";
 };
 
 export function YouTubeEmbedDialog({
   open,
   onOpenChange,
   onInsert,
+  mode = "insert",
 }: YouTubeEmbedDialogProps) {
   const [url, setUrl] = React.useState("");
   const [testing, setTesting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [previewEmbedUrl, setPreviewEmbedUrl] = React.useState<string | null>(null);
+  const [previewAspectRatio, setPreviewAspectRatio] = React.useState("16 / 9");
 
   React.useEffect(() => {
     if (!open) {
@@ -38,6 +44,7 @@ export function YouTubeEmbedDialog({
       setTesting(false);
       setError(null);
       setPreviewEmbedUrl(null);
+      setPreviewAspectRatio("16 / 9");
     }
   }, [open]);
 
@@ -55,6 +62,7 @@ export function YouTubeEmbedDialog({
     }
 
     setPreviewEmbedUrl(result.embedUrl);
+    setPreviewAspectRatio(result.aspectRatio);
   };
 
   const handleInsert = () => {
@@ -72,26 +80,26 @@ export function YouTubeEmbedDialog({
           setError(result.error);
           return;
         }
-        onInsert(result.embedUrl);
+        onInsert({ embedUrl: result.embedUrl, aspectRatio: result.aspectRatio });
         onOpenChange(false);
       })();
       return;
     }
-    onInsert(embedUrl);
+    onInsert({ embedUrl, aspectRatio: previewAspectRatio || defaultYouTubeAspectRatio(url) });
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl gap-0 p-0 sm:rounded-xl">
-        <DialogHeader className="border-b border-admin-input-border px-5 py-4">
+      <DialogContent className="flex max-h-[90vh] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:rounded-xl">
+        <DialogHeader className="shrink-0 border-b border-admin-input-border px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base font-semibold text-admin-heading">
             <MonitorPlay className="size-4" aria-hidden />
-            Insert YouTube video
+            {mode === "replace" ? "Replace with YouTube video" : "Insert YouTube video"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 px-5 py-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           <div className="space-y-1.5">
             <label
               htmlFor="youtube-embed-url"
@@ -107,6 +115,7 @@ export function YouTubeEmbedDialog({
                   setUrl(e.target.value);
                   setError(null);
                   setPreviewEmbedUrl(null);
+                  setPreviewAspectRatio(defaultYouTubeAspectRatio(e.target.value));
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -143,9 +152,9 @@ export function YouTubeEmbedDialog({
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded-lg border border-admin-input-border bg-muted/40">
+          <div className="max-h-[min(50vh,480px)] overflow-y-auto overscroll-contain rounded-lg border border-admin-input-border bg-muted/40">
             {previewEmbedUrl ? (
-              <div className="relative aspect-video w-full">
+              <div className="relative w-full" style={{ aspectRatio: previewAspectRatio }}>
                 <iframe
                   src={previewEmbedUrl}
                   title="YouTube preview"
@@ -162,9 +171,12 @@ export function YouTubeEmbedDialog({
               </div>
             )}
           </div>
+          {previewEmbedUrl && isPortraitAspectRatio(previewAspectRatio) ? (
+            <p className="text-xs text-admin-trend-muted">Scroll the preview to see the full video.</p>
+          ) : null}
         </div>
 
-        <DialogFooter className="border-t border-admin-input-border px-5 py-4">
+        <DialogFooter className="shrink-0 border-t border-admin-input-border px-5 py-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -173,7 +185,7 @@ export function YouTubeEmbedDialog({
             onClick={handleInsert}
             disabled={testing || (!previewEmbedUrl && !url.trim())}
           >
-            Insert video
+            {mode === "replace" ? "Replace video" : "Insert video"}
           </Button>
         </DialogFooter>
       </DialogContent>
