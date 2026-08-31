@@ -12,26 +12,26 @@ import {
 import { Input } from "@/components/ui/input";
 
 import {
-  resolveYouTubeEmbedUrl,
-  validateYouTubeUrl,
-  defaultYouTubeAspectRatio,
+  resolveFacebookEmbedUrl,
+  validateFacebookUrl,
+  defaultFacebookAspectRatio,
   isPortraitAspectRatio,
   type VideoEmbedPayload,
 } from "./articleEditorMediaUtils";
 
-type YouTubeEmbedDialogProps = {
+type FacebookEmbedDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onInsert: (payload: VideoEmbedPayload) => void;
   mode?: "insert" | "replace";
 };
 
-export function YouTubeEmbedDialog({
+export function FacebookEmbedDialog({
   open,
   onOpenChange,
   onInsert,
   mode = "insert",
-}: YouTubeEmbedDialogProps) {
+}: FacebookEmbedDialogProps) {
   const [url, setUrl] = React.useState("");
   const [testing, setTesting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -53,7 +53,7 @@ export function YouTubeEmbedDialog({
     setError(null);
     setPreviewEmbedUrl(null);
 
-    const result = await validateYouTubeUrl(url);
+    const result = await validateFacebookUrl(url);
     setTesting(false);
 
     if (!result.ok) {
@@ -66,15 +66,15 @@ export function YouTubeEmbedDialog({
   };
 
   const handleInsert = () => {
-    const embedUrl = previewEmbedUrl ?? resolveYouTubeEmbedUrl(url);
+    const embedUrl = previewEmbedUrl ?? resolveFacebookEmbedUrl(url);
     if (!embedUrl) {
-      setError("Wrong URL. Use a YouTube watch, share, live, or youtu.be link.");
+      setError("Wrong URL. Use a Facebook watch, videos, reel, or fb.watch link.");
       return;
     }
     if (!previewEmbedUrl) {
       void (async () => {
         setTesting(true);
-        const result = await validateYouTubeUrl(url);
+        const result = await validateFacebookUrl(url);
         setTesting(false);
         if (!result.ok) {
           setError(result.error);
@@ -85,7 +85,7 @@ export function YouTubeEmbedDialog({
       })();
       return;
     }
-    onInsert({ embedUrl, aspectRatio: previewAspectRatio || defaultYouTubeAspectRatio(url) });
+    onInsert({ embedUrl, aspectRatio: previewAspectRatio });
     onOpenChange(false);
   };
 
@@ -95,27 +95,27 @@ export function YouTubeEmbedDialog({
         <DialogHeader className="shrink-0 border-b border-admin-input-border px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base font-semibold text-admin-heading">
             <MonitorPlay className="size-4" aria-hidden />
-            {mode === "replace" ? "Replace with YouTube video" : "Insert YouTube video"}
+            {mode === "replace" ? "Replace with Facebook video" : "Insert Facebook video"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           <div className="space-y-1.5">
             <label
-              htmlFor="youtube-embed-url"
+              htmlFor="facebook-embed-url"
               className="text-xs font-semibold uppercase tracking-wide text-admin-label"
             >
-              YouTube URL
+              Facebook video URL
             </label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
-                id="youtube-embed-url"
+                id="facebook-embed-url"
                 value={url}
                 onChange={(e) => {
                   setUrl(e.target.value);
                   setError(null);
                   setPreviewEmbedUrl(null);
-                  setPreviewAspectRatio(defaultYouTubeAspectRatio(e.target.value));
+                  setPreviewAspectRatio(defaultFacebookAspectRatio(e.target.value));
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -123,7 +123,7 @@ export function YouTubeEmbedDialog({
                     void handleTest();
                   }
                 }}
-                placeholder="https://www.youtube.com/watch?v=… or live URL"
+                placeholder="https://www.facebook.com/watch/?v=… or fb.watch/…"
                 className="flex-1"
                 autoFocus
               />
@@ -139,7 +139,7 @@ export function YouTubeEmbedDialog({
               </Button>
             </div>
             <p className="text-xs text-admin-trend-muted">
-              Paste a watch, share, live, Shorts, or youtu.be link, then click Test to preview.
+              Paste a Facebook watch, videos, reel, or fb.watch link, then click Test to preview.
             </p>
           </div>
 
@@ -157,9 +157,9 @@ export function YouTubeEmbedDialog({
               <div className="relative w-full" style={{ aspectRatio: previewAspectRatio }}>
                 <iframe
                   src={previewEmbedUrl}
-                  title="YouTube preview"
+                  title="Facebook preview"
                   className="absolute inset-0 size-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
                   allowFullScreen
                 />
               </div>
