@@ -8,4 +8,4 @@ export const TERMS_NAV = [
   { id: "contact-legal", label: "Contact Legal" },
 ] as const;
 
-export const TERMS_LEGAL_EMAIL = "legal@zbcnews.com";
+export const TERMS_LEGAL_EMAIL = "info@zbc.news";

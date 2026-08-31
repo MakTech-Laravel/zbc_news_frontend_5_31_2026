@@ -7,9 +7,9 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "react-router dev",
-    "build": "react-router build",
-    "start": "react-router-serve ./build/server/index.js",
+    "dev": "node api.js && react-router dev",
+    "build": "node api.js && react-router build",
+    "start": "node api.js && react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc -b",
     "lint": "eslint .",
     "preview": "vite preview"
