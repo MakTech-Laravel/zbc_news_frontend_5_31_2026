@@ -67,6 +67,8 @@ function isAllowedEmbedDiv(element: Element): boolean {
   return element.classList.contains("article-embed");
 }
 
+const EDITOR_ONLY_ATTRS = new Set(["data-editor-video-replace-id"]);
+
 function sanitizeElement(element: Element, doc: Document): Element | DocumentFragment | null {
   const tag = element.tagName.toLowerCase();
 
@@ -110,7 +112,7 @@ function sanitizeElement(element: Element, doc: Document): Element | DocumentFra
 
   Array.from(element.attributes).forEach((attr) => {
     const name = attr.name.toLowerCase();
-    if (name.startsWith("on") || !allowed.has(name)) return;
+    if (name.startsWith("on") || !allowed.has(name) || EDITOR_ONLY_ATTRS.has(name)) return;
     clone.setAttribute(name, attr.value);
   });
 

@@ -101,9 +101,10 @@ export function useVideoInsert({
       }
 
       notifyEditorInput(editor);
+      syncEditorHtml();
       onContentSynced?.();
     },
-    [editorRef, onContentSynced, restoreSelection],
+    [editorRef, onContentSynced, restoreSelection, syncEditorHtml],
   );
 
   const openVideoSource = React.useCallback(

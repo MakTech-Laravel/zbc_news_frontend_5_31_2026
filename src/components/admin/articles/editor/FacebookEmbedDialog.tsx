@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import {
   resolveFacebookEmbedUrl,
   validateFacebookUrl,
+  defaultFacebookAspectRatio,
   isPortraitAspectRatio,
   type VideoEmbedPayload,
 } from "./articleEditorMediaUtils";
@@ -114,6 +115,7 @@ export function FacebookEmbedDialog({
                   setUrl(e.target.value);
                   setError(null);
                   setPreviewEmbedUrl(null);
+                  setPreviewAspectRatio(defaultFacebookAspectRatio(e.target.value));
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {

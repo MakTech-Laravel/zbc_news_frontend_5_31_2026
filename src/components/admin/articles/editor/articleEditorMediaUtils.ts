@@ -321,6 +321,56 @@ export function resolveYouTubeEmbedUrl(rawUrl: string): string | null {
   return `https://www.youtube.com/embed/${videoId}`;
 }
 
+const SINGLE_URL_PATTERN = /^https?:\/\/[^\s]+$/i;
+
+/** Return a single pasted video URL, trimming common trailing punctuation. */
+export function extractEmbeddableVideoUrl(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const candidates = [
+    trimmed,
+    trimmed.replace(/[.,;:!?)]+$/u, ""),
+  ];
+
+  for (const candidate of candidates) {
+    if (SINGLE_URL_PATTERN.test(candidate) && isEmbeddableVideoUrl(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+export function isEmbeddableVideoUrl(rawUrl: string): boolean {
+  return extractYouTubeVideoId(rawUrl) !== null || normalizeFacebookVideoUrl(rawUrl) !== null;
+}
+
+export function defaultFacebookAspectRatio(rawUrl: string): string {
+  const normalized = normalizeFacebookVideoUrl(rawUrl)?.toLowerCase() ?? "";
+  if (normalized.includes("/reel/") || normalized.includes("/reels/")) {
+    return "9 / 16";
+  }
+  return "16 / 9";
+}
+
+/** Build sanitized embed HTML for a supported YouTube or Facebook URL. */
+export async function buildEmbedHtmlFromVideoUrl(rawUrl: string): Promise<string | null> {
+  if (extractYouTubeVideoId(rawUrl)) {
+    const result = await validateYouTubeUrl(rawUrl);
+    if (!result.ok) return null;
+    return buildYouTubeEmbedHtml(result.embedUrl, result.aspectRatio);
+  }
+
+  if (normalizeFacebookVideoUrl(rawUrl)) {
+    const result = await validateFacebookUrl(rawUrl);
+    if (!result.ok) return null;
+    return buildFacebookEmbedHtml(result.embedUrl, result.aspectRatio);
+  }
+
+  return null;
+}
+
 export type YouTubeValidationResult =
   | { ok: true; embedUrl: string; videoId: string; aspectRatio: string }
   | { ok: false; error: string };
@@ -515,8 +565,7 @@ export async function validateFacebookUrl(rawUrl: string): Promise<FacebookValid
     return { ok: false, error: "Could not build a Facebook embed for this URL." };
   }
 
-  const isReel = videoUrl.toLowerCase().includes("/reel/");
-  const fallbackAspect = isReel ? "9 / 16" : "16 / 9";
+  const fallbackAspect = defaultFacebookAspectRatio(rawUrl);
 
   try {
     const response = await fetch(

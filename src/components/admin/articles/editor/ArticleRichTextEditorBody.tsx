@@ -1,4 +1,5 @@
 import * as React from "react";
+import toast from "react-hot-toast";
 
 import { cn } from "@/lib/utils";
 
@@ -6,7 +7,9 @@ import { ArticleEditorMediaStylePanel } from "./ArticleEditorMediaStylePanel";
 import { sanitizeArticleEditorHtml } from "./articleEditorHtmlSanitizer";
 import {
   applyMediaStyle,
+  buildEmbedHtmlFromVideoUrl,
   clearMediaSelection,
+  extractEmbeddableVideoUrl,
   notifyEditorInput,
   resolveEditorMediaFromTarget,
   selectMediaElement,
@@ -144,18 +147,47 @@ export function ArticleRichTextEditorBody({
   );
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    const plain = event.clipboardData.getData("text/plain");
     const html = event.clipboardData.getData("text/html");
+    const videoUrl = extractEmbeddableVideoUrl(plain);
+
+    if (!html.trim() && videoUrl) {
+      event.preventDefault();
+      const editor = editorRef.current;
+      if (!editor) return;
+
+      void (async () => {
+        const embedHtml = await buildEmbedHtmlFromVideoUrl(videoUrl);
+        if (!embedHtml) {
+          toast.error("Could not embed this video. Check the URL or use the Video button.");
+          return;
+        }
+
+        document.execCommand("insertHTML", false, embedHtml);
+        onContentChange(editor.innerHTML);
+
+        const inserted = editor.querySelector(".article-embed:last-of-type");
+        if (inserted instanceof HTMLElement) {
+          selectMediaElement(inserted, editor);
+          setSelectedMedia(inserted);
+        }
+      })();
+      return;
+    }
+
     if (!html.trim()) return;
 
     event.preventDefault();
     const editor = editorRef.current;
     if (!editor) return;
 
+    // Sanitize pasted HTML only — never rewrite the live DOM on normal typing,
+    // or the caret jumps to the top (browser HTML ≠ sanitizer serialization).
     const sanitized = sanitizeArticleEditorHtml(html);
     if (!sanitized) return;
 
     document.execCommand("insertHTML", false, sanitized);
-    onContentChange(sanitizeArticleEditorHtml(editor.innerHTML));
+    onContentChange(editor.innerHTML);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -196,10 +228,12 @@ export function ArticleRichTextEditorBody({
           "article-editor-body min-h-[280px] px-4 py-4 text-base leading-relaxed text-admin-heading outline-none empty:before:pointer-events-none empty:before:text-admin-trend-muted empty:before:content-[attr(data-placeholder)] sm:min-h-[360px] sm:px-6 sm:py-6",
           "[&_img]:cursor-pointer [&_video]:cursor-pointer [&_audio]:cursor-pointer",
           "[&_.article-embed--youtube]:cursor-pointer [&_.article-embed--youtube]:my-4",
-          "[&_.article-embed--youtube_iframe]:pointer-events-none",
           "[&_.article-embed--facebook]:cursor-pointer [&_.article-embed--facebook]:my-4",
+          "[&_.article-embed]:relative [&_.article-embed]:max-w-full [&_.article-embed]:w-full [&_.article-embed]:overflow-hidden",
+          "[&_.article-embed:not([style*='aspect-ratio'])]:aspect-video",
+          "[&_.article-embed_iframe]:absolute [&_.article-embed_iframe]:inset-0 [&_.article-embed_iframe]:size-full [&_.article-embed_iframe]:border-0",
+          "[&_.article-embed--youtube_iframe]:pointer-events-none",
           "[&_.article-embed--facebook_iframe]:pointer-events-none",
-          "[&_.article-embed]:relative [&_.article-embed]:max-w-full [&_.article-embed]:overflow-hidden",
           "[&_.article-editor-media-selected]:outline [&_.article-editor-media-selected]:outline-2 [&_.article-editor-media-selected]:outline-zbc-blue [&_.article-editor-media-selected]:outline-offset-2",
           "[&_figure.article-figure]:my-4",
           "[&_figure.article-figure_figcaption]:mt-2 [&_figure.article-figure_figcaption]:text-sm [&_figure.article-figure_figcaption]:text-admin-trend-muted",
