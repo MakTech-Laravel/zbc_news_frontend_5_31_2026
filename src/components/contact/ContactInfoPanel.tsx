@@ -15,10 +15,10 @@ type ContactChannel = {
 };
 
 const CONTACT_CHANNELS: ContactChannel[] = [
-  { title: "General Inquiries", email: "hello@zbcnews.com", Icon: Mail },
-  { title: "Press / Media", email: "press@zbcnews.com", Icon: Newspaper },
-  { title: "Advertising", email: "ads@zbcnews.com", Icon: Megaphone },
-  { title: "Corrections", email: "corrections@zbcnews.com", Icon: PenLine },
+  { title: "General Inquiries", email: "info@zbc.news", Icon: Mail },
+  { title: "Press / Media", email: "newsroom@zbc.news", Icon: Newspaper },
+  { title: "Advertising", email: "ads@zbc.news", Icon: Megaphone },
+  { title: "Corrections", email: "corrections@zbc.news", Icon: PenLine },
 ];
 
 type SocialIconProps = { className?: string };
@@ -54,12 +54,25 @@ function InstagramIcon({ className }: SocialIconProps) {
     </svg>
   );
 }
+function TikTokIcon({ className }: SocialIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M16 2H8C4.686 2 2 4.686 2 8v8c0 3.314 2.686 6 6 6h8c3.314 0 6-2.686 6-6V8c0-3.314-2.686-6-6-6zm1.65 8.79a6.2 6.2 0 0 1-3.58-1.12v4.4a4.42 4.42 0 1 1-4.42-4.42c.31 0 .61.04.9.11v2.3a2.12 2.12 0 1 0 1.4 2.01V5.5h2.12a4.08 4.08 0 0 0 3.58 3.58v1.71z" />
+    </svg>
+  );
+}
 
 const SOCIAL_LINKS = [
-  { label: "Twitter", handle: "@zbcnews", href: "https://x.com/zbcnews", Icon: XIcon },
-  { label: "Facebook", handle: "/zbcnews", href: "https://facebook.com/zbcnews", Icon: FacebookIcon },
-  { label: "LinkedIn", handle: "/company/zbcnews", href: "https://linkedin.com/company/zbcnews", Icon: LinkedInIcon },
-  { label: "Instagram", handle: "@zbcnews", href: "https://instagram.com/zbcnews", Icon: InstagramIcon },
+  { label: "Facebook", handle: "/zbcnews", href: "https://facebook.com/zomibroadcasting", Icon: FacebookIcon },
+  { label: "Twitter", handle: "@zbcnews", href: "https://x.com/zbcglobalnews", Icon: XIcon },
+  { label: "LinkedIn", handle: "/company/zbcnews", href: "https://www.linkedin.com/company/zbcnews", Icon: LinkedInIcon },
+  { label: "TikTok", handle: "@zbcnews", href: "https://www.tiktok.com/@zbcnews", Icon: TikTokIcon },
+  { label: "Instagram", handle: "@zbcnews", href: "https://www.instagram.com/zomibroadcasting", Icon: InstagramIcon },
 ] as const;
 
 function ContactChannelRow({ title, email, Icon }: ContactChannel) {
