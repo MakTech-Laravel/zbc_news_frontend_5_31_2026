@@ -2,6 +2,8 @@ import * as React from "react";
 
 import { ArticleRichTextEditorBody } from "@/components/admin/articles/editor/ArticleRichTextEditorBody";
 import { ArticleRichTextToolbar } from "@/components/admin/articles/editor/ArticleRichTextToolbar";
+import { useVideoInsert } from "@/components/admin/articles/editor/useVideoInsert";
+import type { EditorMediaElement } from "@/components/admin/articles/editor/articleEditorMediaUtils";
 import { AdminPanel } from "@/components/admin/shared/AdminPanel";
 import InputError from "@/components/input-error";
 import { cn } from "@/lib/utils";
@@ -39,6 +41,9 @@ export function ArticleRichTextEditor({
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [canUndo, setCanUndo] = React.useState(false);
   const [canRedo, setCanRedo] = React.useState(false);
+  const [pendingSelectMedia, setPendingSelectMedia] = React.useState<EditorMediaElement | null>(
+    null,
+  );
 
   const refreshFlags = React.useCallback(() => {
     setCanUndo(indexRef.current > 0);
@@ -106,6 +111,24 @@ export function ArticleRichTextEditor({
     [onContentChange, schedulePush],
   );
 
+  const videoInsert = useVideoInsert({
+    editorRef,
+    onEditorHtmlChange: handleContentChange,
+    onContentSynced: () => {
+      const html = editorRef.current?.innerHTML ?? "";
+      handleContentChange(html);
+      const selected = editorRef.current?.querySelector(".article-editor-media-selected");
+      if (
+        selected instanceof HTMLImageElement ||
+        selected instanceof HTMLVideoElement ||
+        selected instanceof HTMLAudioElement ||
+        (selected instanceof HTMLElement && selected.classList.contains("article-embed"))
+      ) {
+        setPendingSelectMedia(selected);
+      }
+    },
+  });
+
   const restoreSnapshot = React.useCallback(
     (html: string) => {
       applyingHistoryRef.current = true;
@@ -163,6 +186,11 @@ export function ArticleRichTextEditor({
         canRedo={canRedo}
         onUndo={undo}
         onRedo={redo}
+        onInsertVideo={videoInsert.beginInsertVideo}
+        onVideoMediaSelect={videoInsert.handleMediaSelect}
+        videoMediaPickerOpen={videoInsert.mediaPickerOpen}
+        onVideoMediaPickerOpenChange={videoInsert.setMediaPickerOpen}
+        videoDialogs={videoInsert.dialogs}
       />
 
       <div>
@@ -172,6 +200,11 @@ export function ArticleRichTextEditor({
           onContentChange={handleContentChange}
           onUndo={undo}
           onRedo={redo}
+          onRequestVideoReplace={videoInsert.beginReplaceVideo}
+          pendingSelectMedia={pendingSelectMedia}
+          onPendingSelectHandled={() => setPendingSelectMedia(null)}
+          suppressMediaPanel={videoInsert.isVideoUiOpen}
+          isReplaceFlowActive={videoInsert.replaceFlowActive}
         />
         <InputError message={contentError} className="px-4 pb-4 sm:px-6" />
       </div>
