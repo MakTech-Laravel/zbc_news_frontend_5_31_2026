@@ -41,6 +41,9 @@ const articleBodyClassName = cn(
   "[&_table]:my-4 [&_table]:w-full [&_table]:border-collapse",
   "[&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2",
   "[&_.article-embed]:my-4 [&_.article-embed]:overflow-hidden [&_.article-embed]:rounded-lg",
+  "[&_.article-embed]:relative [&_.article-embed]:w-full [&_.article-embed]:max-w-full",
+  "[&_.article-embed:not([style*='aspect-ratio'])]:aspect-video",
+  "[&_.article-embed_iframe]:absolute [&_.article-embed_iframe]:inset-0 [&_.article-embed_iframe]:size-full [&_.article-embed_iframe]:border-0",
   "[&_iframe]:max-w-full",
 );
 

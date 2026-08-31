@@ -1,4 +1,4 @@
-import { AlignCenter, AlignLeft, AlignRight, Trash2, X } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, RefreshCw, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { createPortal } from "react-dom";
 
@@ -12,6 +12,7 @@ import {
   MEDIA_OBJECT_FIT_OPTIONS,
   readMediaStyle,
   supportsObjectFit,
+  supportsVideoReplace,
   type ArticleEditorMediaStyle,
   type EditorMediaElement,
   type MediaAlign,
@@ -22,6 +23,7 @@ type ArticleEditorMediaStylePanelProps = {
   onApply: (style: ArticleEditorMediaStyle) => void;
   onDelete: () => void;
   onClose: () => void;
+  onReplace?: () => void;
   onAltChange?: (alt: string) => void;
 };
 
@@ -59,6 +61,7 @@ export function ArticleEditorMediaStylePanel({
   onApply,
   onDelete,
   onClose,
+  onReplace,
   onAltChange,
 }: ArticleEditorMediaStylePanelProps) {
   const [draft, setDraft] = React.useState<ArticleEditorMediaStyle>(() => readMediaStyle(media));
@@ -67,6 +70,7 @@ export function ArticleEditorMediaStylePanel({
   );
   const position = useMediaPanelPosition(media);
   const showObjectFit = supportsObjectFit(media);
+  const showReplace = supportsVideoReplace(media) && Boolean(onReplace);
   const isImage = media instanceof HTMLImageElement;
 
   React.useEffect(() => {
@@ -95,7 +99,7 @@ export function ArticleEditorMediaStylePanel({
 
   return createPortal(
     <div
-      className="fixed z-[80] rounded-xl border border-admin-input-border bg-white p-3 shadow-lg"
+      className="fixed z-40 rounded-xl border border-admin-input-border bg-white p-3 shadow-lg"
       style={{ top: position.top, left: position.left, width: position.width }}
       onMouseDown={(event) => {
         const target = event.target;
@@ -248,16 +252,31 @@ export function ArticleEditorMediaStylePanel({
           ))}
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
-          onClick={onDelete}
-        >
-          <Trash2 className="size-3.5" aria-hidden />
-          Remove
-        </Button>
+        <div className="flex items-center gap-1">
+          {showReplace ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={onReplace}
+            >
+              <RefreshCw className="size-3.5" aria-hidden />
+              Replace
+            </Button>
+          ) : null}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="size-3.5" aria-hidden />
+            Remove
+          </Button>
+        </div>
       </div>
     </div>,
     document.body,
