@@ -121,6 +121,8 @@ export function ArticlePreviewDialog({
                   "[&_.article-embed]:my-4 [&_.article-embed]:overflow-hidden [&_.article-embed]:rounded-lg",
                   "[&_.article-embed]:relative [&_.article-embed]:w-full",
                   "[&_.article-embed:not([style*='aspect-ratio'])]:aspect-video",
+                  "[&_.article-embed[data-embed-orientation=portrait]]:mx-auto",
+                  "[&_.article-embed[data-embed-orientation=portrait]]:max-w-[min(100%,420px)]",
                   "[&_.article-embed_iframe]:absolute [&_.article-embed_iframe]:inset-0 [&_.article-embed_iframe]:size-full [&_.article-embed_iframe]:border-0",
                 )}
                 dangerouslySetInnerHTML={{

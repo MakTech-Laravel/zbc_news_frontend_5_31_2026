@@ -6,6 +6,7 @@ const ALLOWED_TAGS = new Set([
 
 const GLOBAL_ATTRS = new Set([
   "class", "style", "contenteditable", "data-embed-type", "data-aspect-ratio",
+  "data-embed-orientation", "data-embed-width", "data-embed-height",
   "data-caption", "data-credit", "data-copyright",
 ]);
 

@@ -231,6 +231,8 @@ export function ArticleRichTextEditorBody({
           "[&_.article-embed--facebook]:cursor-pointer [&_.article-embed--facebook]:my-4",
           "[&_.article-embed]:relative [&_.article-embed]:max-w-full [&_.article-embed]:w-full [&_.article-embed]:overflow-hidden",
           "[&_.article-embed:not([style*='aspect-ratio'])]:aspect-video",
+          "[&_.article-embed[data-embed-orientation=portrait]]:mx-auto",
+          "[&_.article-embed[data-embed-orientation=portrait]]:max-w-[min(100%,420px)]",
           "[&_.article-embed_iframe]:absolute [&_.article-embed_iframe]:inset-0 [&_.article-embed_iframe]:size-full [&_.article-embed_iframe]:border-0",
           "[&_.article-embed--youtube_iframe]:pointer-events-none",
           "[&_.article-embed--facebook_iframe]:pointer-events-none",

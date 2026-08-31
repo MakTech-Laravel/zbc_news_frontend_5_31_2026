@@ -141,9 +141,19 @@ export function readMediaStyle(element: EditorMediaElement): ArticleEditorMediaS
     element instanceof HTMLElement ? element.getAttribute("data-aspect-ratio")?.trim() : "";
   const defaultAspect =
     dataAspect || (isExternalEmbedElement(element) ? "16 / 9" : "auto");
+
+  const intentWidth =
+    element instanceof HTMLElement
+      ? element.getAttribute("data-embed-width")?.trim()
+      : "";
+  const intentHeight =
+    element instanceof HTMLElement
+      ? element.getAttribute("data-embed-height")?.trim()
+      : "";
+
   return {
-    width: element.style.width || "100%",
-    height: element.style.height || "auto",
+    width: intentWidth || element.style.width || "100%",
+    height: intentHeight || element.style.height || "auto",
     aspectRatio: element.style.aspectRatio || defaultAspect,
     objectFit: element.style.objectFit || "contain",
     align: readAlign(element),
@@ -167,28 +177,99 @@ function applyAlign(element: EditorMediaElement, align: MediaAlign) {
 }
 
 export function applyMediaStyle(element: EditorMediaElement, style: ArticleEditorMediaStyle) {
-  element.style.maxWidth = "100%";
-  element.style.width = style.width.trim() || "100%";
-  element.style.height = style.height.trim() || "auto";
+  const isEmbed = isExternalEmbedElement(element);
+  const ratioValue =
+    style.aspectRatio !== "auto" && style.aspectRatio.trim() ? style.aspectRatio.trim() : "";
+  const portrait = isEmbed && ratioValue !== "" && isPortraitAspectRatio(ratioValue);
+  const fixedHeight = isFixedCssSize(style.height);
 
-  if (style.aspectRatio === "auto" || !style.aspectRatio.trim()) {
-    element.style.removeProperty("aspect-ratio");
-  } else {
-    element.style.aspectRatio = style.aspectRatio;
-  }
+  const widthValue = style.width.trim() || "100%";
 
-  if (supportsObjectFit(element)) {
-    element.style.objectFit = style.objectFit || "contain";
-  }
-
-  if (isExternalEmbedElement(element)) {
+  if (isEmbed) {
+    // Keep the player fully visible (contain). Never stretch a mismatched box that crops.
     element.style.position = "relative";
     element.style.overflow = "hidden";
+    element.style.display = "block";
+    element.style.removeProperty("max-height");
+
+    // Persist editor intent separately from the computed contain box.
+    element.setAttribute("data-embed-width", widthValue);
+    element.setAttribute(
+      "data-embed-height",
+      fixedHeight ? style.height.trim() : "auto",
+    );
+
     if (!element.style.marginTop) element.style.marginTop = "1rem";
     if (!element.style.marginBottom) element.style.marginBottom = "1rem";
 
-    if (style.aspectRatio !== "auto" && style.aspectRatio.trim()) {
-      element.setAttribute("data-aspect-ratio", style.aspectRatio);
+    const ratioParts = ratioValue ? parseAspectParts(ratioValue) : null;
+    const heightPxMatch = style.height.trim().match(/^([\d.]+)px$/i);
+    const parentWidth =
+      element.parentElement instanceof HTMLElement
+        ? element.parentElement.clientWidth
+        : 0;
+
+    if (ratioParts && heightPxMatch && parentWidth > 0) {
+      const maxHeightPx = Number.parseFloat(heightPxMatch[1]);
+      let maxWidthPx = parentWidth;
+
+      const widthPct = widthValue.match(/^([\d.]+)%$/);
+      const widthPx = widthValue.match(/^([\d.]+)px$/i);
+      if (widthPct) {
+        maxWidthPx = parentWidth * (Number.parseFloat(widthPct[1]) / 100);
+      } else if (widthPx) {
+        maxWidthPx = Number.parseFloat(widthPx[1]);
+      }
+
+      if (portrait) {
+        maxWidthPx = Math.min(maxWidthPx, PORTRAIT_EMBED_MAX_WIDTH_PX);
+      }
+      maxWidthPx = Math.min(maxWidthPx, parentWidth);
+
+      // Contain: fit inside maxWidth x maxHeight without cropping.
+      const widthIfHeightBound = maxHeightPx * (ratioParts.w / ratioParts.h);
+      const heightIfWidthBound = maxWidthPx * (ratioParts.h / ratioParts.w);
+
+      if (widthIfHeightBound <= maxWidthPx) {
+        element.style.width = `${Math.max(1, Math.round(widthIfHeightBound))}px`;
+        element.style.height = `${Math.round(maxHeightPx)}px`;
+      } else {
+        element.style.width = `${Math.max(1, Math.round(maxWidthPx))}px`;
+        element.style.height = `${Math.max(1, Math.round(heightIfWidthBound))}px`;
+      }
+
+      element.style.maxWidth = "100%";
+      element.style.aspectRatio = ratioValue;
+      element.setAttribute("data-aspect-ratio", ratioValue);
+    } else if (ratioParts) {
+      element.style.width = widthValue;
+      element.style.height = "auto";
+      element.style.maxWidth = portrait
+        ? `min(100%, ${PORTRAIT_EMBED_MAX_WIDTH_PX}px)`
+        : "100%";
+      if (fixedHeight) {
+        element.style.maxHeight = style.height.trim();
+      }
+      element.style.aspectRatio = ratioValue;
+      element.setAttribute("data-aspect-ratio", ratioValue);
+    } else if (fixedHeight) {
+      element.style.width = widthValue;
+      element.style.height = style.height.trim();
+      element.style.maxWidth = "100%";
+      element.style.removeProperty("aspect-ratio");
+      element.removeAttribute("data-aspect-ratio");
+    } else {
+      element.style.width = widthValue;
+      element.style.height = "auto";
+      element.style.maxWidth = "100%";
+      element.style.removeProperty("aspect-ratio");
+      element.removeAttribute("data-aspect-ratio");
+    }
+
+    if (portrait) {
+      element.setAttribute("data-embed-orientation", "portrait");
+    } else {
+      element.removeAttribute("data-embed-orientation");
     }
 
     const iframe = element.querySelector("iframe");
@@ -198,7 +279,39 @@ export function applyMediaStyle(element: EditorMediaElement, style: ArticleEdito
       iframe.style.width = "100%";
       iframe.style.height = "100%";
       iframe.style.border = "0";
+
+      if (isFacebookEmbedElement(element)) {
+        try {
+          const src = new URL(iframe.getAttribute("src") || "", window.location.origin);
+          if (src.hostname.includes("facebook.com") && src.pathname.includes("/plugins/video.php")) {
+            const pluginWidth = portrait ? PORTRAIT_EMBED_MAX_WIDTH_PX : 560;
+            src.searchParams.set("width", String(pluginWidth));
+            iframe.setAttribute("src", src.toString());
+          }
+        } catch {
+          // Ignore malformed iframe src.
+        }
+      }
     }
+
+    applyAlign(element, style.align);
+    element.setAttribute("contenteditable", "false");
+    return;
+  }
+
+  element.style.maxWidth = "100%";
+  element.style.width = widthValue;
+  element.style.height = style.height.trim() || "auto";
+  element.style.removeProperty("max-height");
+
+  if (style.aspectRatio === "auto" || !style.aspectRatio.trim()) {
+    element.style.removeProperty("aspect-ratio");
+  } else {
+    element.style.aspectRatio = style.aspectRatio;
+  }
+
+  if (supportsObjectFit(element)) {
+    element.style.objectFit = style.objectFit || "contain";
   }
 
   applyAlign(element, style.align);
@@ -347,11 +460,33 @@ export function isEmbeddableVideoUrl(rawUrl: string): boolean {
 }
 
 export function defaultFacebookAspectRatio(rawUrl: string): string {
-  const normalized = normalizeFacebookVideoUrl(rawUrl)?.toLowerCase() ?? "";
-  if (normalized.includes("/reel/") || normalized.includes("/reels/")) {
-    return "9 / 16";
+  return isFacebookReelUrl(rawUrl) ? "9 / 16" : "16 / 9";
+}
+
+export function isFacebookReelUrl(rawUrl: string): boolean {
+  const normalized = normalizeFacebookVideoUrl(rawUrl)?.toLowerCase() ?? rawUrl.toLowerCase();
+  return normalized.includes("/reel/") || normalized.includes("/reels/");
+}
+
+/** Prefer oEmbed size, but never let landscape oEmbed override known portrait sources. */
+export function resolveEmbedAspectRatio(options: {
+  fallbackAspect: string;
+  oembedWidth?: number;
+  oembedHeight?: number;
+  forcePortrait?: boolean;
+}): string {
+  if (options.forcePortrait) return "9 / 16";
+
+  if (
+    options.oembedWidth &&
+    options.oembedHeight &&
+    options.oembedWidth > 0 &&
+    options.oembedHeight > 0
+  ) {
+    return formatAspectRatio(options.oembedWidth, options.oembedHeight);
   }
-  return "16 / 9";
+
+  return options.fallbackAspect;
 }
 
 /** Build sanitized embed HTML for a supported YouTube or Facebook URL. */
@@ -400,6 +535,23 @@ export function isPortraitAspectRatio(ratio: string): boolean {
   return parts[1] > parts[0];
 }
 
+/** Max width for portrait embeds so 9:16 does not dominate the article column. */
+export const PORTRAIT_EMBED_MAX_WIDTH_PX = 420;
+
+function parseAspectParts(ratio: string): { w: number; h: number } | null {
+  const parts = ratio.split("/").map((part) => Number.parseFloat(part.trim()));
+  if (parts.length !== 2 || parts.some((value) => !Number.isFinite(value) || value <= 0)) {
+    return null;
+  }
+  return { w: parts[0], h: parts[1] };
+}
+
+function isFixedCssSize(value: string): boolean {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed === "auto") return false;
+  return /^[\d.]+(px|rem|em|vh|%)$/.test(trimmed);
+}
+
 export function isYouTubeShortsUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl.trim());
@@ -429,6 +581,7 @@ export async function validateYouTubeUrl(rawUrl: string): Promise<YouTubeValidat
   const watchUrl = isYouTubeShortsUrl(rawUrl)
     ? `https://www.youtube.com/shorts/${videoId}`
     : `https://www.youtube.com/watch?v=${videoId}`;
+  const forcePortrait = isYouTubeShortsUrl(rawUrl);
   const fallbackAspect = defaultYouTubeAspectRatio(rawUrl);
 
   try {
@@ -448,10 +601,12 @@ export async function validateYouTubeUrl(rawUrl: string): Promise<YouTubeValidat
     }
 
     const data = (await response.json()) as { width?: number; height?: number };
-    const aspectRatio =
-      data.width && data.height
-        ? formatAspectRatio(data.width, data.height)
-        : fallbackAspect;
+    const aspectRatio = resolveEmbedAspectRatio({
+      fallbackAspect,
+      oembedWidth: data.width,
+      oembedHeight: data.height,
+      forcePortrait,
+    });
 
     return { ok: true, embedUrl, videoId, aspectRatio };
   } catch {
@@ -471,6 +626,12 @@ const EMBED_IFRAME_STYLE = "position:absolute;inset:0;width:100%;height:100%;bor
 
 function buildEmbedWrapperStyle(aspectRatio: string): string {
   const safeRatio = aspectRatio.trim() || "16 / 9";
+  if (isPortraitAspectRatio(safeRatio)) {
+    return (
+      `position:relative;display:block;max-width:min(100%,${PORTRAIT_EMBED_MAX_WIDTH_PX}px);` +
+      `width:100%;aspect-ratio:${safeRatio};overflow:hidden;margin:1rem auto;`
+    );
+  }
   return (
     `position:relative;display:block;max-width:100%;width:100%;aspect-ratio:${safeRatio};` +
     `overflow:hidden;margin:1rem 0;`
@@ -483,10 +644,12 @@ export function buildYouTubeEmbedHtml(
 ): string {
   const safeSrc = escapeEmbedSrc(embedUrl);
   const safeRatio = aspectRatio.replace(/"/g, "");
+  const portrait = isPortraitAspectRatio(safeRatio);
 
   return (
     `<div class="${ARTICLE_EMBED_CLASS} ${YOUTUBE_EMBED_CLASS}" contenteditable="false" ` +
-    `data-embed-type="youtube" data-aspect-ratio="${safeRatio}" ` +
+    `data-embed-type="youtube" data-aspect-ratio="${safeRatio}"` +
+    `${portrait ? ' data-embed-orientation="portrait"' : ""} ` +
     `style="${buildEmbedWrapperStyle(safeRatio)}">` +
     `<iframe src="${safeSrc}" title="YouTube video" ` +
     `style="${EMBED_IFRAME_STYLE}" ` +
@@ -541,10 +704,18 @@ export function normalizeFacebookVideoUrl(rawUrl: string): string | null {
   return null;
 }
 
-export function resolveFacebookEmbedUrl(rawUrl: string): string | null {
+export function resolveFacebookEmbedUrl(
+  rawUrl: string,
+  options?: { width?: number; portrait?: boolean },
+): string | null {
   const href = normalizeFacebookVideoUrl(rawUrl);
   if (!href) return null;
-  return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}&show_text=false&width=560`;
+  const portrait = options?.portrait ?? isFacebookReelUrl(rawUrl);
+  const width = options?.width ?? (portrait ? PORTRAIT_EMBED_MAX_WIDTH_PX : 560);
+  return (
+    `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}` +
+    `&show_text=false&width=${width}`
+  );
 }
 
 export type FacebookValidationResult =
@@ -560,12 +731,9 @@ export async function validateFacebookUrl(rawUrl: string): Promise<FacebookValid
     };
   }
 
-  const embedUrl = resolveFacebookEmbedUrl(rawUrl);
-  if (!embedUrl) {
-    return { ok: false, error: "Could not build a Facebook embed for this URL." };
-  }
-
+  const forcePortrait = isFacebookReelUrl(rawUrl);
   const fallbackAspect = defaultFacebookAspectRatio(rawUrl);
+  let aspectRatio = fallbackAspect;
 
   try {
     const response = await fetch(
@@ -579,20 +747,33 @@ export async function validateFacebookUrl(rawUrl: string): Promise<FacebookValid
       };
     }
 
-    if (!response.ok) {
-      return { ok: true, embedUrl, videoUrl, aspectRatio: fallbackAspect };
+    if (response.ok) {
+      const data = (await response.json()) as { width?: number; height?: number };
+      aspectRatio = resolveEmbedAspectRatio({
+        fallbackAspect,
+        oembedWidth: data.width,
+        oembedHeight: data.height,
+        forcePortrait,
+      });
+
+      if (!forcePortrait && data.width && data.height && data.height > data.width) {
+        aspectRatio = formatAspectRatio(data.width, data.height);
+      }
     }
-
-    const data = (await response.json()) as { width?: number; height?: number };
-    const aspectRatio =
-      data.width && data.height
-        ? formatAspectRatio(data.width, data.height)
-        : fallbackAspect;
-
-    return { ok: true, embedUrl, videoUrl, aspectRatio };
   } catch {
-    return { ok: true, embedUrl, videoUrl, aspectRatio: fallbackAspect };
+    // Network/CORS failures still allow insert with URL-based fallback ratio.
   }
+
+  const portrait = isPortraitAspectRatio(aspectRatio);
+  const embedUrl = resolveFacebookEmbedUrl(rawUrl, {
+    portrait,
+    width: portrait ? PORTRAIT_EMBED_MAX_WIDTH_PX : 560,
+  });
+  if (!embedUrl) {
+    return { ok: false, error: "Could not build a Facebook embed for this URL." };
+  }
+
+  return { ok: true, embedUrl, videoUrl, aspectRatio };
 }
 
 export function buildFacebookEmbedHtml(
@@ -601,10 +782,12 @@ export function buildFacebookEmbedHtml(
 ): string {
   const safeSrc = escapeEmbedSrc(embedUrl);
   const safeRatio = aspectRatio.replace(/"/g, "");
+  const portrait = isPortraitAspectRatio(safeRatio);
 
   return (
     `<div class="${ARTICLE_EMBED_CLASS} ${FACEBOOK_EMBED_CLASS}" contenteditable="false" ` +
-    `data-embed-type="facebook" data-aspect-ratio="${safeRatio}" ` +
+    `data-embed-type="facebook" data-aspect-ratio="${safeRatio}"` +
+    `${portrait ? ' data-embed-orientation="portrait"' : ""} ` +
     `style="${buildEmbedWrapperStyle(safeRatio)}">` +
     `<iframe src="${safeSrc}" title="Facebook video" ` +
     `style="${EMBED_IFRAME_STYLE}" ` +

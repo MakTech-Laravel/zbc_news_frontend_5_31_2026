@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 import {
   getEditorMediaLabel,
+  isExternalEmbedElement,
   MEDIA_ASPECT_RATIO_OPTIONS,
   MEDIA_OBJECT_FIT_OPTIONS,
   readMediaStyle,
@@ -72,6 +73,7 @@ export function ArticleEditorMediaStylePanel({
   const showObjectFit = supportsObjectFit(media);
   const showReplace = supportsVideoReplace(media) && Boolean(onReplace);
   const isImage = media instanceof HTMLImageElement;
+  const isEmbed = isExternalEmbedElement(media);
 
   React.useEffect(() => {
     setDraft(readMediaStyle(media));
@@ -112,7 +114,9 @@ export function ArticleEditorMediaStylePanel({
         <div>
           <p className="text-sm font-semibold text-admin-heading">{getEditorMediaLabel(media)} settings</p>
           <p className="text-xs text-admin-trend-muted">
-            Adjust width, ratio, and alignment
+            {isEmbed
+              ? "Max height keeps the full video visible (no crop)"
+              : "Adjust width, ratio, and alignment"}
           </p>
         </div>
         <button
@@ -161,7 +165,9 @@ export function ArticleEditorMediaStylePanel({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-xs font-medium text-admin-heading">Height</span>
+          <span className="text-xs font-medium text-admin-heading">
+            {isEmbed ? "Max height" : "Height"}
+          </span>
           <input
             type="text"
             value={draft.height}
@@ -174,7 +180,7 @@ export function ArticleEditorMediaStylePanel({
                 (e.currentTarget as HTMLInputElement).blur();
               }
             }}
-            placeholder="auto or 360px"
+            placeholder={isEmbed ? "auto or 500px" : "auto or 360px"}
             className={cn(settingsInputClassName, "h-9 text-sm")}
           />
         </label>
