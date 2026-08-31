@@ -12,8 +12,8 @@ import {
   Table,
   TableCellsMerge,
   Trash2,
-  MonitorPlay,
   Undo2,
+  Video,
 } from "lucide-react";
 import * as React from "react";
 import toast from "react-hot-toast";
@@ -23,12 +23,10 @@ import { cn } from "@/lib/utils";
 import {
   isAudioMedia,
   isImageMedia,
-  isVideoMedia,
   type AdminMediaRow,
 } from "@/services/admin/media";
 
-import { buildMediaInsertHtml, buildYouTubeEmbedHtml } from "./articleEditorMediaUtils";
-import { YouTubeEmbedDialog } from "./YouTubeEmbedDialog";
+import { buildMediaInsertHtml } from "./articleEditorMediaUtils";
 
 type ArticleRichTextToolbarProps = {
   editorRef: React.RefObject<HTMLDivElement | null>;
@@ -37,6 +35,11 @@ type ArticleRichTextToolbarProps = {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
+  onInsertVideo: () => void;
+  onVideoMediaSelect: (item: AdminMediaRow) => void;
+  videoMediaPickerOpen: boolean;
+  onVideoMediaPickerOpenChange: (open: boolean) => void;
+  videoDialogs: React.ReactNode;
 };
 
 type ToolbarAction = {
@@ -54,7 +57,6 @@ const TOOLBAR_ACTIONS: ToolbarAction[] = [
   { label: "Quote", icon: <Quote className="size-4" />, command: "formatBlock", value: "blockquote" },
   { label: "Link", icon: <Link2 className="size-4" />, command: "createLink" },
   { label: "Insert media", icon: <ImagePlus className="size-4" />, command: "insertMedia" },
-  { label: "YouTube embed", icon: <MonitorPlay className="size-4" />, command: "insertYouTube" },
 ];
 
 type TableAction = {
@@ -283,9 +285,13 @@ export function ArticleRichTextToolbar({
   canRedo = false,
   onUndo,
   onRedo,
+  onInsertVideo,
+  onVideoMediaSelect,
+  videoMediaPickerOpen,
+  onVideoMediaPickerOpenChange,
+  videoDialogs,
 }: ArticleRichTextToolbarProps) {
   const [mediaPickerOpen, setMediaPickerOpen] = React.useState(false);
-  const [youtubeDialogOpen, setYoutubeDialogOpen] = React.useState(false);
   const savedRangeRef = React.useRef<Range | null>(null);
 
   const saveSelection = React.useCallback(() => {
@@ -304,50 +310,44 @@ export function ArticleRichTextToolbar({
     selection.addRange(savedRangeRef.current);
   }, [editorRef]);
 
-  const buildMediaHtml = (item: AdminMediaRow): string | null => {
-    const src = item.url || "";
-    if (isVideoMedia(item)) {
-      return buildMediaInsertHtml("video", { src });
-    }
-    if (isAudioMedia(item)) {
-      return buildMediaInsertHtml("audio", { src });
-    }
-
-    const alt = item.altText?.trim() || item.name || item.fileName || "Media";
-    if (isImageMedia(item) && !item.altText?.trim()) {
-      const proceed = window.confirm(
-        "This image has no alt text. Inserting without alt text hurts accessibility. Insert anyway?",
-      );
-      if (!proceed) {
-        toast("Insert cancelled — add alt text in Media details first.");
-        return null;
-      }
-    }
-
-    return buildMediaInsertHtml("img", {
-      src,
-      alt,
-      ...(item.caption ? { caption: item.caption } : {}),
-      ...(item.credit ? { credit: item.credit } : {}),
-      ...(item.copyright ? { copyright: item.copyright } : {}),
-    });
-  };
-
-  const handleMediaSelect = (item: AdminMediaRow) => {
+  const handleImageSelect = (item: AdminMediaRow) => {
     const editor = editorRef.current;
     if (!editor) return;
-    const html = buildMediaHtml(item);
+
+    if (isVideoMedia(item)) {
+      toast.error("Use the Video button to insert videos.");
+      return;
+    }
+
+    let html: string | null = null;
+
+    if (isAudioMedia(item)) {
+      html = buildMediaInsertHtml("audio", { src: item.url || "" });
+    } else {
+      const alt = item.altText?.trim() || item.name || item.fileName || "Media";
+      if (isImageMedia(item) && !item.altText?.trim()) {
+        const proceed = window.confirm(
+          "This image has no alt text. Inserting without alt text hurts accessibility. Insert anyway?",
+        );
+        if (!proceed) {
+          toast("Insert cancelled — add alt text in Media details first.");
+          return;
+        }
+      }
+
+      html = buildMediaInsertHtml("img", {
+        src: item.url || "",
+        alt,
+        ...(item.caption ? { caption: item.caption } : {}),
+        ...(item.credit ? { credit: item.credit } : {}),
+        ...(item.copyright ? { copyright: item.copyright } : {}),
+      });
+    }
+
     if (!html) return;
+
     restoreSelection();
     document.execCommand("insertHTML", false, html);
-    notifyEditorChange(editor);
-  };
-
-  const handleYouTubeInsert = (embedUrl: string) => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    restoreSelection();
-    document.execCommand("insertHTML", false, buildYouTubeEmbedHtml(embedUrl));
     notifyEditorChange(editor);
   };
 
@@ -361,11 +361,6 @@ export function ArticleRichTextToolbar({
     if (action.command === "insertMedia") {
       saveSelection();
       setMediaPickerOpen(true);
-      return;
-    }
-    if (action.command === "insertYouTube") {
-      saveSelection();
-      setYoutubeDialogOpen(true);
       return;
     }
     document.execCommand(action.command, false, action.value);
@@ -426,6 +421,17 @@ export function ArticleRichTextToolbar({
         </button>
       ))}
 
+      <button
+        type="button"
+        title="Insert video"
+        aria-label="Insert video"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onInsertVideo}
+        className="inline-flex size-8 items-center justify-center rounded-md text-admin-heading transition-colors hover:bg-muted"
+      >
+        <Video className="size-4" />
+      </button>
+
       <span className="mx-1 hidden h-5 w-px bg-admin-input-border sm:block" aria-hidden />
 
       {TABLE_ACTIONS.map((action) => (
@@ -445,16 +451,20 @@ export function ArticleRichTextToolbar({
       <MediaPickerDialog
         open={mediaPickerOpen}
         onOpenChange={setMediaPickerOpen}
-        onSelect={handleMediaSelect}
+        onSelect={handleImageSelect}
         filter="all"
         title="Insert media"
       />
 
-      <YouTubeEmbedDialog
-        open={youtubeDialogOpen}
-        onOpenChange={setYoutubeDialogOpen}
-        onInsert={handleYouTubeInsert}
+      <MediaPickerDialog
+        open={videoMediaPickerOpen}
+        onOpenChange={onVideoMediaPickerOpenChange}
+        onSelect={onVideoMediaSelect}
+        filter="video"
+        title="Insert video from library"
       />
+
+      {videoDialogs}
     </div>
   );
 }
