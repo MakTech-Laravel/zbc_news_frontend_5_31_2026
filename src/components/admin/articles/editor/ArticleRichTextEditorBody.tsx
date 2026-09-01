@@ -10,7 +10,9 @@ import {
   buildEmbedHtmlFromVideoUrl,
   clearMediaSelection,
   extractEmbeddableVideoUrl,
+  isExternalEmbedElement,
   notifyEditorInput,
+  readMediaStyle,
   resolveEditorMediaFromTarget,
   selectMediaElement,
   type EditorMediaElement,
@@ -49,6 +51,11 @@ export function ArticleRichTextEditorBody({
     if (!pendingSelectMedia || !editorRef.current?.contains(pendingSelectMedia)) return;
     selectMediaElement(pendingSelectMedia, editorRef.current);
     setSelectedMedia(pendingSelectMedia);
+    if (isExternalEmbedElement(pendingSelectMedia)) {
+      requestAnimationFrame(() => {
+        applyMediaStyle(pendingSelectMedia, readMediaStyle(pendingSelectMedia));
+      });
+    }
     onPendingSelectHandled?.();
   }, [editorRef, onPendingSelectHandled, pendingSelectMedia]);
 
@@ -92,6 +99,11 @@ export function ArticleRichTextEditorBody({
       event.preventDefault();
       selectMediaElement(media, editorRef.current);
       setSelectedMedia(media);
+      if (isExternalEmbedElement(media)) {
+        requestAnimationFrame(() => {
+          applyMediaStyle(media, readMediaStyle(media));
+        });
+      }
       return;
     }
 
@@ -104,8 +116,18 @@ export function ArticleRichTextEditorBody({
   const handleApplyStyle = React.useCallback(
     (style: Parameters<typeof applyMediaStyle>[1]) => {
       if (!selectedMedia || !editorRef.current?.contains(selectedMedia)) return;
-      applyMediaStyle(selectedMedia, style);
-      syncContent();
+
+      const apply = () => {
+        applyMediaStyle(selectedMedia, style);
+        syncContent();
+      };
+
+      if (isExternalEmbedElement(selectedMedia)) {
+        requestAnimationFrame(apply);
+        return;
+      }
+
+      apply();
     },
     [editorRef, selectedMedia, syncContent],
   );
@@ -229,7 +251,7 @@ export function ArticleRichTextEditorBody({
           "[&_img]:cursor-pointer [&_video]:cursor-pointer [&_audio]:cursor-pointer",
           "[&_.article-embed--youtube]:cursor-pointer [&_.article-embed--youtube]:my-4",
           "[&_.article-embed--facebook]:cursor-pointer [&_.article-embed--facebook]:my-4",
-          "[&_.article-embed]:relative [&_.article-embed]:max-w-full [&_.article-embed]:w-full [&_.article-embed]:overflow-hidden",
+          "[&_.article-embed]:relative [&_.article-embed]:max-w-full [&_.article-embed]:overflow-hidden",
           "[&_.article-embed:not([style*='aspect-ratio'])]:aspect-video",
           "[&_.article-embed[data-embed-orientation=portrait]]:mx-auto",
           "[&_.article-embed[data-embed-orientation=portrait]]:max-w-[min(100%,420px)]",

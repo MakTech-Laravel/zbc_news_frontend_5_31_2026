@@ -68,7 +68,7 @@ export function FacebookEmbedDialog({
   const handleInsert = () => {
     const embedUrl = previewEmbedUrl ?? resolveFacebookEmbedUrl(url);
     if (!embedUrl) {
-      setError("Wrong URL. Use a Facebook watch, videos, reel, or fb.watch link.");
+      setError("Wrong URL. Use a Facebook watch, videos, reel, share, or fb.watch link.");
       return;
     }
     if (!previewEmbedUrl) {
@@ -80,12 +80,12 @@ export function FacebookEmbedDialog({
           setError(result.error);
           return;
         }
-        onInsert({ embedUrl: result.embedUrl, aspectRatio: result.aspectRatio });
+        onInsert({ embedUrl: result.embedUrl, aspectRatio: "auto" });
         onOpenChange(false);
       })();
       return;
     }
-    onInsert({ embedUrl, aspectRatio: previewAspectRatio });
+    onInsert({ embedUrl, aspectRatio: "auto" });
     onOpenChange(false);
   };
 
@@ -123,7 +123,7 @@ export function FacebookEmbedDialog({
                     void handleTest();
                   }
                 }}
-                placeholder="https://www.facebook.com/watch/?v=… or fb.watch/…"
+                placeholder="https://www.facebook.com/watch/?v=… or share/v/…"
                 className="flex-1"
                 autoFocus
               />
@@ -139,7 +139,7 @@ export function FacebookEmbedDialog({
               </Button>
             </div>
             <p className="text-xs text-admin-trend-muted">
-              Paste a Facebook watch, videos, reel, or fb.watch link, then click Test to preview.
+              Paste a Facebook watch, videos, reel, share/v, or fb.watch link, then click Test to preview.
             </p>
           </div>
 

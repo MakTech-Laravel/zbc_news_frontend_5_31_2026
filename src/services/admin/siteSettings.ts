@@ -77,6 +77,17 @@ export async function updateAdminSiteSettings(
   formData.append("mailchimp_list_id", form.mailchimpListId);
   formData.append("disqus_shortname", form.disqusShortname);
   formData.append("slack_webhook_url", form.slackWebhookUrl);
+  formData.append("social_facebook_url", form.socialFacebookUrl);
+  formData.append("social_x_url", form.socialXUrl);
+  formData.append("social_linkedin_url", form.socialLinkedinUrl);
+  formData.append("social_tiktok_url", form.socialTiktokUrl);
+  formData.append("social_instagram_url", form.socialInstagramUrl);
+  formData.append("contact_general_email", form.contactGeneralEmail);
+  formData.append("contact_press_email", form.contactPressEmail);
+  formData.append("contact_advertising_email", form.contactAdvertisingEmail);
+  formData.append("contact_corrections_email", form.contactCorrectionsEmail);
+  formData.append("contact_office_address", form.contactOfficeAddress);
+  formData.append("contact_office_maps_url", form.contactOfficeMapsUrl);
 
   if (logoUrl !== undefined) {
     formData.append("site_logo", logoUrl ?? "");

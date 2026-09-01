@@ -2,7 +2,10 @@ import * as React from "react";
 import { AlertTriangle, FolderOpen, Link2, Music2, Radio, Video, X } from "lucide-react";
 import toast from "react-hot-toast";
 
-import { YouTubeEmbedDialog } from "@/components/admin/articles/editor/YouTubeEmbedDialog";
+import {
+  YouTubeEmbedDialog,
+} from "@/components/admin/articles/editor/YouTubeEmbedDialog";
+import type { VideoEmbedPayload } from "@/components/admin/articles/editor/articleEditorMediaUtils";
 import { MediaPickerDialog } from "@/components/admin/media/MediaPickerDialog";
 import { settingsInputClassName } from "@/components/admin/settings/settingsFormStyles";
 import { Button } from "@/components/ui/button";
@@ -37,6 +40,8 @@ type FeaturedMediaFieldProps = {
   typeLabels?: Partial<Record<FeaturedMediaType, string>>;
   /** Live Updates can collect a YouTube URL instead of library video. */
   videoSource?: "media" | "youtube";
+  /** When true, poster must be set for video/audio featured media. */
+  posterRequired?: boolean;
 };
 
 const DEFAULT_TYPES: FeaturedMediaType[] = ["image", "video", "audio"];
@@ -63,6 +68,36 @@ function typeFromRow(item: AdminMediaRow): FeaturedMediaType {
   return "image";
 }
 
+/** Normalize stored URL (handles legacy bad values from payload type mismatch). */
+export function resolveFeaturedYouTubeEmbedUrl(url: FeaturedMediaValue["url"]): string {
+  if (!url) return "";
+  if (typeof url === "string") {
+    const trimmed = url.trim();
+    if (!trimmed || trimmed === "[object Object]") return "";
+    return trimmed;
+  }
+  if (typeof url === "object") {
+    const record = url as Record<string, unknown>;
+    if (typeof record.embedUrl === "string" && record.embedUrl.trim()) {
+      return record.embedUrl.trim();
+    }
+  }
+  return "";
+}
+
+export function featuredMediaHasPoster(media: FeaturedMediaValue): boolean {
+  return Boolean(media.posterUuid || media.posterUrl?.trim());
+}
+
+export function liveFeaturedVideoHasSource(media: FeaturedMediaValue): boolean {
+  if (media.type !== "video") return false;
+  return Boolean(media.mediaUuid || resolveFeaturedYouTubeEmbedUrl(media.url));
+}
+
+export function liveFeaturedVideoNeedsPoster(media: FeaturedMediaValue): boolean {
+  return liveFeaturedVideoHasSource(media) && !featuredMediaHasPoster(media);
+}
+
 export function FeaturedMediaField({
   value,
   onChange,
@@ -70,6 +105,7 @@ export function FeaturedMediaField({
   allowedTypes = DEFAULT_TYPES,
   typeLabels,
   videoSource = "media",
+  posterRequired = false,
 }: FeaturedMediaFieldProps) {
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [posterPickerOpen, setPosterPickerOpen] = React.useState(false);
@@ -80,7 +116,15 @@ export function FeaturedMediaField({
   const isLiveLabel = videoLabel.toLowerCase() === "live";
   const isYouTubeVideo = value.type === "video" && videoSource === "youtube";
 
+  const youtubeEmbedUrl = resolveFeaturedYouTubeEmbedUrl(value.url);
+
   const needsPoster = value.type === "video" || value.type === "audio";
+  const posterMissing =
+    posterRequired &&
+    needsPoster &&
+    !featuredMediaHasPoster(value) &&
+    (value.type === "audio" ||
+      Boolean(youtubeEmbedUrl || value.mediaUuid || value.url));
   const previewSrc = resolveMediaUrl(
     (value.type === "image" ? value.url : null) ||
       value.posterUrl ||
@@ -97,11 +141,11 @@ export function FeaturedMediaField({
     onChange(emptyValue(type));
   };
 
-  const handleYouTubeInsert = (embedUrl: string) => {
+  const handleYouTubeInsert = (payload: VideoEmbedPayload) => {
     onChange({
       type: "video",
       mediaUuid: null,
-      url: embedUrl,
+      url: payload.embedUrl,
       thumbnailUrl: null,
       posterUuid: value.posterUuid,
       posterUrl: value.posterUrl,
@@ -189,12 +233,12 @@ export function FeaturedMediaField({
         </p>
       ) : null}
 
-      {previewSrc || (value.type === "video" && value.url) || value.type === "audio" ? (
+      {previewSrc || (value.type === "video" && (youtubeEmbedUrl || value.url)) || value.type === "audio" ? (
         <div className="relative max-h-48 overflow-hidden rounded-[10px] border border-admin-input-border bg-muted/20">
-          {isYouTubeVideo && value.url && !value.posterUrl ? (
+          {isYouTubeVideo && youtubeEmbedUrl && !value.posterUrl ? (
             <div className="relative aspect-video w-full">
               <iframe
-                src={value.url}
+                src={youtubeEmbedUrl}
                 title="Live YouTube preview"
                 className="absolute inset-0 size-full border-0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -320,10 +364,17 @@ export function FeaturedMediaField({
       ) : null}
 
       {needsPoster ? (
-        <div className="space-y-2 rounded-[10px] border border-admin-input-border bg-muted/20 p-3">
+        <div
+          className={cn(
+            "space-y-2 rounded-[10px] border bg-muted/20 p-3",
+            posterMissing
+              ? "border-destructive/60 bg-destructive/5"
+              : "border-admin-input-border",
+          )}
+        >
           <div className="flex items-center justify-between gap-2">
             <label className="text-xs font-medium text-admin-heading">
-              Poster image (recommended)
+              Poster image {posterRequired ? "(required)" : "(recommended)"}
             </label>
             {value.posterUrl ? (
               <button
@@ -343,11 +394,19 @@ export function FeaturedMediaField({
             />
           ) : (
             <p className="text-xs text-admin-trend-muted">
-              {isLiveLabel
-                ? "Shown on list cards by default; live video plays on hover."
-                : "Used on cards, share previews, and before playback."}
+              {posterMissing
+                ? "Select a poster image before saving Live featured media."
+                : isLiveLabel
+                  ? "Shown on list cards by default; live video plays on hover."
+                  : "Used on cards, share previews, and before playback."}
             </p>
           )}
+          {posterMissing ? (
+            <p className="flex items-start gap-2 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              Poster image is required for Live featured media.
+            </p>
+          ) : null}
           <Button
             type="button"
             variant="outline"

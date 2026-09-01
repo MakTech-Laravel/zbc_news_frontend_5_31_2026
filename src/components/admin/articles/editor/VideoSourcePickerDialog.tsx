@@ -39,7 +39,7 @@ const OPTIONS: Array<{
   {
     source: "facebook",
     label: "Facebook",
-    description: "Paste a Facebook watch, videos, reel, or fb.watch link.",
+    description: "Paste a Facebook watch, share/v, reel, or fb.watch link.",
     icon: <Video className="size-5" aria-hidden />,
   },
 ];

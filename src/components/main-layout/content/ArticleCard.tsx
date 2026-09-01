@@ -39,6 +39,7 @@ export function ArticleCard({ article, className }: ArticleCardProps) {
             isLiveBlog={article.isLiveBlog}
             isLive={article.isLive}
             liveEndedAtIso={article.liveEndedAtIso}
+            hideWhenEnded
           />
           <h3 className="line-clamp-2 font-inter text-lg font-bold text-zbc-gray-1000 hover:text-primary cursor-pointer">
             {article.title}

@@ -119,7 +119,7 @@ export function ArticlePreviewDialog({
                   "[&_img]:my-4 [&_img]:max-h-[420px] [&_img]:w-full [&_img]:rounded-lg [&_img]:object-cover",
                   "[&_video]:my-4 [&_video]:w-full [&_video]:rounded-lg",
                   "[&_.article-embed]:my-4 [&_.article-embed]:overflow-hidden [&_.article-embed]:rounded-lg",
-                  "[&_.article-embed]:relative [&_.article-embed]:w-full",
+                  "[&_.article-embed]:relative [&_.article-embed]:max-w-full",
                   "[&_.article-embed:not([style*='aspect-ratio'])]:aspect-video",
                   "[&_.article-embed[data-embed-orientation=portrait]]:mx-auto",
                   "[&_.article-embed[data-embed-orientation=portrait]]:max-w-[min(100%,420px)]",

@@ -6,6 +6,8 @@ type LiveCoverageBadgeProps = {
   liveEndedAtIso?: string;
   className?: string;
   size?: "sm" | "md";
+  /** Hide the grey "Live ended" badge on feed cards (detail pages still show it). */
+  hideWhenEnded?: boolean;
 };
 
 export function LiveCoverageBadge({
@@ -14,6 +16,7 @@ export function LiveCoverageBadge({
   liveEndedAtIso,
   className,
   size = "sm",
+  hideWhenEnded = false,
 }: LiveCoverageBadgeProps) {
   if (!isLiveBlog) return null;
 
@@ -33,6 +36,8 @@ export function LiveCoverageBadge({
   }
 
   if (liveEndedAtIso) {
+    if (hideWhenEnded) return null;
+
     return (
       <span
         className={cn(

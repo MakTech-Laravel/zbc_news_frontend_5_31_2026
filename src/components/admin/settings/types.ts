@@ -1,5 +1,6 @@
 export const SETTINGS_TABS = [
   { id: "general", label: "General" },
+  { id: "contact_social", label: "Contact & Social" },
   { id: "seo", label: "SEO" },
   { id: "writing", label: "Writing" },
   { id: "reading", label: "Reading" },
@@ -42,6 +43,17 @@ export type AdminSettingsForm = {
   mailchimpListId: string;
   disqusShortname: string;
   slackWebhookUrl: string;
+  socialFacebookUrl: string;
+  socialXUrl: string;
+  socialLinkedinUrl: string;
+  socialTiktokUrl: string;
+  socialInstagramUrl: string;
+  contactGeneralEmail: string;
+  contactPressEmail: string;
+  contactAdvertisingEmail: string;
+  contactCorrectionsEmail: string;
+  contactOfficeAddress: string;
+  contactOfficeMapsUrl: string;
 };
 
 export const DEFAULT_ADMIN_SETTINGS: AdminSettingsForm = {
@@ -77,6 +89,18 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettingsForm = {
   mailchimpListId: "",
   disqusShortname: "",
   slackWebhookUrl: "",
+  socialFacebookUrl: "https://facebook.com/zomibroadcasting",
+  socialXUrl: "https://x.com/zbcglobalnews",
+  socialLinkedinUrl: "https://www.linkedin.com/company/zbcnews",
+  socialTiktokUrl: "https://www.tiktok.com/@zbcnews",
+  socialInstagramUrl: "https://www.instagram.com/zomibroadcasting",
+  contactGeneralEmail: "info@zbc.news",
+  contactPressEmail: "newsroom@zbc.news",
+  contactAdvertisingEmail: "ads@zbc.news",
+  contactCorrectionsEmail: "corrections@zbc.news",
+  contactOfficeAddress: "425 Fifth Avenue, Suite 1200\nNew York, NY 10016\nUnited States",
+  contactOfficeMapsUrl:
+    "https://maps.google.com/?q=425+Fifth+Avenue+Suite+1200+New+York+NY+10016",
 };
 
 export const HEADER_LAYOUT_OPTIONS = [

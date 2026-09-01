@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
+import { ContactSocialSettingsTab } from "@/components/admin/settings/ContactSocialSettingsTab";
 import { GeneralSettingsTab } from "@/components/admin/settings/GeneralSettingsTab";
 import { IntegrationsSettingsTab } from "@/components/admin/settings/IntegrationsSettingsTab";
 import { NotificationsSettingsTab } from "@/components/admin/settings/NotificationsSettingsTab";
@@ -15,6 +16,7 @@ import { usePermission } from "@/hooks/usePermission";
 
 const TAB_IDS: SettingsTabId[] = [
   "general",
+  "contact_social",
   "seo",
   "writing",
   "reading",
@@ -67,6 +69,9 @@ export default function AdminSettings() {
     <SettingsPageShell activeTab={settings.activeTab} onTabChange={handleTabChange}>
       {settings.activeTab === "general" ? (
         <GeneralSettingsTab settings={settings} />
+      ) : null}
+      {settings.activeTab === "contact_social" ? (
+        <ContactSocialSettingsTab settings={settings} />
       ) : null}
       {settings.activeTab === "seo" ? <SeoSettingsTab /> : null}
       {settings.activeTab === "writing" ? (
