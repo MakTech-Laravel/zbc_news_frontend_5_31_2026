@@ -180,7 +180,7 @@ export function ArticleEditorMediaStylePanel({
                 (e.currentTarget as HTMLInputElement).blur();
               }
             }}
-            placeholder={isEmbed ? "auto or 500px" : "auto or 360px"}
+            placeholder={isEmbed ? "auto or 250px" : "auto or 360px"}
             className={cn(settingsInputClassName, "h-9 text-sm")}
           />
         </label>
