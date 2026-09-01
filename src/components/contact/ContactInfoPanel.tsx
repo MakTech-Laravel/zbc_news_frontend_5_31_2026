@@ -52,14 +52,16 @@ export function ContactInfoPanel() {
 
   return (
     <div className="space-y-8">
-      <article className="rounded-lg border border-zbc-gray-200 bg-linear-to-br from-brand-soft to-zbc-gray-50 p-8">
-        <h3 className="text-xl font-bold leading-7 text-zbc-gray-1000">Direct Contact</h3>
-        <div className="mt-6 space-y-4">
-          {contactChannels.map((channel) => (
-            <ContactChannelRow key={channel.title} {...channel} />
-          ))}
-        </div>
-      </article>
+      {contactChannels.length > 0 ? (
+        <article className="rounded-lg border border-zbc-gray-200 bg-linear-to-br from-brand-soft to-zbc-gray-50 p-8">
+          <h3 className="text-xl font-bold leading-7 text-zbc-gray-1000">Direct Contact</h3>
+          <div className="mt-6 space-y-4">
+            {contactChannels.map((channel) => (
+              <ContactChannelRow key={channel.title} {...channel} />
+            ))}
+          </div>
+        </article>
+      ) : null}
 
       {office ? (
         <article className="rounded-lg border border-zbc-gray-200 bg-white p-8">

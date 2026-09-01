@@ -31,18 +31,17 @@ export type SocialContactSettings = {
 };
 
 export const DEFAULT_SOCIAL_CONTACT_SETTINGS: SocialContactSettings = {
-  socialFacebookUrl: "https://facebook.com/zomibroadcasting",
-  socialXUrl: "https://x.com/zbcglobalnews",
-  socialLinkedinUrl: "https://www.linkedin.com/company/zbcnews",
-  socialTiktokUrl: "https://www.tiktok.com/@zbcnews",
-  socialInstagramUrl: "https://www.instagram.com/zomibroadcasting",
-  contactGeneralEmail: "info@zbc.news",
-  contactPressEmail: "newsroom@zbc.news",
-  contactAdvertisingEmail: "ads@zbc.news",
-  contactCorrectionsEmail: "corrections@zbc.news",
-  contactOfficeAddress: "425 Fifth Avenue, Suite 1200\nNew York, NY 10016\nUnited States",
-  contactOfficeMapsUrl:
-    "https://maps.google.com/?q=425+Fifth+Avenue+Suite+1200+New+York+NY+10016",
+  socialFacebookUrl: "",
+  socialXUrl: "",
+  socialLinkedinUrl: "",
+  socialTiktokUrl: "",
+  socialInstagramUrl: "",
+  contactGeneralEmail: "",
+  contactPressEmail: "",
+  contactAdvertisingEmail: "",
+  contactCorrectionsEmail: "",
+  contactOfficeAddress: "",
+  contactOfficeMapsUrl: "",
 };
 
 export type ResolvedSocialLink = {
