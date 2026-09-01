@@ -1,3 +1,5 @@
+import { DEFAULT_SOCIAL_CONTACT_SETTINGS } from "@/lib/siteSocialContact";
+
 export type SiteSettingsApi = {
   id?: number;
   site_name: string | null;
@@ -37,6 +39,17 @@ export type SiteSettingsApi = {
   mailchimp_list_id: string | null;
   disqus_shortname: string | null;
   slack_webhook_url: string | null;
+  social_facebook_url?: string | null;
+  social_x_url?: string | null;
+  social_linkedin_url?: string | null;
+  social_tiktok_url?: string | null;
+  social_instagram_url?: string | null;
+  contact_general_email?: string | null;
+  contact_press_email?: string | null;
+  contact_advertising_email?: string | null;
+  contact_corrections_email?: string | null;
+  contact_office_address?: string | null;
+  contact_office_maps_url?: string | null;
   enable_comments: boolean;
   frontend_url?: string | null;
   api_url?: string | null;
@@ -68,6 +81,17 @@ export type PublicSiteSettings = {
   disqusShortname: string;
   frontendUrl: string | null;
   apiUrl: string | null;
+  socialFacebookUrl: string;
+  socialXUrl: string;
+  socialLinkedinUrl: string;
+  socialTiktokUrl: string;
+  socialInstagramUrl: string;
+  contactGeneralEmail: string;
+  contactPressEmail: string;
+  contactAdvertisingEmail: string;
+  contactCorrectionsEmail: string;
+  contactOfficeAddress: string;
+  contactOfficeMapsUrl: string;
 };
 
 export type SeoPageApi = {
@@ -151,6 +175,21 @@ export function mapSiteSettingsToForm(raw: SiteSettingsApi) {
     mailchimpListId: raw.mailchimp_list_id ?? "",
     disqusShortname: raw.disqus_shortname ?? "",
     slackWebhookUrl: raw.slack_webhook_url ?? "",
+    socialFacebookUrl: raw.social_facebook_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialFacebookUrl,
+    socialXUrl: raw.social_x_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialXUrl,
+    socialLinkedinUrl: raw.social_linkedin_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialLinkedinUrl,
+    socialTiktokUrl: raw.social_tiktok_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialTiktokUrl,
+    socialInstagramUrl: raw.social_instagram_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialInstagramUrl,
+    contactGeneralEmail: raw.contact_general_email ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactGeneralEmail,
+    contactPressEmail: raw.contact_press_email ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactPressEmail,
+    contactAdvertisingEmail:
+      raw.contact_advertising_email ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactAdvertisingEmail,
+    contactCorrectionsEmail:
+      raw.contact_corrections_email ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactCorrectionsEmail,
+    contactOfficeAddress:
+      raw.contact_office_address ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactOfficeAddress,
+    contactOfficeMapsUrl:
+      raw.contact_office_maps_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactOfficeMapsUrl,
   };
 }
 
@@ -185,5 +224,20 @@ export function mapPublicSiteSettings(raw: SiteSettingsApi): PublicSiteSettings 
     disqusShortname: raw.disqus_shortname ?? "",
     frontendUrl: raw.frontend_url ?? null,
     apiUrl: raw.api_url ?? null,
+    socialFacebookUrl: raw.social_facebook_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialFacebookUrl,
+    socialXUrl: raw.social_x_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialXUrl,
+    socialLinkedinUrl: raw.social_linkedin_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialLinkedinUrl,
+    socialTiktokUrl: raw.social_tiktok_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialTiktokUrl,
+    socialInstagramUrl: raw.social_instagram_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.socialInstagramUrl,
+    contactGeneralEmail: raw.contact_general_email ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactGeneralEmail,
+    contactPressEmail: raw.contact_press_email ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactPressEmail,
+    contactAdvertisingEmail:
+      raw.contact_advertising_email ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactAdvertisingEmail,
+    contactCorrectionsEmail:
+      raw.contact_corrections_email ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactCorrectionsEmail,
+    contactOfficeAddress:
+      raw.contact_office_address ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactOfficeAddress,
+    contactOfficeMapsUrl:
+      raw.contact_office_maps_url ?? DEFAULT_SOCIAL_CONTACT_SETTINGS.contactOfficeMapsUrl,
   };
 }
