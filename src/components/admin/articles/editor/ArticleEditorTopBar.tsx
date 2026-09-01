@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Eye, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Check, Eye, Loader2, Radio, Save } from "lucide-react";
 
 import { AdminStatusBadge } from "@/components/admin/shared/AdminStatusBadge";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,13 @@ import { cn } from "@/lib/utils";
 import { ARTICLE_STATUS_LABELS } from "@/data/admin/articleWorkflow";
 import type { AutoSaveStatus } from "@/hooks/useArticleAutoSave";
 import type { ArticleStatus } from "@/data/admin/mockArticles";
+
+type LiveCoverageToggle = {
+  isLive: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
+  onToggle: () => void;
+};
 
 type ArticleEditorTopBarProps = {
   wordCount: number;
@@ -19,6 +26,7 @@ type ArticleEditorTopBarProps = {
   onSave?: () => void;
   onSaveDraft?: () => void;
   onPublish?: () => void;
+  liveCoverage?: LiveCoverageToggle;
   className?: string;
 };
 
@@ -40,6 +48,7 @@ export function ArticleEditorTopBar({
   onSave,
   onSaveDraft,
   onPublish,
+  liveCoverage,
   className,
 }: ArticleEditorTopBarProps) {
   return (
@@ -135,6 +144,23 @@ export function ArticleEditorTopBar({
               <Save className="size-4 shrink-0" aria-hidden />
               <span className="hidden sm:inline">Save</span>
             </Button>
+
+            {liveCoverage ? (
+              <Button
+                type="button"
+                variant={liveCoverage.isLive ? "outline" : "default"}
+                onClick={liveCoverage.onToggle}
+                disabled={liveCoverage.disabled}
+                title={liveCoverage.disabled ? liveCoverage.disabledReason : undefined}
+                className="h-9 gap-2 rounded-[10px] px-3 text-sm font-medium sm:h-10 sm:px-4"
+              >
+                <Radio className="size-4 shrink-0" aria-hidden />
+                <span className="hidden sm:inline">
+                  {liveCoverage.isLive ? "End Live" : "Start Live"}
+                </span>
+                <span className="sm:hidden">{liveCoverage.isLive ? "End" : "Live"}</span>
+              </Button>
+            ) : null}
 
             <Button
               type="button"

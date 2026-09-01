@@ -4,7 +4,7 @@ import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Pencil, Plus, Radio, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { request } from "@/api/request";
@@ -24,6 +24,8 @@ import { ArticlePreviewDialog } from "@/components/admin/articles/editor/Article
 import {
   emptyFeaturedMediaValue,
   FeaturedMediaField,
+  liveFeaturedVideoNeedsPoster,
+  resolveFeaturedYouTubeEmbedUrl,
   type FeaturedMediaValue,
 } from "@/components/admin/media/FeaturedMediaField";
 import { MediaImageField } from "@/components/admin/media/MediaImageField";
@@ -145,15 +147,22 @@ function featuredImageUrlFromMedia(media: FeaturedMediaValue): string | null {
   return media.posterUrl || media.thumbnailUrl || null;
 }
 
+function normalizeEditorSlug(slug: unknown): string | null {
+  if (typeof slug !== "string") return null;
+  const trimmed = slug.trim();
+  if (!trimmed || trimmed === "[object Object]") return null;
+  return trimmed;
+}
+
 function appendMediaToPayload(
   payload: Record<string, unknown>,
   featuredMedia: FeaturedMediaValue,
   openGraphImageUrl: string | null,
 ) {
+  const embedUrl = resolveFeaturedYouTubeEmbedUrl(featuredMedia.url);
   const liveVideoUrl =
-    featuredMedia.type === "video" &&
-    featuredMedia.url?.includes("youtube.com/embed/")
-      ? featuredMedia.url
+    featuredMedia.type === "video" && embedUrl.includes("youtube.com/embed/")
+      ? embedUrl
       : "";
 
   payload.featured_image = featuredImageUrlFromMedia(featuredMedia) ?? "";
@@ -162,7 +171,7 @@ function appendMediaToPayload(
 
   if (liveVideoUrl) {
     payload.featured_media_uuid = "";
-    payload.poster_media_uuid = "";
+    payload.poster_media_uuid = featuredMedia.posterUuid ?? "";
   } else if (featuredMedia.mediaUuid) {
     payload.featured_media_uuid = featuredMedia.mediaUuid;
     payload.poster_media_uuid =
@@ -237,7 +246,8 @@ function buildLiveAutoSavePayload(
     !content &&
     !featuredImageUrl &&
     !openGraphImageUrl &&
-    !featuredMedia.url
+    !resolveFeaturedYouTubeEmbedUrl(featuredMedia.url) &&
+    !featuredMedia.mediaUuid
   ) {
     return null;
   }
@@ -337,7 +347,7 @@ function shellDefaults(): ShellFormValues {
 function shellFromApi(shell: LiveUpdateShell): ShellFormValues {
   return {
     title: shell.title,
-    article_description: shell.articleDescription,
+    article_description: shell.articleDescription ?? "",
     status: shell.status,
     visibility: shell.visibility,
     article_category_id: shell.categoryId,
@@ -356,10 +366,14 @@ function mediaFromShell(shell: LiveUpdateShell): FeaturedMediaValue {
   if (!shell.featuredMediaUuid && !shell.featuredMediaUrl && !shell.featuredImageUrl) {
     return emptyFeaturedMediaValue();
   }
+  const resolvedUrl =
+    resolveFeaturedYouTubeEmbedUrl(shell.featuredMediaUrl || shell.featuredImageUrl) ||
+    shell.featuredMediaUrl ||
+    shell.featuredImageUrl;
   return {
     type: shell.featuredMediaType ?? "image",
     mediaUuid: shell.featuredMediaUuid,
-    url: shell.featuredMediaUrl || shell.featuredImageUrl,
+    url: resolvedUrl,
     thumbnailUrl: shell.featuredThumbnailUrl || shell.featuredImageUrl,
     posterUuid: shell.posterMediaUuid,
     posterUrl: shell.posterUrl,
@@ -459,11 +473,18 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
   }, []);
 
   React.useEffect(() => {
-    if (mode !== "edit" || !articleSlug) return;
+    const slug = normalizeEditorSlug(articleSlug);
+    if (mode !== "edit" || !slug) {
+      if (mode === "edit" && articleSlug && !slug) {
+        toast.error("Invalid live update URL");
+        navigate("/admin/live-updates");
+      }
+      return;
+    }
     void (async () => {
       try {
         setLoading(true);
-        const shell = await fetchLiveUpdateBySlug(articleSlug);
+        const shell = await fetchLiveUpdateBySlug(slug);
         setShellMeta(shell);
         setEntries(shell.entries);
         reset(shellFromApi(shell));
@@ -496,14 +517,18 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
       setLastSavedAt(result.updated_at);
       const current = getValues();
       if (result.slug && result.slug !== current.slug) {
-        setValue("slug", result.slug, { shouldDirty: false });
-        setSlugTouched(true);
+        const normalizedSlug = normalizeEditorSlug(result.slug);
+        if (normalizedSlug) {
+          setValue("slug", normalizedSlug, { shouldDirty: false });
+          setSlugTouched(true);
+        }
       }
       reset(getValues(), { keepDirty: false });
       setImagesDirty(false);
 
-      if (result.slug) {
-        void fetchLiveUpdateBySlug(result.slug)
+      const refreshedSlug = normalizeEditorSlug(result.slug);
+      if (refreshedSlug) {
+        void fetchLiveUpdateBySlug(refreshedSlug)
           .then((shell) => {
             setShellMeta(shell);
             setEntries(shell.entries);
@@ -516,9 +541,9 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
           });
       }
 
-      if (mode === "create" && result.slug && !navigatedAfterCreateRef.current) {
+      if (mode === "create" && refreshedSlug && !navigatedAfterCreateRef.current) {
         navigatedAfterCreateRef.current = true;
-        navigate(`/admin/live-updates/edit/${encodeURIComponent(result.slug)}`, {
+        navigate(`/admin/live-updates/edit/${encodeURIComponent(refreshedSlug)}`, {
           replace: true,
         });
       }
@@ -559,15 +584,9 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
     const valid = await form.trigger();
     if (!valid) return;
 
-    if (
-      featuredMedia.type === "video" &&
-      (featuredMedia.url || featuredMedia.mediaUuid) &&
-      !featuredMedia.posterUrl &&
-      !featuredMedia.posterUuid
-    ) {
-      toast("Poster image is recommended for Live featured media.", {
-        icon: "ℹ️",
-      });
+    if (liveFeaturedVideoNeedsPoster(featuredMedia)) {
+      toast.error("Poster image is required for Live featured media.");
+      return;
     }
 
     const data = form.getValues();
@@ -610,9 +629,13 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
         mode === "create" && !updateSlug ? "Live update created" : "Live update saved",
       );
 
-      if (mode === "create" || (updateSlug && updateSlug !== saved.slug)) {
+      const redirectSlug = normalizeEditorSlug(saved.slug);
+      if (
+        redirectSlug &&
+        (mode === "create" || (updateSlug && updateSlug !== redirectSlug))
+      ) {
         navigatedAfterCreateRef.current = true;
-        navigate(`/admin/live-updates/edit/${encodeURIComponent(saved.slug)}`, {
+        navigate(`/admin/live-updates/edit/${encodeURIComponent(redirectSlug)}`, {
           replace: true,
         });
       }
@@ -754,6 +777,8 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
   };
 
   const canEditTimeline = Boolean(savedSlug && (mode === "edit" || shellMeta));
+  const showLiveToggle = Boolean(savedSlug && (mode === "edit" || shellMeta));
+  const canToggleLiveCoverage = statusValue === "published";
 
   return (
     <div className="space-y-4 pb-10 sm:space-y-6">
@@ -769,30 +794,27 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
         onSave={() => void saveShell(statusValue)}
         onSaveDraft={() => void saveShell("draft")}
         onPublish={onPublish}
+        liveCoverage={
+          showLiveToggle
+            ? {
+                isLive: Boolean(shellMeta?.isLive),
+                disabled: !canToggleLiveCoverage,
+                disabledReason: "Publish this live update before starting coverage.",
+                onToggle: () => void toggleLive(),
+              }
+            : undefined
+        }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-semibold text-admin-heading sm:text-xl">
-            {mode === "create" && !shellMeta ? "New Live Update" : "Edit Live Update"}
-          </h1>
-          {shellMeta?.isLive ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
-              <span className="size-1.5 animate-pulse rounded-full bg-red-500" />
-              LIVE
-            </span>
-          ) : null}
-        </div>
-        {shellMeta?.status === "published" ? (
-          <Button
-            type="button"
-            variant={shellMeta.isLive ? "outline" : "default"}
-            onClick={() => void toggleLive()}
-            className="gap-2"
-          >
-            <Radio className="size-4" aria-hidden />
-            {shellMeta.isLive ? "End Live" : "Start Live"}
-          </Button>
+      <div className="flex flex-wrap items-center gap-2 px-1">
+        <h1 className="text-lg font-semibold text-admin-heading sm:text-xl">
+          {mode === "create" && !shellMeta ? "New Live Update" : "Edit Live Update"}
+        </h1>
+        {shellMeta?.isLive ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+            <span className="size-1.5 animate-pulse rounded-full bg-red-500" />
+            LIVE
+          </span>
         ) : null}
       </div>
 
@@ -1095,6 +1117,7 @@ export default function AdminLiveUpdateEditorPage({ mode }: { mode: Mode }) {
               allowedTypes={["image", "video"]}
               typeLabels={{ video: "Live" }}
               videoSource="youtube"
+              posterRequired
             />
             <div>
               <label className={fieldLabelClassName}>Open Graph image</label>

@@ -7,6 +7,12 @@ type LaravelErrorBody = {
 
 export type FieldErrorMap = Record<string, string>
 
+function isInternalDatabaseErrorMessage(message: string): boolean {
+  return /SQLSTATE|Integrity constraint violation|QueryException|Connection:|Host:|Database:/i.test(
+    message,
+  )
+}
+
 export function getAuthFieldErrors(error: unknown): FieldErrorMap {
   if (!axios.isAxiosError(error)) return {}
   const data = error.response?.data as LaravelErrorBody | undefined
@@ -37,7 +43,9 @@ export function getAuthFieldErrors(error: unknown): FieldErrorMap {
 export function getAuthErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as LaravelErrorBody | undefined
-    if (data?.message) return data.message
+    if (data?.message) {
+      return isInternalDatabaseErrorMessage(data.message) ? fallback : data.message
+    }
 
     const firstValidationError = data?.errors
       ? Object.values(data.errors).flat().find(Boolean)
@@ -45,6 +53,8 @@ export function getAuthErrorMessage(error: unknown, fallback: string): string {
     if (firstValidationError) return firstValidationError
   }
 
-  if (error instanceof Error && error.message) return error.message
+  if (error instanceof Error && error.message) {
+    return isInternalDatabaseErrorMessage(error.message) ? fallback : error.message
+  }
   return fallback
 }

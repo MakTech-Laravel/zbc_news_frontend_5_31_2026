@@ -39,6 +39,7 @@ export function ArticleListItem({ article, className, hideViewsBelowSm }: Articl
             isLiveBlog={article.isLiveBlog}
             isLive={article.isLive}
             liveEndedAtIso={article.liveEndedAtIso}
+            hideWhenEnded
           />
         </div>
         <Link to={article.slug ? `/${article.slug}` : "/"} className="block">
