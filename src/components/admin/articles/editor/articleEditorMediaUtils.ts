@@ -958,6 +958,58 @@ export function buildFacebookEmbedHtml(
   );
 }
 
+function selectionIsInsideEditor(editor: HTMLDivElement): boolean {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return false;
+  const node = selection.getRangeAt(0).commonAncestorContainer;
+  return editor.contains(node);
+}
+
+/**
+ * Insert HTML at the restored caret when possible; otherwise append at the end of the editor.
+ * Dialogs steal focus and invalidate ranges — this avoids silent insert failures.
+ */
+export function insertHtmlAtCursorInEditor(
+  editor: HTMLDivElement,
+  html: string,
+  restoreSelection?: () => void,
+): HTMLElement | null {
+  const temp = document.createElement("div");
+  temp.innerHTML = html.trim();
+  if (!temp.firstElementChild) return null;
+
+  editor.focus();
+  restoreSelection?.();
+
+  if (selectionIsInsideEditor(editor)) {
+    const insertedViaCommand = document.execCommand("insertHTML", false, html);
+    if (insertedViaCommand && selectionIsInsideEditor(editor)) {
+      const selection = window.getSelection();
+      const anchor = selection?.anchorNode;
+      const near =
+        anchor instanceof HTMLElement
+          ? anchor
+          : anchor?.parentElement instanceof HTMLElement
+            ? anchor.parentElement
+            : null;
+      if (near && editor.contains(near)) {
+        const media =
+          near.closest("figure, video, audio, .article-embed") ?? near;
+        return media instanceof HTMLElement ? media : near;
+      }
+    }
+  }
+
+  const fragment = document.createDocumentFragment();
+  while (temp.firstChild) {
+    fragment.appendChild(temp.firstChild);
+  }
+  const first = fragment.firstElementChild;
+  editor.appendChild(fragment);
+
+  return first instanceof HTMLElement ? first : null;
+}
+
 /** Insert or replace video HTML in the editor at the saved cursor or replace target. */
 export function insertVideoHtmlInEditor(
   editor: HTMLDivElement,
@@ -1001,19 +1053,7 @@ export function insertVideoHtmlInEditor(
     return adopted instanceof HTMLElement ? adopted : null;
   }
 
-  restoreSelection?.();
-  document.execCommand("insertHTML", false, html);
-
-  const selection = window.getSelection();
-  const anchor = selection?.anchorNode;
-  const inserted =
-    anchor instanceof HTMLElement
-      ? anchor
-      : anchor?.parentElement instanceof HTMLElement
-        ? anchor.parentElement
-        : null;
-
-  return inserted && editor.contains(inserted) ? inserted : newNode;
+  return insertHtmlAtCursorInEditor(editor, html, restoreSelection);
 }
 
 export function notifyEditorInput(editor: HTMLDivElement) {
