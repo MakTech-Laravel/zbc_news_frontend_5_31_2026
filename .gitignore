@@ -13,9 +13,8 @@ dist-ssr
 *.local
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
 .idea
+temp_auto_push.bat
 .DS_Store
 *.suo
 *.ntvs*
@@ -24,14 +23,13 @@ dist-ssr
 *.sw?
 
 # Environment variables (never commit secrets)
-.env
 .env C
-.env.*
 !.env.example
 !.env*.example
-.env.local
-.env.production
 
 .react-router/
 build/
 /build/*
+config.bat
+.gitignore
+branch_structure.json
