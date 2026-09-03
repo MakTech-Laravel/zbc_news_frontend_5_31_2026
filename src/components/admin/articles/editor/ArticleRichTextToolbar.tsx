@@ -23,10 +23,14 @@ import { cn } from "@/lib/utils";
 import {
   isAudioMedia,
   isImageMedia,
+  isVideoMedia,
   type AdminMediaRow,
 } from "@/services/admin/media";
 
-import { buildMediaInsertHtml } from "./articleEditorMediaUtils";
+import {
+  buildMediaInsertHtml,
+  insertHtmlAtCursorInEditor,
+} from "./articleEditorMediaUtils";
 
 type ArticleRichTextToolbarProps = {
   editorRef: React.RefObject<HTMLDivElement | null>;
@@ -295,59 +299,69 @@ export function ArticleRichTextToolbar({
   const savedRangeRef = React.useRef<Range | null>(null);
 
   const saveSelection = React.useCallback(() => {
+    const editor = editorRef.current;
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    savedRangeRef.current = selection.getRangeAt(0).cloneRange();
-  }, []);
+    if (!editor || !selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) return;
+    savedRangeRef.current = range.cloneRange();
+  }, [editorRef]);
 
   const restoreSelection = React.useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
     const selection = window.getSelection();
-    if (!selection || !savedRangeRef.current) return;
-    selection.removeAllRanges();
-    selection.addRange(savedRangeRef.current);
+    const range = savedRangeRef.current;
+    if (!selection || !range) return;
+    try {
+      if (!editor.contains(range.commonAncestorContainer)) return;
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } catch {
+      // Range became detached after the dialog stole focus — caller falls back to append.
+    }
   }, [editorRef]);
 
   const handleImageSelect = (item: AdminMediaRow) => {
     const editor = editorRef.current;
     if (!editor) return;
 
-    if (isVideoMedia(item)) {
-      toast.error("Use the Video button to insert videos.");
+    const src = item.url?.trim() || "";
+    if (!src) {
+      toast.error("This media has no playable URL.");
       return;
     }
 
     let html: string | null = null;
 
-    if (isAudioMedia(item)) {
-      html = buildMediaInsertHtml("audio", { src: item.url || "" });
-    } else {
+    if (isVideoMedia(item)) {
+      html = buildMediaInsertHtml("video", { src });
+    } else if (isAudioMedia(item)) {
+      html = buildMediaInsertHtml("audio", { src });
+    } else if (isImageMedia(item)) {
       const alt = item.altText?.trim() || item.name || item.fileName || "Media";
-      if (isImageMedia(item) && !item.altText?.trim()) {
-        const proceed = window.confirm(
-          "This image has no alt text. Inserting without alt text hurts accessibility. Insert anyway?",
-        );
-        if (!proceed) {
-          toast("Insert cancelled — add alt text in Media details first.");
-          return;
-        }
-      }
 
       html = buildMediaInsertHtml("img", {
-        src: item.url || "",
+        src,
         alt,
         ...(item.caption ? { caption: item.caption } : {}),
         ...(item.credit ? { credit: item.credit } : {}),
         ...(item.copyright ? { copyright: item.copyright } : {}),
       });
+    } else {
+      toast.error("Only images, videos, and audio can be inserted into the body.");
+      return;
     }
 
     if (!html) return;
 
-    restoreSelection();
-    document.execCommand("insertHTML", false, html);
+    const inserted = insertHtmlAtCursorInEditor(editor, html, restoreSelection);
+    if (!inserted) {
+      toast.error("Could not insert media into the editor.");
+      return;
+    }
+
     notifyEditorChange(editor);
   };
 
